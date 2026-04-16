@@ -1,6 +1,6 @@
 {
 	"name": "jsxform",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "TypeScript port of pyxform - converts XLSForms to ODK XForms",
 	"type": "module",
 	"license": "MIT",
@@ -27,7 +27,9 @@
 		"knip": "knip"
 	},
 	"knip": {
-		"ignoreBinaries": ["biome"]
+		"ignoreBinaries": [
+			"biome"
+		]
 	},
 	"dependencies": {
 		"@xmldom/xmldom": "^0.9.8"
