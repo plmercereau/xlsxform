@@ -1,3 +1,10 @@
 node_modules/
 .claude/settings.local.json
-pyxform/
+coverage/
+dist/
+*.tsbuildinfo
+test-results/
+playwright-report/
+.vercel
+.venv
+tests-python/.venv/

@@ -1,0 +1,6 @@
+{
+	"buildCommand": "pnpm --filter jsxform run build && pnpm --filter @jsxform/demo run build",
+	"installCommand": "pnpm install --ignore-scripts",
+	"outputDirectory": "demo/dist",
+	"framework": "vite"
+}

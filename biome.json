@@ -1,5 +1,13 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+	"files": {
+		"ignore": [
+			"**/pyxform/**",
+			"**/dist/**",
+			"**/node_modules/**",
+			"**/coverage/**"
+		]
+	},
 	"organizeImports": { "enabled": true },
 	"linter": {
 		"enabled": true,

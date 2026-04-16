@@ -3,14 +3,16 @@
 		"target": "ES2022",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
-		"lib": ["ES2022", "DOM"],
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
-		"isolatedModules": true
+		"isolatedModules": true,
+		"jsx": "preserve",
+		"noEmit": true,
+		"types": ["node"]
 	},
-	"references": [{ "path": "jsxform" }, { "path": "demo" }],
-	"files": []
+	"include": ["src/**/*", "src/**/*.vue", "env.d.ts", "vite.config.ts"]
 }

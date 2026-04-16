@@ -1,0 +1,3 @@
+[submodule "pyxform"]
+	path = pyxform
+	url = https://github.com/XLSForm/pyxform

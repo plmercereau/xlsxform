@@ -1,0 +1,171 @@
+name: Sync pyxform upstream
+
+on:
+  schedule:
+    # Poll every hour
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          cd pyxform
+          CURRENT_SHA=$(git rev-parse HEAD)
+          git fetch origin main
+          UPSTREAM_SHA=$(git rev-parse origin/main)
+
+          echo "current=$CURRENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "upstream=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ "$CURRENT_SHA" = "$UPSTREAM_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new changes in pyxform upstream."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "New changes detected: $CURRENT_SHA -> $UPSTREAM_SHA"
+            # Collect the diff summary for the Claude prompt
+            DIFF_SUMMARY=$(git log --oneline "$CURRENT_SHA..$UPSTREAM_SHA")
+            echo "diff_summary<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$DIFF_SUMMARY" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for existing PR
+        if: steps.check.outputs.changed == 'true'
+        id: existing_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="sync-pyxform-${{ steps.check.outputs.upstream }}"
+          EXISTING=$(gh pr list --head "$BRANCH" --json number --jq 'length')
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "PR already exists for this SHA."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure git
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create sync branch and update submodule
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        run: |
+          BRANCH="sync-pyxform-${{ steps.check.outputs.upstream }}"
+          git checkout -b "$BRANCH"
+
+          cd pyxform
+          git checkout ${{ steps.check.outputs.upstream }}
+          cd ..
+
+          git add pyxform
+          git commit -m "chore: update pyxform submodule to ${{ steps.check.outputs.upstream }}"
+
+      - name: Setup pnpm
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Claude Code to translate changes
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        timeout-minutes: 60
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            The pyxform git submodule has been updated from ${{ steps.check.outputs.current }} to ${{ steps.check.outputs.upstream }}.
+
+            Here are the new upstream commits:
+            ${{ steps.check.outputs.diff_summary }}
+
+            Your task is to translate the upstream Python (pyxform) changes into this TypeScript codebase. Follow these instructions carefully:
+
+            1. First, examine the diff between the old and new pyxform versions:
+               cd pyxform && git diff ${{ steps.check.outputs.current }}..${{ steps.check.outputs.upstream }} -- pyxform/ tests/
+
+            2. Understand what changed: new features, bug fixes, test additions, etc.
+
+            3. Translate those changes into the TypeScript codebase under `jsxform/src/` and `jsxform/tests/`:
+               - Maintain the existing code style and patterns already used in this project
+               - Ensure type safety with TypeScript strict mode
+               - Adapt Python idioms to idiomatic TypeScript
+
+            4. Iterate until ALL of the following pass (run from the repo root):
+               - `pnpm --filter jsxform run test` (all tests must pass — 100% compliance)
+               - `pnpm --filter jsxform run lint` (linting must pass)
+               - `pnpm --filter jsxform run typecheck` (type checking must pass)
+               - `pnpm --filter jsxform run knip` (no unused exports, dependencies, or files)
+
+            5. If knip reports unused exports or files introduced by the translation, remove them.
+               If it reports pre-existing issues unrelated to your changes, leave them alone.
+
+            6. If tests fail, read the error output carefully, fix the issues, and re-run. Keep iterating until everything passes.
+
+            7. Do NOT modify `pyxform/`, `package.json`, `tsconfig.json`, `biome.json`, or `vitest.config.ts` unless absolutely necessary.
+
+            8. When done, stage and commit your changes using a conventional commit message
+               (feat, fix, refactor, etc.) that accurately reflects the nature of the upstream changes.
+               Do NOT use a generic message — read the upstream commits to determine the right type and summary.
+          claude_args: "--model claude-opus-4-7 --max-turns 50 --allowedTools Bash"
+
+      - name: Push branch and create PR
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="sync-pyxform-${{ steps.check.outputs.upstream }}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "Sync pyxform upstream (${{ steps.check.outputs.upstream }})" \
+            --body "$(cat <<'EOF'
+          ## Pyxform upstream sync
+
+          Updates pyxform submodule and translates changes to TypeScript.
+
+          **Previous SHA:** `${{ steps.check.outputs.current }}`
+          **New SHA:** `${{ steps.check.outputs.upstream }}`
+
+          ### Upstream commits
+          ```
+          ${{ steps.check.outputs.diff_summary }}
+          ```
+
+          ### Translation
+          Changes were automatically translated from Python to TypeScript by Claude Code.
+
+          > [!IMPORTANT]
+          > Review the translated code carefully before merging.
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          EOF
+          )" \
+            --base main \
+            --head "$BRANCH"

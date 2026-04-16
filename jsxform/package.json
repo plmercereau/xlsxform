@@ -1,0 +1,46 @@
+{
+	"name": "jsxform",
+	"version": "0.0.1",
+	"description": "TypeScript port of pyxform - converts XLSForms to ODK XForms",
+	"type": "module",
+	"license": "MIT",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch --preserveWatchOutput",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"coverage": "vitest run --coverage",
+		"lint": "biome check src tests",
+		"format": "biome format --write src tests",
+		"typecheck": "tsc --noEmit",
+		"knip": "knip"
+	},
+	"knip": {
+		"ignoreBinaries": ["biome"]
+	},
+	"dependencies": {
+		"@xmldom/xmldom": "^0.9.8"
+	},
+	"devDependencies": {
+		"@types/adm-zip": "^0.5.8",
+		"@types/node": "^22.0.0",
+		"@vitest/coverage-v8": "^3.2.4",
+		"adm-zip": "^0.5.17",
+		"knip": "^6.4.1",
+		"typescript": "^5.7.0",
+		"vitest": "^3.0.0",
+		"xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+		"xpath": "^0.0.34"
+	}
+}
