@@ -2,9 +2,11 @@
  * Survey class - the root element that generates XForm XML.
  */
 
+import * as fs from "node:fs";
 import { DOMImplementation, XMLSerializer } from "@xmldom/xmldom";
 import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
+import { SurveyInstance } from "./instance.js";
 import { RE_PYXFORM_REF, hasPyxformReference } from "./parsing/expression.js";
 import { Itemset, MultipleChoiceQuestion, type Question, defaultIsDynamic } from "./question.js";
 import { RepeatingSection, type Section } from "./section.js";
@@ -13,6 +15,38 @@ import { node, registerNamespace, serializeXml } from "./utils.js";
 import { getLanguagesWithBadTags } from "./validators/iana_subtags/validation.js";
 
 const domImpl = new DOMImplementation();
+
+/**
+ * Standalone function matching Python's get_path_relative_to_lcar.
+ * Get the number of steps from the source to the LCAR, and the path to the target.
+ */
+export function getPathRelativeToLcarStandalone(
+	target: SurveyElement,
+	source: SurveyElement,
+	lcarStepsSource: number,
+	lcar: SurveyElement,
+	referenceParent = false,
+): [number, string] | [null, null] {
+	const isRepeat = (e: SurveyElement) => e.type === constants.REPEAT;
+
+	if (referenceParent) {
+		const sourceCarIter = source.iterAncestors(isRepeat);
+		const sourceCar = sourceCarIter.next().value?.element ?? null;
+		const targetCarIter = target.iterAncestors(isRepeat);
+		const targetCar = targetCarIter.next().value?.element ?? null;
+		const lcarNotInRepeat = lcar.iterAncestors(isRepeat).next().done !== false;
+
+		if (lcar === targetCar && (lcarNotInRepeat || sourceCar !== lcar)) {
+			return [lcarStepsSource + 1, target.getXpath(lcar.parent)];
+		}
+	}
+
+	const [, lcaStepsSource, , lca] = source.lowestCommonAncestor(target);
+	if (lca === null || lcaStepsSource === null) {
+		return [null, null];
+	}
+	return [lcaStepsSource, target.getXpath(lca)];
+}
 const xmlSerializer = new XMLSerializer();
 
 /**
@@ -175,13 +209,12 @@ export class Survey extends SurveyElement {
 
 	constructor(data: SurveyData) {
 		super(data);
-		this.title = data.title ?? data.name;
-		this.id_string = data.id_string ?? data.name;
+		this.title = data.title ?? "";
+		this.id_string = data.id_string ?? "";
 		this.sms_keyword = data.sms_keyword ?? "";
 		this.version = data.version ?? "";
 		this.style = data.style ?? null;
-		this.default_language =
-			data.default_language ?? constants.DEFAULT_LANGUAGE_VALUE;
+		this.default_language = data.default_language ?? "";
 		this.children = [];
 		this.choices = data.choices ?? null;
 		this._translations = data._translations ?? {};
@@ -259,6 +292,24 @@ export class Survey extends SurveyElement {
 	}
 
 	/**
+	 * Dump the survey as JSON to a file.
+	 */
+	jsonDump(filePath?: string): void {
+		const fp = filePath ?? `${this.name}.json`;
+		const jsonStr = JSON.stringify(this.toJsonDict(), null, 2);
+		fs.writeFileSync(fp, jsonStr, "utf-8");
+	}
+
+	/**
+	 * Print the XForm XML to a file.
+	 */
+	printXformToFile(outputPath: string, opts?: { warnings?: string[] }): void {
+		const warnings = opts?.warnings ?? [];
+		const xform = this.toXml({ warnings });
+		fs.writeFileSync(outputPath, xform, "utf-8");
+	}
+
+	/**
 	 * Validate that repeat names are unique across the entire survey
 	 * (including after loop expansion).
 	 */
@@ -307,6 +358,14 @@ export class Survey extends SurveyElement {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Create a SurveyInstance for collecting answers.
+	 * Port of Python Survey.instantiate().
+	 */
+	instantiate(): SurveyInstance {
+		return new SurveyInstance(this);
 	}
 
 	getElementByName(name: string, errorPrefix?: string): SurveyElement | undefined {
@@ -1055,7 +1114,7 @@ export class Survey extends SurveyElement {
 		}
 
 		const dataAttrs: Record<string, string> = {
-			id: this.id_string,
+			id: this.id_string || this.name,
 		};
 		if (this.version) {
 			dataAttrs.version = this.version;
@@ -1534,7 +1593,7 @@ export class Survey extends SurveyElement {
 		const modelNode = node("model", { children: modelChildren, attrs: modelAttrs });
 
 		// Head
-		const titleNode = node("h:title", { text: this.title });
+		const titleNode = node("h:title", { text: this.title || this.name });
 		const headNode = node("h:head", { children: [titleNode, modelNode] });
 
 		// Root html element

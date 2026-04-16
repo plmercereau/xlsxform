@@ -2,13 +2,19 @@
  * Port of test_survey.py - Survey class tests.
  */
 
-import { describe, it } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+import { describe, it, expect } from "vitest";
 import { assertPyxformXform } from "./helpers/test-case.js";
+import { Survey, getPathRelativeToLcarStandalone } from "../src/survey.js";
+import { InputQuestion } from "../src/question.js";
+import { GroupedSection, RepeatingSection } from "../src/section.js";
+import * as constants from "../src/constants.js";
 
 describe("TestSurvey", () => {
 	it("should not hit 64 recursion limit with many xpath references one to one", () => {
-		const n = Array.from({ length: 250 }, () => "q1 = \${q1} ").join("");
-		const r = Array.from({ length: 250 }, () => "\${q1} = 'y'").join(" or ");
+		const n = Array.from({ length: 250 }, () => "q1 = ${q1} ").join("");
+		const r = Array.from({ length: 250 }, () => "${q1} = 'y'").join(" or ");
 		assertPyxformXform({
 			md: `
 			| survey |      |      |       |          |
@@ -78,52 +84,391 @@ describe("TestSurvey", () => {
 	// _setup_xpath_dictionary, _xpath, to_xml) which doesn't map to assertPyxformXform.
 });
 
-describe.todo("TestGetPathRelativeToLCAR", () => {
-	// TODO: requires internal API - test_relative_paths__combinations_max_inner_depth_of_2
-	// This test reads a CSV fixture and calls build_survey_from_path_spec / get_path_relative_to_lcar
-	// internal APIs directly. Cannot be converted to assertPyxformXform.
+/**
+ * Build a Survey object tree from XPath specifications (matching Python build_survey_from_path_spec).
+ */
+function buildSurveyFromPathSpec(
+	lcarContext: string,
+	targetPath: string,
+	sourcePath: string,
+): [Survey, any, InputQuestion] {
+	const targetParts = `${lcarContext}${targetPath}`.split("/");
+	const sourceParts = `${lcarContext}${sourcePath}`.split("/");
 
-	// TODO: requires internal API - test_relative_paths__outer_gg
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	let sharedPathLength = 0;
+	for (let i = 0; i < Math.min(targetParts.length, sourceParts.length); i++) {
+		sharedPathLength = i;
+		if (targetParts[i] !== sourceParts[i]) {
+			break;
+		}
+	}
 
-	// TODO: requires internal API - test_relative_paths__outer_rr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	const survey = new Survey({ name: "data", type: constants.SURVEY });
+	const targetName = targetParts[targetParts.length - 1];
+	let lcar: RepeatingSection;
+	let target: any;
 
-	// TODO: requires internal API - test_relative_paths__outer_gr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	if (targetName === "t") {
+		lcar = new RepeatingSection({ name: "a", type: constants.REPEAT });
+		target = new InputQuestion({ name: targetName, label: "target", type: "string" });
+	} else if (targetName === "at") {
+		lcar = new RepeatingSection({ name: targetName, type: constants.REPEAT });
+		target = lcar;
+		sharedPathLength += 1;
+	} else {
+		throw new Error(`Unknown target_name: ${targetName}`);
+	}
 
-	// TODO: requires internal API - test_relative_paths__separate_ggg
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	const source = new InputQuestion({
+		name: "s",
+		label: `source \${${targetName}}`,
+		type: "string",
+	});
+	let currentParent: any = survey;
+	const sharedPath = targetParts.slice(0, sharedPathLength);
 
-	// TODO: requires internal API - test_relative_paths__separate_ggr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	// Shared path
+	for (const item of sharedPath) {
+		if (!item || item === "y") continue;
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+		let newNode: any;
+		if (item[0] === "a") {
+			newNode = lcar;
+		} else if (item[0] === "r") {
+			newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
+		} else {
+			newNode = new GroupedSection({ name: item, type: constants.GROUP });
+		}
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_rr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+		currentParent.addChild(newNode);
+		currentParent = newNode;
+	}
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_gr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	// Target path
+	let targetParent = currentParent;
+	for (const item of targetParts.slice(sharedPathLength)) {
+		if (item === "t") {
+			targetParent.addChild(target);
+		} else {
+			if (!item) continue;
+			let newNode: any;
+			if (item[0] === "r") {
+				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
+			} else {
+				newNode = new GroupedSection({ name: item, type: constants.GROUP });
+			}
+			targetParent.addChild(newNode);
+			targetParent = newNode;
+		}
+	}
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_r
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	// Source path
+	let sourceParent = currentParent;
+	for (const item of sourceParts.slice(sharedPathLength)) {
+		if (item === "s") {
+			sourceParent.addChild(source);
+		} else {
+			if (!item) continue;
+			let newNode: any;
+			if (item[0] === "r") {
+				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
+			} else {
+				newNode = new GroupedSection({ name: item, type: constants.GROUP });
+			}
+			sourceParent.addChild(newNode);
+			sourceParent = newNode;
+		}
+	}
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_rr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	return [survey, target, source];
+}
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_rg
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+function assertRelativePath(opts: {
+	lcarContext: string;
+	targetPath: string;
+	sourcePath: string;
+	referenceParent: string;
+	outSteps: string;
+	outPath: string;
+	expectNone: string;
+}) {
+	const [, target, source] = buildSurveyFromPathSpec(
+		opts.lcarContext,
+		opts.targetPath,
+		opts.sourcePath,
+	);
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_g
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	const referenceParent = opts.referenceParent === "1";
+	const expected: [number, string] = [parseInt(opts.outSteps, 10), opts.outPath];
+	const expectNone = opts.expectNone === "1";
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_gg
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	const relation = source.lowestCommonAncestor(target, constants.REPEAT);
+	const observed = getPathRelativeToLcarStandalone(
+		target,
+		source,
+		relation[1]!,
+		relation[3]!,
+		referenceParent,
+	);
 
-	// TODO: requires internal API - test_relative_paths__source_under_target__outer_r__inner_gr
-	// Uses build_survey_from_path_spec / get_path_relative_to_lcar internal APIs.
+	if (expectNone) {
+		expect(observed).toEqual([null, null]);
+	} else {
+		expect(observed).toEqual(expected);
+	}
+}
+
+describe("TestGetPathRelativeToLCAR", () => {
+	it("test_relative_paths__combinations_max_inner_depth_of_2", () => {
+		const csvPath = resolve(
+			__dirname,
+			"../pyxform/tests/fixtures/get_path_relative_to_lcar_cases.csv",
+		);
+		const content = readFileSync(csvPath, "utf-8");
+		const lines = content.trim().split("\n");
+		const headers = lines[0].split(",");
+
+		for (let i = 1; i < lines.length; i++) {
+			const values = lines[i].split(",");
+			const row: Record<string, string> = {};
+			for (let j = 0; j < headers.length; j++) {
+				row[headers[j]] = values[j];
+			}
+			assertRelativePath({
+				lcarContext: row.lcar_context,
+				targetPath: row.target_path,
+				sourcePath: row.source_path,
+				referenceParent: row.reference_parent,
+				outSteps: row.out_steps,
+				outPath: row.out_path,
+				expectNone: row.expect_none,
+			});
+		}
+	});
+
+	it("test_relative_paths__outer_gg", () => {
+		const topo = {
+			lcarContext: "/y/g1o/g2o",
+			targetPath: "/a/t",
+			sourcePath: "/a/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "1", outPath: "/t" },
+			{ referenceParent: "1", outSteps: "2", outPath: "/a/t" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__outer_rr", () => {
+		const topo = {
+			lcarContext: "/y/r1o/r2o",
+			targetPath: "/a/t",
+			sourcePath: "/a/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "1", outPath: "/t" },
+			{ referenceParent: "1", outSteps: "1", outPath: "/t" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__outer_gr", () => {
+		const topo = {
+			lcarContext: "/y/g1o/r2o",
+			targetPath: "/a/t",
+			sourcePath: "/a/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "1", outPath: "/t" },
+			{ referenceParent: "1", outSteps: "1", outPath: "/t" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__separate_ggg", () => {
+		const topo = {
+			lcarContext: "/y",
+			targetPath: "/a/g1t/g2t/g3t/t",
+			sourcePath: "/a/g1s/g2s/g3s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/g1t/g2t/g3t/t" },
+			{ referenceParent: "1", outSteps: "5", outPath: "/a/g1t/g2t/g3t/t" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__separate_ggr", () => {
+		const topo = {
+			lcarContext: "/y",
+			targetPath: "/a/g1t/g2t/r3t/t",
+			sourcePath: "/a/g1s/g2s/r3s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/g1t/g2t/r3t/t" },
+			{ referenceParent: "1", outSteps: "4", outPath: "/g1t/g2t/r3t/t" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "2", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "3", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_rr", () => {
+		const topo = {
+			lcarContext: "/y/r1o/r2o",
+			targetPath: "/at",
+			sourcePath: "/at/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "2", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "3", outPath: "/r2o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_gr", () => {
+		const topo = {
+			lcarContext: "/y/g1o/r2o",
+			targetPath: "/at",
+			sourcePath: "/at/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "2", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "3", outPath: "/r2o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_r", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/r1s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "3", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "4", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_rr", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/r1s/r2s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "5", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_rg", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/r1s/g2s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "5", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_g", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/g1s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "3", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "4", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_gg", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/g1s/g2s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "5", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
+
+	it("test_relative_paths__source_under_target__outer_r__inner_gr", () => {
+		const topo = {
+			lcarContext: "/y/r1o",
+			targetPath: "/at",
+			sourcePath: "/at/g1s/r2s/s",
+			expectNone: "0",
+		};
+		const cases = [
+			{ referenceParent: "0", outSteps: "4", outPath: "/at" },
+			{ referenceParent: "1", outSteps: "5", outPath: "/r1o/at" },
+		];
+		for (const c of cases) {
+			assertRelativePath({ ...topo, ...c });
+		}
+	});
 });
 
 describe("TestReferencesToAncestorRepeat", () => {

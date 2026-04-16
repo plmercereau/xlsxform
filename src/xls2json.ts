@@ -1085,7 +1085,7 @@ export function workbookToJson(opts: {
 			if (header.includes("::")) continue;
 			if (header === "" || header.includes(" ")) {
 				warnings.push(
-					`[row : 1] On the 'choices' sheet, the '${header}' value is invalid. Choices column headers must be valid XML tag names. This column will be skipped.`,
+					`[row : 1] On the 'choices' sheet, the '${header}' value is invalid. Column headers must not be empty and must not contain spaces. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
 				);
 				invalidChoiceHeaders.add(header);
 			}
@@ -1119,7 +1119,15 @@ export function workbookToJson(opts: {
 	}
 
 	if (entitiesData.length > 0) {
-		entityDeclarations = getEntityDeclarations(entitiesData);
+		// Lowercase entity header keys for case-insensitive processing
+		const normalizedEntities = entitiesData.map((row: Record<string, any>) => {
+			const normalized: Record<string, any> = {};
+			for (const [k, v] of Object.entries(row)) {
+				normalized[k.toLowerCase()] = v;
+			}
+			return normalized;
+		});
+		entityDeclarations = getEntityDeclarations(normalizedEntities);
 		entityVariableReferences = getEntityVariableReferences(entityDeclarations);
 	}
 
@@ -1171,7 +1179,7 @@ export function workbookToJson(opts: {
 	// Build the final JSON structure
 	const smsKeyword = settings[constants.SMS_KEYWORD] ?? idString;
 	const result: Record<string, any> = {
-		[constants.NAME]: settings[constants.NAME] ? String(settings[constants.NAME]) : constants.DEFAULT_FORM_NAME,
+		[constants.NAME]: formName,
 		[constants.TYPE]: constants.SURVEY,
 		[constants.TITLE]: settings[constants.TITLE] ?? idString,
 		[constants.ID_STRING]: idString,
@@ -1400,8 +1408,9 @@ function processSurveyRows(
 		const isBeginEnd = isEnd || isBeginLoop || isBeginGroupOrRepeat;
 
 		// Types that auto-assign their name when left blank
-		const autoNameTypes: Record<string, string> = {
+		const autoNameTypes: Record<string, string | ((rowNum: number) => string)> = {
 			audit: "audit",
+			note: (rn: number) => `generated_note_name_${rn}`,
 		};
 
 		if (!isEnd && !isBeginLoop && !name) {
@@ -1412,13 +1421,14 @@ function processSurveyRows(
 				);
 			}
 			// Check if type supports auto-naming
-			const autoName = autoNameTypes[type.toLowerCase()];
-			if (!autoName) {
+			const autoNameEntry = autoNameTypes[type.toLowerCase()];
+			if (!autoNameEntry) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] Question or group with no name.`,
 				);
 			}
 			// Auto-assign the name
+			const autoName = typeof autoNameEntry === "function" ? autoNameEntry(rowNum) : autoNameEntry;
 			name = autoName;
 			row[constants.NAME] = autoName;
 		}
@@ -2064,7 +2074,7 @@ function processQuestionRow(
 		/^(osm)\s+(.+)$/i,
 	);
 	const selectMatch = !selectFromFileMatch && !selectExternalMatch && !osmMatch && type.match(
-		/^(select[_ ]one|select[_ ]multiple|select[_ ]all[_ ]that[_ ]apply|rank)\s+(.+)$/i,
+		/^(add select one prompt using|add select multiple prompt using|select all that apply from|select[_ ]one[_ ]from|select[_ ]one|select[_ ]multiple|select[_ ]all[_ ]that[_ ]apply|select1|rank)\s+(.+)$/i,
 	);
 
 	if (selectFromFileMatch) {
@@ -2303,8 +2313,11 @@ function processQuestionRow(
 		validateRangeParams(params, questionDict, rowNum, choices, settings);
 	}
 
-	// Select parameter validation
+	// Select parameter validation - always ensure parameters dict exists for selects
 	if (selectFromFileMatch || selectExternalMatch || selectMatch) {
+		if (!questionDict[constants.PARAMETERS]) {
+			questionDict[constants.PARAMETERS] = {};
+		}
 		const selectParamsAllowed = ["randomize", "seed"];
 		if (selectFromFileMatch) {
 			selectParamsAllowed.push("value", "label");
@@ -2397,4 +2410,61 @@ function processQuestionRow(
 	}
 
 	return questionDict;
+}
+
+
+// --- SurveyReader and parseFileToJson ---
+
+import { getXlsform } from "./xls2json-backends.js";
+import * as path from "node:path";
+
+/**
+ * A wrapper for workbookToJson. Reads a file and converts to JSON dict.
+ */
+export function parseFileToJson(
+	filePath: string,
+	opts?: {
+		defaultName?: string;
+		defaultLanguage?: string;
+		warnings?: string[];
+	},
+): Record<string, any> {
+	const defaultName = opts?.defaultName ?? constants.DEFAULT_FORM_NAME;
+	const defaultLanguage = opts?.defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE;
+	const warnings = opts?.warnings ?? [];
+
+	const workbookDict = getXlsform(filePath);
+	return workbookToJson({
+		workbookDict,
+		formName: defaultName,
+		fallbackFormName: workbookDict.fallback_form_name,
+		defaultLanguage,
+		warnings,
+	});
+}
+
+/**
+ * SurveyReader wraps parseFileToJson with the old interface:
+ * create a reader, then call toJsonDict().
+ */
+export class SurveyReader {
+	private _dict: Record<string, any>;
+	private _path: string;
+	private _warnings: string[];
+	_name: string;
+
+	constructor(pathOrFile: string, defaultName?: string) {
+		this._path = pathOrFile;
+		this._warnings = [];
+		const name = defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
+		this._name = name;
+		this._dict = parseFileToJson(pathOrFile, {
+			defaultName: name,
+			warnings: this._warnings,
+		});
+	}
+
+	toJsonDict(): Record<string, any> {
+		return this._dict;
+	}
 }

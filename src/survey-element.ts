@@ -352,16 +352,66 @@ export class SurveyElement {
 	}
 
 	/**
-	 * Iterate over ancestors.
+	 * Iterate over ancestors, optionally filtering by a condition.
 	 */
-	*iterAncestors(): Generator<{ element: SurveyElement; distance: number }> {
+	*iterAncestors(condition?: (e: SurveyElement) => boolean): Generator<{ element: SurveyElement; distance: number }> {
 		let distance = 1;
 		let current = this.parent;
 		while (current != null) {
-			yield { element: current, distance };
+			if (!condition || condition(current)) {
+				yield { element: current, distance };
+			}
 			current = current.parent;
 			distance++;
 		}
+	}
+
+	/**
+	 * Find the lowest common ancestor with another element.
+	 * Returns [relationType, stepsFromSelf, stepsFromOther, ancestor].
+	 */
+	lowestCommonAncestor(
+		other: SurveyElement,
+		groupType?: string,
+	): [string, number | null, number | null, SurveyElement | null] {
+		const typeFilter = groupType
+			? new Set([groupType])
+			: new Set([constants.GROUP, constants.REPEAT]);
+
+		const selfAncestors = new Map<SurveyElement, number>();
+		const otherAncestors = new Map<SurveyElement, number>();
+		let selfCurrent: SurveyElement | null = this.parent;
+		let otherCurrent: SurveyElement | null = other.parent;
+		let selfDistance = 1;
+		let otherDistance = 1;
+		let lca: SurveyElement | null = null;
+
+		while (selfCurrent || otherCurrent) {
+			if (selfCurrent) {
+				selfAncestors.set(selfCurrent, selfDistance);
+				if (selfCurrent.type && typeFilter.has(selfCurrent.type) && otherAncestors.has(selfCurrent)) {
+					lca = selfCurrent;
+					break;
+				}
+				selfDistance++;
+				selfCurrent = selfCurrent.parent;
+			}
+
+			if (otherCurrent) {
+				otherAncestors.set(otherCurrent, otherDistance);
+				if (otherCurrent.type && typeFilter.has(otherCurrent.type) && selfAncestors.has(otherCurrent)) {
+					lca = otherCurrent;
+					break;
+				}
+				otherDistance++;
+				otherCurrent = otherCurrent.parent;
+			}
+		}
+
+		if (lca === null) {
+			return ["Unrelated", null, null, null];
+		}
+		return ["Common Ancestor", selfAncestors.get(lca)!, otherAncestors.get(lca)!, lca];
 	}
 
 	/**

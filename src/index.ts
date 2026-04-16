@@ -1,10 +1,11 @@
 export { convert, type ConvertResult } from "./xls2xform.js";
-export { createSurveyElementFromDict, createSurvey, SurveyElementBuilder } from "./builder.js";
+export { createSurveyElementFromDict, createSurvey, createSurveyFromXls, createSurveyFromPath, SurveyElementBuilder } from "./builder.js";
 export { Survey } from "./survey.js";
 export { SurveyElement } from "./survey-element.js";
 export { Question, InputQuestion, MultipleChoiceQuestion, Option, Itemset } from "./question.js";
 export { Section, GroupedSection, RepeatingSection } from "./section.js";
-export { PyXFormError, ValidationError } from "./errors.js";
-export { workbookToJson } from "./xls2json.js";
-export { mdToDict, type DefinitionData } from "./xls2json-backends.js";
+export { SurveyInstance } from "./instance.js";
+export { PyXFormError, ValidationError, ODKValidateError, ErrorCode } from "./errors.js";
+export { workbookToJson, SurveyReader, parseFileToJson } from "./xls2json.js";
+export { mdToDict, type DefinitionData, xlsxToDict, xlsToDict, csvToDict, getXlsform, convertFileToCsvString, xlsValueToUnicode, xlsxValueToStr } from "./xls2json-backends.js";
 export * as constants from "./constants.js";

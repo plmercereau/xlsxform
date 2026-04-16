@@ -572,7 +572,6 @@ describe("TestLoopInternalRepresentation", () => {
 		const result = convert({
 			xlsform: md,
 			prettyPrint: true,
-			formName: "test_name",
 			fileType: "md",
 		});
 		const observed = result._pyxform;

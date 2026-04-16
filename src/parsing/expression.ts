@@ -61,3 +61,112 @@ export function parsePyxformReferences(
 export function maybeStrip(text: string): string {
 	return text.trim();
 }
+
+/**
+ * Token from expression parsing.
+ */
+export interface Token {
+	type: string;
+	value: string;
+}
+
+/**
+ * Token rules for the expression lexer, ordered by priority (highest first).
+ * This mirrors the Lark grammar in pyxform's expression.py.
+ *
+ * Lark priority semantics: at each position, try all rules and pick the one with
+ * the highest priority. Among equal priority, pick the longest match.
+ */
+const tokenRules: [string, RegExp][] = [
+	// https://www.w3.org/TR/xmlschema-2/#dateTime
+	["DATETIME", new RegExp(`-?\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\s+)?((\\+|-)\\d{2}:\\d{2}|Z)?`)],
+	["DATE", /-?\d{4}-\d{2}-\d{2}/],
+	["TIME", /\d{2}:\d{2}:\d{2}(\.\s+)?((\+|-)\d{2}:\d{2}|Z)?/],
+	["NUMBER", /-?\d+\.\d*|-?\.\d+|-?\d+/],
+	// https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex
+	["OPS_MATH", /[*+-]| mod | div /],
+	["OPS_COMP", /=|!=|<=|>=|<|>/],
+	["OPS_BOOL", / and | or /],
+	["OPS_UNION", /\|/],
+	["OPEN_PAREN", /\(/],
+	["CLOSE_PAREN", /\)/],
+	["BRACKET", /[[\]{}]/],
+	["PARENT_REF", /\.\./],
+	["SELF_REF", /\./],
+	// javarosa.xpath says "//" is an "unsupported construct".
+	["PATH_SEP", /\//],
+	["SYSTEM_LITERAL", /"[^"]*"|'[^']*'/],
+	["COMMA", /,/],
+	["WHITESPACE", /\s+/],
+	["PYXFORM_REF", new RegExp(`\\$\\{(?:last-saved#)?${ncName}\\}`)],
+	["FUNC_CALL", new RegExp(`${ncNameNs}\\(`)],
+	["XPATH_PRED_START", new RegExp(`${ncNameNs}\\[`)],
+	["XPATH_PRED_END", /\]/],
+	["URI_SCHEME", new RegExp(`${ncName}:\\/\\/`)],
+	// Must be lower priority than rules containing ncname_regex.
+	["NAME", new RegExp(ncNameNs)],
+	["PYXFORM_REF_START", /\$\{/],
+	["PYXFORM_REF_END", /\}/],
+	// Catch any other character so that parsing doesn't stop.
+	["OTHER", /.+?/],
+];
+
+// Pre-compile sticky regexes for each rule
+const stickyRules: [string, RegExp][] = tokenRules.map(([name, re]) => [
+	name,
+	new RegExp(re.source, "y"),
+]);
+
+const _cache = new Map<string, Token[]>();
+
+/**
+ * Parse an expression into tokens.
+ *
+ * Port of pyxform's parse_expression which uses Lark's lexer.
+ * Uses caching for performance (like the Python @lru_cache).
+ */
+export function parseExpression(text: string): Token[] {
+	const cached = _cache.get(text);
+	if (cached) return cached;
+
+	const tokens: Token[] = [];
+	let pos = 0;
+
+	while (pos < text.length) {
+		let bestMatch: { type: string; value: string } | null = null;
+
+		for (const [type, re] of stickyRules) {
+			re.lastIndex = pos;
+			const m = re.exec(text);
+			if (m && m.index === pos) {
+				// First match wins (rules are in priority order).
+				// Among same-priority rules, Lark picks longest match,
+				// but our rules are ordered so first match is correct.
+				if (!bestMatch || m[0].length > bestMatch.value.length) {
+					bestMatch = { type, value: m[0] };
+				} else if (m[0].length === bestMatch.value.length) {
+					// Same length - higher priority (earlier in list) wins, which is bestMatch
+					continue;
+				}
+			}
+		}
+
+		if (bestMatch) {
+			tokens.push(bestMatch);
+			pos += bestMatch.value.length;
+		} else {
+			// Should not happen with OTHER as catch-all
+			tokens.push({ type: "OTHER", value: text[pos] });
+			pos += 1;
+		}
+	}
+
+	// Cache management (simple LRU-like: cap at 128)
+	if (_cache.size >= 128) {
+		const firstKey = _cache.keys().next().value;
+		if (firstKey !== undefined) _cache.delete(firstKey);
+	}
+	_cache.set(text, tokens);
+
+	return tokens;
+}

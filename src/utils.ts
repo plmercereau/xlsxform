@@ -228,6 +228,75 @@ export function node(
 	return elem;
 }
 
+/**
+ * Serialize an Element to XML string using pyxform-compatible escaping.
+ * Equivalent to Python's DetachableElement.writexml + PatchedText.writexml.
+ * Only escapes what is necessary: [&<>] in text, [&<>"] in attributes.
+ * Does NOT escape ', \r, \n, \t (unlike standard XML serializers).
+ */
+export function nodeToXml(
+	elem: Element,
+	indent = "",
+	addindent = "",
+	newl = "",
+): string {
+	let result = `${indent}<${elem.tagName}`;
+
+	// Write attributes
+	if (elem.attributes) {
+		for (let i = 0; i < elem.attributes.length; i++) {
+			const attr = elem.attributes[i];
+			result += ` ${attr.name}="${escapeTextForXml(attr.value, true)}"`;
+		}
+	}
+
+	if (elem.childNodes && elem.childNodes.length > 0) {
+		result += ">";
+		// Check if any child is a text node
+		let hasTextNode = false;
+		for (let i = 0; i < elem.childNodes.length; i++) {
+			const cnode = elem.childNodes[i];
+			if (cnode.nodeType === 3 || cnode.nodeType === 4) {
+				hasTextNode = true;
+				break;
+			}
+		}
+
+		if (hasTextNode) {
+			// For text or mixed content, write without adding indents or newlines
+			const childCount = elem.childNodes.length;
+			for (let i = 0; i < childCount; i++) {
+				const cnode = elem.childNodes[i];
+				if (childCount > 1 && i === 0 && (cnode.nodeType === 3 || cnode.nodeType === 4)) {
+					result += " ";
+				}
+				if (cnode.nodeType === 3 || cnode.nodeType === 4) {
+					result += escapeTextForXml(cnode.data ?? "");
+				} else if (cnode.nodeType === 1) {
+					result += nodeToXml(cnode as Element, "", "", "");
+				}
+				if (childCount > 1 && i + 1 === childCount) {
+					result += " ";
+				}
+			}
+		} else {
+			result += newl;
+			for (let i = 0; i < elem.childNodes.length; i++) {
+				const cnode = elem.childNodes[i];
+				if (cnode.nodeType === 1) {
+					result += nodeToXml(cnode as Element, `${indent}${addindent}`, addindent, newl);
+				}
+			}
+			result += indent;
+		}
+		result += `</${elem.tagName}>${newl}`;
+	} else {
+		result += `/>${newl}`;
+	}
+
+	return result;
+}
+
 export function serializeXml(element: any, prettyPrint = false): string {
 	let xml = xmlSerializer.serializeToString(element);
 	if (prettyPrint) {

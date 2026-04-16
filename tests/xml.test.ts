@@ -2,8 +2,10 @@
  * Port of xform_test_case/test_xml.py - Test XForm XML syntax.
  */
 
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
+import { DOMImplementation, XMLSerializer } from "@xmldom/xmldom";
 import { assertPyxformXform } from "./helpers/test-case.js";
+import { xmlNode, nodeToXml } from "../src/utils.js";
 
 describe("XMLTests", () => {
 	it("test_to_xml", () => {
@@ -31,12 +33,29 @@ describe("XMLTests", () => {
 });
 
 describe("MinidomTextWriterMonkeyPatchTest", () => {
-	// TODO: requires internal API - test_patch_lets_node_func_escape_only_necessary
-	// Tests the pyxform.utils.node function for XML escaping behavior.
-	// This is a Python-specific minidom monkey-patch test.
-	it.todo("test_patch_lets_node_func_escape_only_necessary - requires internal API (pyxform.utils.node)");
+	it("test_patch_lets_node_func_escape_only_necessary", () => {
+		// Should find that pyxform escapes ["&<>] in attrs and [&<>] in text.
+		const replaceableChars = "' \" & < > \r \n \t";
+		const expected = `<root attr="' &quot; &amp; &lt; &gt; \r \n \t">' " &amp; &lt; &gt; \r \n \t</root>`;
+		const elem = xmlNode("root", replaceableChars, { attr: replaceableChars });
+		const observed = nodeToXml(elem);
+		expect(observed).toBe(expected);
+	});
 
-	// TODO: requires internal API - test_original_escape_escapes_more_than_necessary
-	// Tests Python minidom DOM implementation escaping behavior.
-	it.todo("test_original_escape_escapes_more_than_necessary - requires internal API (Python minidom)");
+	it("test_original_escape_escapes_more_than_necessary", () => {
+		// Should show that the default @xmldom/xmldom serializer escapes more than necessary
+		// (escapes \r, \n, \t in attributes as &#13;, &#10;, &#9;).
+		const replaceableChars = "' \" & < > \r \n \t";
+		const domImpl = new DOMImplementation();
+		const doc = domImpl.createDocument(null as any, "root", null);
+		const root = doc.documentElement!;
+		root.appendChild(doc.createTextNode(replaceableChars));
+		root.setAttribute("attr", replaceableChars);
+		const serializer = new XMLSerializer();
+		const observed = serializer.serializeToString(root);
+		// @xmldom/xmldom escapes \r\n\t in attributes as &#13;&#10;&#9; (more than necessary),
+		// similar to Python 3.13+ minidom behavior.
+		const expected = `<root attr="' &quot; &amp; &lt; &gt; &#13; &#10; &#9;">' " &amp; &lt; &gt; \r \n \t</root>`;
+		expect(observed).toBe(expected);
+	});
 });

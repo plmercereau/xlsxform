@@ -2,9 +2,17 @@
  * Port of test_j2x_creation.py - Testing creation of Surveys using verbose methods.
  */
 
+import * as path from "node:path";
 import { describe, it, expect } from "vitest";
 import { Survey } from "../src/survey.js";
 import { MultipleChoiceQuestion } from "../src/question.js";
+import { createSurveyFromXls } from "../src/builder.js";
+
+const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+
+function pathToTextFixture(filename: string): string {
+	return path.join(EXAMPLE_XLS_PATH, filename);
+}
 
 describe("Json2XformVerboseSurveyCreationTests", () => {
 	it("test_survey_can_be_created_in_a_slightly_less_verbose_manner", () => {
@@ -34,6 +42,36 @@ describe("Json2XformVerboseSurveyCreationTests", () => {
 		expect(s.toJsonDict()).toEqual(expected);
 	});
 
-	// Requires create_survey_from_xls with file path.
-	it.todo("test_allow_surveys_with_comment_rows - requires internal API (create_survey_from_xls, to_json_dict)");
+	it("test_allow_surveys_with_comment_rows", () => {
+		const filePath = pathToTextFixture("allow_comment_rows_test.xls");
+		const survey = createSurveyFromXls(filePath);
+		const expectedDict = {
+			children: [
+				{
+					label: { English: "First and last name of farmer" },
+					name: "farmer_name",
+					type: "text",
+				},
+				{
+					children: [
+						{
+							bind: { "jr:preload": "uid", readonly: "true()" },
+							name: "instanceID",
+							type: "calculate",
+						},
+					],
+					control: { bodyless: true },
+					name: "meta",
+					type: "group",
+				},
+			],
+			default_language: "default",
+			id_string: "allow_comment_rows_test",
+			name: "data",
+			sms_keyword: "allow_comment_rows_test",
+			title: "allow_comment_rows_test",
+			type: "survey",
+		};
+		expect(survey.toJsonDict()).toEqual(expectedDict);
+	});
 });

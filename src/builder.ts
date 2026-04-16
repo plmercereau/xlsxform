@@ -2,8 +2,11 @@
  * Survey builder - creates Survey objects from JSON dicts.
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
+import { parseFileToJson } from "./xls2json.js";
 import {
 	InputQuestion,
 	Itemset,
@@ -354,4 +357,69 @@ export function createSurvey(opts: {
 	}
 
 	return survey;
+}
+
+/**
+ * Create a Survey from an XLS/XLSX/CSV file path.
+ */
+export function createSurveyFromXls(pathOrFile: string, defaultName?: string): Survey {
+	const name = defaultName ?? undefined;
+	const d = parseFileToJson(pathOrFile, { defaultName: name });
+	const readerName = defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
+	const survey = createSurveyElementFromDict(d) as Survey;
+	if (!survey.id_string) {
+		survey.id_string = readerName;
+	}
+	return survey;
+}
+
+function sectionName(pathOrFileName: string): string {
+	const basename = path.basename(pathOrFileName);
+	const ext = path.extname(basename);
+	return basename.slice(0, basename.length - ext.length);
+}
+
+function loadFileToDict(filePath: string): [string, Record<string, any>] {
+	const name = sectionName(filePath);
+	if (filePath.endsWith(".json")) {
+		const content = fs.readFileSync(filePath, "utf-8");
+		return [name, JSON.parse(content)];
+	}
+	return [name, parseFileToJson(filePath, { defaultName: name })];
+}
+
+/**
+ * Create a Survey from a file path (XLS, XLSX, CSV, or JSON).
+ */
+export function createSurveyFromPath(filePath: string, includeDirectory = false): Survey {
+	let nameOfMainSection: string;
+	let sections: Record<string, any>;
+
+	if (includeDirectory) {
+		nameOfMainSection = sectionName(filePath);
+		const dir = path.dirname(filePath);
+		sections = collectCompatibleFiles(dir);
+	} else {
+		const [name, section] = loadFileToDict(filePath);
+		nameOfMainSection = name;
+		sections = { [name]: section };
+	}
+
+	return createSurvey({
+		nameOfMainSection,
+		sections,
+	});
+}
+
+function collectCompatibleFiles(directory: string): Record<string, any> {
+	const sections: Record<string, any> = {};
+	const files = fs.readdirSync(directory);
+	for (const file of files) {
+		if (file.endsWith(".xls") || file.endsWith(".xlsx") || file.endsWith(".json")) {
+			const fullPath = path.join(directory, file);
+			const [name, section] = loadFileToDict(fullPath);
+			sections[name] = section;
+		}
+	}
+	return sections;
 }

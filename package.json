@@ -15,11 +15,13 @@
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.8",
+    "adm-zip": "^0.5.17",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "xpath": "^0.0.34"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "typescript": "^5.7.0",

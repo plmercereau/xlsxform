@@ -1,0 +1,3 @@
+- dead code using knip (maybe a skill?)
+- lint
+- gh action to keep things up to date

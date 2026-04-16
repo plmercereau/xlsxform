@@ -2,15 +2,54 @@
  * Port of test_dump_and_load.py - Test multiple XLSForm can be generated successfully.
  */
 
-import { describe, it } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { describe, it, expect, afterAll } from "vitest";
+import { createSurveyFromPath } from "../src/builder.js";
+
+const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+
+function pathToTextFixture(filename: string): string {
+	return path.join(EXAMPLE_XLS_PATH, filename);
+}
 
 describe("DumpAndLoadTests", () => {
-	it.todo("test_load_from_dump - TODO: requires internal API (create_survey_from_path, json_dump, to_json_dict, test fixtures)", () => {
-		// The Python test loads XLS files via create_survey_from_path, dumps to JSON,
-		// reloads from JSON, and compares the resulting dict.
-		// This requires:
-		//   - create_survey_from_path (file-based survey loading)
-		//   - survey.json_dump() / survey.to_json_dict()
-		//   - Test fixture XLS files (gps.xls, specify_other.xls, group.xls, etc.)
+	const excelFiles = [
+		"gps.xls",
+		"specify_other.xls",
+		"group.xls",
+		"loop.xls",
+		"text_and_integer.xls",
+		"simple_loop.xls",
+		"yes_or_no_question.xls",
+	];
+
+	const jsonPaths: string[] = [];
+
+	it("test_load_from_dump", () => {
+		const surveys: Record<string, any> = {};
+
+		for (const filename of excelFiles) {
+			const filePath = pathToTextFixture(filename);
+			surveys[filename] = createSurveyFromPath(filePath);
+		}
+
+		for (const survey of Object.values(surveys)) {
+			survey.jsonDump();
+			const jsonPath = survey.name + ".json";
+			jsonPaths.push(jsonPath);
+			const surveyFromDump = createSurveyFromPath(jsonPath);
+			expect(survey.toJsonDict()).toEqual(surveyFromDump.toJsonDict());
+		}
+	});
+
+	afterAll(() => {
+		for (const jsonPath of jsonPaths) {
+			try {
+				fs.unlinkSync(jsonPath);
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
 	});
 });
