@@ -21,7 +21,7 @@ function xpModelInstanceWithCsvSrcNoItems(iid: string): string {
 
 function xpBodySelectSearchAppearance(
 	qname: string,
-	appearance: string = "search('my_file')",
+	appearance = "search('my_file')",
 ): string {
 	return `
           /h:html/h:body/x:select1[

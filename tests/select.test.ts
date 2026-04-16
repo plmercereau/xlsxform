@@ -39,9 +39,7 @@ describe("SelectTests", () => {
 				|         | colors    | red   | Red    |
 				|         | colors    | blue  | Blue   |
 			`,
-			xml__xpath_match: [
-				"/h:html/h:body/x:select1[@ref='/test_name/q1']",
-			],
+			xml__xpath_match: ["/h:html/h:body/x:select1[@ref='/test_name/q1']"],
 		});
 	});
 
@@ -56,9 +54,7 @@ describe("SelectTests", () => {
 				|         | colors    | red   | Red    |
 				|         | colors    | blue  | Blue   |
 			`,
-			xml__xpath_match: [
-				"/h:html/h:head/x:model/x:instance[@id='colors']",
-			],
+			xml__xpath_match: ["/h:html/h:head/x:model/x:instance[@id='colors']"],
 		});
 	});
 
@@ -73,9 +69,7 @@ describe("SelectTests", () => {
 				|         | colors    | red   | Red    |
 				|         | colors    | blue  | Blue   |
 			`,
-			xml__xpath_match: [
-				"/h:html/h:body/x:select[@ref='/test_name/q1']",
-			],
+			xml__xpath_match: ["/h:html/h:body/x:select[@ref='/test_name/q1']"],
 		});
 	});
 
@@ -158,9 +152,7 @@ describe("SelectExtendedTests", () => {
 				|         | colors    | red   | Red   | a   |
 				|         | colors    | blue  | Blue  | b   |
 			`,
-			xml__xpath_match: [
-				"/h:html/h:head/x:model/x:instance[@id='colors']",
-			],
+			xml__xpath_match: ["/h:html/h:head/x:model/x:instance[@id='colors']"],
 		});
 	});
 
@@ -175,9 +167,7 @@ describe("SelectExtendedTests", () => {
 				|         | yes_no    | yes  | Yes   |
 				|         | yes_no    | no   | No    |
 			`,
-			xml__xpath_match: [
-				"/h:html/h:head/x:model/x:instance[@id='yes_no']",
-			],
+			xml__xpath_match: ["/h:html/h:head/x:model/x:instance[@id='yes_no']"],
 		});
 	});
 
@@ -318,8 +308,20 @@ describe("TestSelectFromFile", () => {
 					xml__xpath_match: [
 						modelExternalInstanceAndBind(cityType, "city", cityFile),
 						modelExternalInstanceAndBind(subsType, "suburbs", subsFile),
-						bodyItemsetNodesetAndRefs(cityType, "city", cityFile, expectedValueRef, expectedLabelRef),
-						bodyItemsetNodesetAndRefs(subsType, "suburbs", subsFile, expectedValueRef, expectedLabelRef),
+						bodyItemsetNodesetAndRefs(
+							cityType,
+							"city",
+							cityFile,
+							expectedValueRef,
+							expectedLabelRef,
+						),
+						bodyItemsetNodesetAndRefs(
+							subsType,
+							"suburbs",
+							subsFile,
+							expectedValueRef,
+							expectedLabelRef,
+						),
 					],
 				});
 			});
@@ -341,7 +343,13 @@ describe("TestSelectFromFile", () => {
 						modelExternalInstanceAndBind(cityType, "city", cityFile),
 						modelExternalInstanceAndBind(subsType, "suburbs", subsFile),
 						bodyItemsetNodesetAndRefs(cityType, "city", cityFile, "val", "lbl"),
-						bodyItemsetNodesetAndRefs(subsType, "suburbs", subsFile, "val", "lbl"),
+						bodyItemsetNodesetAndRefs(
+							subsType,
+							"suburbs",
+							subsFile,
+							"val",
+							"lbl",
+						),
 					],
 				});
 			});
@@ -365,8 +373,21 @@ describe("TestSelectFromFile", () => {
 					xml__xpath_match: [
 						modelExternalInstanceAndBind(cityType, "city", cityFile),
 						modelExternalInstanceAndBind(subsType, "suburbs", subsFile),
-						bodyItemsetNodesetAndRefs(cityType, "city", cityFile, expectedValueRef, expectedLabelRef),
-						bodyItemsetNodesetAndRefs(subsType, "suburbs", subsFile, expectedValueRef, expectedLabelRef, "[city= /test/city ]"),
+						bodyItemsetNodesetAndRefs(
+							cityType,
+							"city",
+							cityFile,
+							expectedValueRef,
+							expectedLabelRef,
+						),
+						bodyItemsetNodesetAndRefs(
+							subsType,
+							"suburbs",
+							subsFile,
+							expectedValueRef,
+							expectedLabelRef,
+							"[city= /test/city ]",
+						),
 					],
 				});
 			});
@@ -388,7 +409,14 @@ describe("TestSelectFromFile", () => {
 						modelExternalInstanceAndBind(cityType, "city", cityFile),
 						modelExternalInstanceAndBind(subsType, "suburbs", subsFile),
 						bodyItemsetNodesetAndRefs(cityType, "city", cityFile, "val", "lbl"),
-						bodyItemsetNodesetAndRefs(subsType, "suburbs", subsFile, "val", "lbl", "[city= /test/city ]"),
+						bodyItemsetNodesetAndRefs(
+							subsType,
+							"suburbs",
+							subsFile,
+							"val",
+							"lbl",
+							"[city= /test/city ]",
+						),
 					],
 				});
 			});
@@ -439,9 +467,7 @@ describe("TestSelectFromFile", () => {
 								|        | ${qType} cities${ext} | city    | City    | ${param}        |
 							`,
 							errored: true,
-							error__contains: [
-								`parameters (${name})`,
-							],
+							error__contains: [`parameters (${name})`],
 						});
 					});
 				}
@@ -482,9 +508,7 @@ describe("TestSelectFromFile", () => {
 							|        | ${selectType} cities${ext} | city | City  |
 						`,
 						errored: true,
-						error__contains: [
-							`should end with`,
-						],
+						error__contains: ["should end with"],
 					});
 				});
 			}
@@ -515,11 +539,9 @@ describe("TestSelectOneExternal", () => {
 				|        | select_one state           | state  | State  |                      |
 				|        | select_one_external city   | city   | City   | value=val, label=lbl |
 				|        | select_one_external suburb | suburb | Suburb | value=val, label=lbl |
-			` + allChoices,
+			${allChoices}`,
 			errored: true,
-			error__contains: [
-				"invalid parameter",
-			],
+			error__contains: ["invalid parameter"],
 		});
 	});
 
@@ -531,7 +553,7 @@ describe("TestSelectOneExternal", () => {
 				|        | select_one state           | state  | State  |                                 |
 				|        | select_one_external city   | city   | City   | state=\${state}                  |
 				|        | select_one_external suburb | suburb | Suburb | state=\${state} and city=\${city} |
-			` + allChoices,
+			${allChoices}`,
 			xml__xpath_match: [
 				`
 				/h:html/h:head/x:model[
@@ -584,11 +606,9 @@ describe("TestSelectOneExternal", () => {
 				|        | select_one state           | state  | State  |                                 |                      |
 				|        | select_one_external city   | city   | City   | state=\${state}                  | value=val, label=lbl |
 				|        | select_one_external suburb | suburb | Suburb | state=\${state} and city=\${city} | value=val, label=lbl |
-			` + allChoices,
+			${allChoices}`,
 			errored: true,
-			error__contains: [
-				"invalid parameter",
-			],
+			error__contains: ["invalid parameter"],
 		});
 	});
 
@@ -600,7 +620,7 @@ describe("TestSelectOneExternal", () => {
 				|        | select_one state            | state  | State  |                                 |
 				|        | select_one_external city    | city   | City   | state=\${state}                  |
 				|        | select_one_external suburby | suburb | Suburb | state=\${state} and city=\${city} |
-			` + allChoices,
+			${allChoices}`,
 			errored: true,
 			error__contains: ["List name not in external choices sheet: suburby"],
 		});

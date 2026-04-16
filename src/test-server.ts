@@ -18,13 +18,19 @@ export class TestServer {
 		this.server = http.createServer((req, res) => {
 			// Only allow localhost
 			const remoteAddr = req.socket.remoteAddress;
-			if (remoteAddr !== "127.0.0.1" && remoteAddr !== "::1" && remoteAddr !== "::ffff:127.0.0.1") {
+			if (
+				remoteAddr !== "127.0.0.1" &&
+				remoteAddr !== "::1" &&
+				remoteAddr !== "::ffff:127.0.0.1"
+			) {
 				res.writeHead(401);
 				res.end("Unauthorized");
 				return;
 			}
 
-			const urlPath = decodeURIComponent(req.url || "/").split("?")[0].split("#")[0];
+			const urlPath = decodeURIComponent(req.url || "/")
+				.split("?")[0]
+				.split("#")[0];
 			// Strip leading slash and resolve relative to root
 			const segments = urlPath.split("/").filter(Boolean);
 			let filePath = this._rootDir;

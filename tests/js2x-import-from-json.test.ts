@@ -2,7 +2,7 @@
  * Port of test_js2x_import_from_json.py - Testing ability to import from JSON.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createSurveyElementFromDict } from "../src/builder.js";
 
 describe("TestJson2XformJsonImport", () => {

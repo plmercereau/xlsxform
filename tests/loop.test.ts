@@ -3,8 +3,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { assertPyxformXform } from "./helpers/test-case.js";
 import { convert } from "../src/xls2xform.js";
+import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestLoopOutput", () => {
 	it("should find that each item in the loop is repeated for each loop choice", () => {

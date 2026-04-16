@@ -43,14 +43,18 @@ export function parsePyxformReferences(
 ): { name: string; lastSaved: boolean }[] {
 	const results: { name: string; lastSaved: boolean }[] = [];
 	RE_PYXFORM_REF.lastIndex = 0;
-	let match: RegExpExecArray | null;
-	while ((match = RE_PYXFORM_REF.exec(text)) !== null) {
+	let match: RegExpExecArray | null = RE_PYXFORM_REF.exec(text);
+	while (match !== null) {
 		const ref = match[1];
 		if (ref.startsWith("last-saved#")) {
-			results.push({ name: ref.substring("last-saved#".length), lastSaved: true });
+			results.push({
+				name: ref.substring("last-saved#".length),
+				lastSaved: true,
+			});
 		} else {
 			results.push({ name: ref, lastSaved: false });
 		}
+		match = RE_PYXFORM_REF.exec(text);
 	}
 	return results;
 }
@@ -79,7 +83,10 @@ export interface Token {
  */
 const tokenRules: [string, RegExp][] = [
 	// https://www.w3.org/TR/xmlschema-2/#dateTime
-	["DATETIME", new RegExp(`-?\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\s+)?((\\+|-)\\d{2}:\\d{2}|Z)?`)],
+	[
+		"DATETIME",
+		/-?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\s+)?((\+|-)\d{2}:\d{2}|Z)?/,
+	],
 	["DATE", /-?\d{4}-\d{2}-\d{2}/],
 	["TIME", /\d{2}:\d{2}:\d{2}(\.\s+)?((\+|-)\d{2}:\d{2}|Z)?/],
 	["NUMBER", /-?\d+\.\d*|-?\.\d+|-?\d+/],
@@ -145,8 +152,6 @@ export function parseExpression(text: string): Token[] {
 				if (!bestMatch || m[0].length > bestMatch.value.length) {
 					bestMatch = { type, value: m[0] };
 				} else if (m[0].length === bestMatch.value.length) {
-					// Same length - higher priority (earlier in list) wins, which is bestMatch
-					continue;
 				}
 			}
 		}

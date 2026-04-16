@@ -25,10 +25,7 @@ function modelInstanceChoicesLabel(
         `;
 }
 
-function modelInstanceChoicesItext(
-	cname: string,
-	choices: string[],
-): string {
+function modelInstanceChoicesItext(cname: string, choices: string[]): string {
 	const choicesXp = choices
 		.map(
 			(cv, idx) => `
@@ -102,7 +99,10 @@ describe("RangeWidgetTest", () => {
 				|        | mylist       | b        | B     |
 			`,
 			xml__xpath_match: [
-				modelInstanceChoicesLabel("mylist", [["a", "A"], ["b", "B"]]),
+				modelInstanceChoicesLabel("mylist", [
+					["a", "A"],
+					["b", "B"],
+				]),
 				bodyOdkRankItemset("order"),
 				"/h:html/h:head/x:model/x:bind[@nodeset='/test_name/order' and @type='odk:rank']",
 			],

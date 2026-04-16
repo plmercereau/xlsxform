@@ -9,8 +9,8 @@ import * as path from "node:path";
 import AdmZip from "adm-zip";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PyXFormError } from "../src/errors.js";
-import { getTempDir, getTempFile } from "../src/test-utils.js";
 import { TestServer } from "../src/test-server.js";
+import { getTempDir, getTempFile } from "../src/test-utils.js";
 import {
 	EnketoValidateUpdater,
 	UpdateHandler,
@@ -18,10 +18,7 @@ import {
 	captureHandler,
 } from "../src/validators/updater/index.js";
 
-const TEST_PATH = path.resolve(
-	__dirname,
-	"../pyxform/tests/validators",
-);
+const TEST_PATH = path.resolve(__dirname, "../pyxform/tests/validators");
 const DATA_DIR = path.join(TEST_PATH, "data");
 
 function installCheckOk(_binFilePath?: string): boolean {
@@ -32,10 +29,7 @@ function installCheckFail(_binFilePath?: string): boolean {
 	return false;
 }
 
-function getUpdateInfo(
-	checkOk: boolean,
-	modRoot?: string,
-): UpdateInfo {
+function getUpdateInfo(checkOk: boolean, modRoot?: string): UpdateInfo {
 	return new UpdateInfo({
 		apiUrl: "",
 		repoUrl: "",
@@ -370,11 +364,7 @@ describe("TestUpdateHandler", () => {
 		const jsonData = updater._readJson(latestEnketo);
 		const expected =
 			"https://github.com/enketo/enketo-validate/releases/download/1.0.3/windows.zip";
-		const observed = updater._findDownloadUrl(
-			updateInfo,
-			jsonData,
-			fileName,
-		);
+		const observed = updater._findDownloadUrl(updateInfo, jsonData, fileName);
 		expect(observed).toBe(expected);
 	});
 
@@ -460,15 +450,13 @@ describe("TestUpdateHandler", () => {
 		const tmpDir = getTempDir();
 		try {
 			const zip = new AdmZip(zipFile);
-			expect(() =>
-				updater._unzipFindJobs(zip, binPaths, tmpDir.path),
-			).toThrow(PyXFormError);
+			expect(() => updater._unzipFindJobs(zip, binPaths, tmpDir.path)).toThrow(
+				PyXFormError,
+			);
 			try {
 				updater._unzipFindJobs(zip, binPaths, tmpDir.path);
 			} catch (e) {
-				expect((e as Error).message).toContain(
-					"1 zip job files, found: 0",
-				);
+				expect((e as Error).message).toContain("1 zip job files, found: 0");
 			}
 		} finally {
 			tmpDir.cleanup();
@@ -494,9 +482,7 @@ describe("TestUpdateHandler", () => {
 		try {
 			const zip = new AdmZip(zipFile);
 			const entries = zip.getEntries();
-			const zipItem = entries.find((e) =>
-				e.entryName.endsWith("validate"),
-			);
+			const zipItem = entries.find((e) => e.entryName.endsWith("validate"));
 			expect(zipItem).toBeDefined();
 			// Corrupt the CRC
 			zipItem!.header.crc = 12345;
@@ -508,9 +494,7 @@ describe("TestUpdateHandler", () => {
 				// Manually verify CRC
 				const crc32 = zipItem!.header.crc;
 				if (crc32 === 12345) {
-					throw new Error(
-						`Bad CRC-32 for file '${zipItem!.entryName}'`,
-					);
+					throw new Error(`Bad CRC-32 for file '${zipItem!.entryName}'`);
 				}
 				if (data) {
 					fs.writeFileSync(fileOutPath, data);
@@ -630,9 +614,9 @@ describe("TestUpdateHandler", () => {
 			updater._writeLastCheck(ui.lastCheckPath, recent);
 
 			expect(fs.existsSync(ui.binPath)).toBe(false);
-			await expect(
-				updater.update(ui, "linux.zip"),
-			).rejects.toThrow(PyXFormError);
+			await expect(updater.update(ui, "linux.zip")).rejects.toThrow(
+				PyXFormError,
+			);
 			try {
 				// Re-setup for second check
 				const ui2 = getUpdateInfo(false, tmpModRoot.path);
@@ -642,9 +626,7 @@ describe("TestUpdateHandler", () => {
 			} catch (e) {
 				const error = (e as Error).message;
 				expect(error).toContain("Update failed!");
-				expect(error).toContain(
-					"latest release does not appear to work",
-				);
+				expect(error).toContain("latest release does not appear to work");
 			}
 		} finally {
 			tmpModRoot.cleanup();
@@ -668,9 +650,7 @@ describe("TestUpdateHandler", () => {
 		}
 		const info = captureHandler.watcher.output.INFO[0];
 		expect(info).toContain("Update success!");
-		expect(info).toContain(
-			"Install check of the latest release succeeded",
-		);
+		expect(info).toContain("Install check of the latest release succeeded");
 	});
 
 	it("test_update__installed__fail__already_latest - Should stop install and raise an error with relevant info", async () => {
@@ -684,9 +664,9 @@ describe("TestUpdateHandler", () => {
 
 			await updater.update(ui, "linux.zip");
 			ui.latestPath = installFake;
-			await expect(
-				updater.update(ui, "linux.zip"),
-			).rejects.toThrow(PyXFormError);
+			await expect(updater.update(ui, "linux.zip")).rejects.toThrow(
+				PyXFormError,
+			);
 			// Run again to check the error message
 			try {
 				const ui2 = getUpdateInfo(true, tmpModRoot.path);
@@ -699,9 +679,7 @@ describe("TestUpdateHandler", () => {
 			} catch (e) {
 				const error = (e as Error).message;
 				expect(error).toContain("Update failed!");
-				expect(error).toContain(
-					"installed release appears to be the latest",
-				);
+				expect(error).toContain("installed release appears to be the latest");
 			}
 		} finally {
 			tmpModRoot.cleanup();
@@ -717,9 +695,9 @@ describe("TestUpdateHandler", () => {
 			ui.latestPath = installFake;
 			updater._writeLastCheck(ui.lastCheckPath, recent);
 
-			await expect(
-				updater.update(ui, "linux.zip"),
-			).rejects.toThrow(PyXFormError);
+			await expect(updater.update(ui, "linux.zip")).rejects.toThrow(
+				PyXFormError,
+			);
 			try {
 				const ui2 = getUpdateInfo(false, tmpModRoot.path);
 				ui2.latestPath = installFake;
@@ -728,9 +706,7 @@ describe("TestUpdateHandler", () => {
 			} catch (e) {
 				const error = (e as Error).message;
 				expect(error).toContain("Update failed!");
-				expect(error).toContain(
-					"latest release does not appear to work",
-				);
+				expect(error).toContain("latest release does not appear to work");
 			}
 		} finally {
 			tmpModRoot.cleanup();
@@ -786,9 +762,7 @@ describe("TestUpdateHandler", () => {
 			} catch (e) {
 				const error = (e as Error).message;
 				expect(error).toContain("Check failed!");
-				expect(error).toContain(
-					"installed release does not appear to work",
-				);
+				expect(error).toContain("installed release does not appear to work");
 			}
 		} finally {
 			tmpModRoot.cleanup();

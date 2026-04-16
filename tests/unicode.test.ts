@@ -30,7 +30,7 @@ describe("UnicodeStrings", () => {
 					{
 						type: "text",
 						name: "smart_double_quoted",
-						relevant: "selected(\${smart_single_quoted}, 'xxx')",
+						relevant: "selected(${smart_single_quoted}, 'xxx')",
 						label: "\u201cdouble-quoted\u201d",
 					},
 					{

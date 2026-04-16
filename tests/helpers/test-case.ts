@@ -5,8 +5,8 @@
 
 import { DOMParser } from "@xmldom/xmldom";
 import * as xpathModule from "xpath";
-import { convert, type ConvertResult } from "../../src/xls2xform.js";
 import { NSMAP } from "../../src/constants.js";
+import { type ConvertResult, convert } from "../../src/xls2xform.js";
 
 const domParser = new DOMParser();
 
@@ -50,7 +50,9 @@ export interface PyxformXformOpts {
 /**
  * Main test assertion function matching PyxformTestCase.assertPyxformXform
  */
-export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null {
+export function assertPyxformXform(
+	opts: PyxformXformOpts,
+): ConvertResult | null {
 	const {
 		md,
 		ss_structure,
@@ -89,7 +91,8 @@ export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null
 		...(xml__xpath_exact ?? []).map(([x]) => x),
 		...(xml__xpath_exact ?? []).flatMap(([, s]) => [...s]),
 	].join(" ");
-	const xpathReferencesInstanceID = xpathAssertionStrings.includes("instanceID");
+	const xpathReferencesInstanceID =
+		xpathAssertionStrings.includes("instanceID");
 
 	try {
 		result = convert({
@@ -128,7 +131,10 @@ export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null
 				// Remove instanceID element from instance
 				xpathXml = xpathXml.replace(/<instanceID\/>/g, "");
 				// Remove instanceID bind
-				xpathXml = xpathXml.replace(/<bind[^>]*nodeset="[^"]*\/meta\/instanceID"[^>]*\/>/g, "");
+				xpathXml = xpathXml.replace(
+					/<bind[^>]*nodeset="[^"]*\/meta\/instanceID"[^>]*\/>/g,
+					"",
+				);
 				// Clean up empty meta: <meta></meta> or <meta>  </meta> → <meta/>
 				xpathXml = xpathXml.replace(/<meta>\s*<\/meta>/g, "<meta/>");
 			}
@@ -145,8 +151,7 @@ export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null
 		}
 		if (!errored && !error__contains?.length) {
 			throw new Error(
-				"Expected valid survey but compilation failed. " +
-				"Error(s): " + errors.join("\n"),
+				`Expected valid survey but compilation failed. Error(s): ${errors.join("\n")}`,
 			);
 		}
 	}
@@ -157,7 +162,11 @@ export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null
 		}
 
 		// String-based assertions
-		const stringTests: [string[] | undefined, string, (content: string, text: string) => void][] = [
+		const stringTests: [
+			string[] | undefined,
+			string,
+			(content: string, text: string) => void,
+		][] = [
 			[xml__contains, "xml", assertContains],
 			[xml__excludes, "xml", assertNotContains],
 			[model__contains, "model", assertContains],
@@ -252,7 +261,11 @@ export function assertPyxformXform(opts: PyxformXformOpts): ConvertResult | null
 	return result;
 }
 
-function getSectionXml(fullXml: string, doc: Document, section: string): string {
+function getSectionXml(
+	fullXml: string,
+	doc: Document,
+	section: string,
+): string {
 	if (section === "xml") return fullXml;
 
 	// Use simple string extraction for model/instance/itext
@@ -277,7 +290,8 @@ function assertContains(content: string, text: string): void {
 	const normalized = content.replace(/ \/>/g, "/>");
 	if (!normalized.includes(text)) {
 		// Try again with whitespace-collapsed comparison (normalize whitespace between tags)
-		const collapseWs = (s: string) => s.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim();
+		const collapseWs = (s: string) =>
+			s.replace(/>\s+</g, "><").replace(/\s+/g, " ").trim();
 		if (!collapseWs(normalized).includes(collapseWs(text))) {
 			throw new Error(
 				`assertContains: Could not find '${text}' in content:\n${content.substring(0, 2000)}`,
@@ -304,7 +318,7 @@ function assertXpathAtLeast(
 	try {
 		const selectFn = xpathModule.useNamespaces(NSMAP_XPATH);
 		const results = selectFn(xpath, doc);
-		const count = Array.isArray(results) ? results.length : (results ? 1 : 0);
+		const count = Array.isArray(results) ? results.length : results ? 1 : 0;
 		if (count < minCount) {
 			throw new Error(
 				`XPath '${xpath}' found ${count} matches, expected at least ${minCount}.\n\nXML:\n${xml.substring(0, 3000)}`,
@@ -312,7 +326,9 @@ function assertXpathAtLeast(
 		}
 	} catch (e: any) {
 		if (e.message?.startsWith("XPath")) throw e;
-		throw new Error(`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`);
+		throw new Error(
+			`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`,
+		);
 	}
 }
 
@@ -325,7 +341,7 @@ function assertXpathCount(
 	try {
 		const selectFn = xpathModule.useNamespaces(NSMAP_XPATH);
 		const results = selectFn(xpath, doc);
-		const count = Array.isArray(results) ? results.length : (results ? 1 : 0);
+		const count = Array.isArray(results) ? results.length : results ? 1 : 0;
 		if (count !== expectedCount) {
 			throw new Error(
 				`XPath '${xpath}' found ${count} matches, expected ${expectedCount}.\n\nXML:\n${xml.substring(0, 3000)}`,
@@ -333,7 +349,9 @@ function assertXpathCount(
 		}
 	} catch (e: any) {
 		if (e.message?.startsWith("XPath")) throw e;
-		throw new Error(`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`);
+		throw new Error(
+			`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`,
+		);
 	}
 }
 
@@ -358,7 +376,13 @@ function assertXpathExact(
 		for (const r of results) {
 			if (typeof r === "string") {
 				resultSet.add(r);
-			} else if (r && typeof r === "object" && "nodeValue" in r && r.nodeValue != null && "nodeName" in r) {
+			} else if (
+				r &&
+				typeof r === "object" &&
+				"nodeValue" in r &&
+				r.nodeValue != null &&
+				"nodeName" in r
+			) {
 				// Attr nodes: use full serialization (' name="value"') when expected values
 				// contain attribute patterns, otherwise use just the value.
 				if (expectedHasAttrFormat) {

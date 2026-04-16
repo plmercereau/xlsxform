@@ -6,10 +6,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
-import { parseFileToJson } from "./xls2json.js";
+import {
+	QUESTION_TYPE_DICT,
+	type QuestionTypeEntry,
+} from "./question-type-dictionary.js";
 import {
 	InputQuestion,
-	Itemset,
+	type Itemset,
 	MultipleChoiceQuestion,
 	type Option,
 	OsmUploadQuestion,
@@ -18,10 +21,10 @@ import {
 	TriggerQuestion,
 	UploadQuestion,
 } from "./question.js";
-import { QUESTION_TYPE_DICT, type QuestionTypeEntry } from "./question-type-dictionary.js";
 import { GroupedSection, RepeatingSection, type Section } from "./section.js";
-import { Survey } from "./survey.js";
 import { SurveyElement, type SurveyElementData } from "./survey-element.js";
+import { Survey } from "./survey.js";
+import { parseFileToJson } from "./xls2json.js";
 
 const QUESTION_CLASSES: Record<string, any> = {
 	"": InputQuestion, // Default
@@ -120,8 +123,7 @@ export class SurveyElementBuilder {
 
 		const triggers = Array.isArray(trigger) ? trigger : [trigger];
 		for (const t of triggers) {
-			const value =
-				d[constants.BIND]?.calculate ?? "";
+			const value = d[constants.BIND]?.calculate ?? "";
 			const questionRef: [string, string] = [d[constants.NAME], value];
 			if (d[constants.TYPE] === "background-geopoint") {
 				if (!this.setgeopoint_by_triggering_ref[t]) {
@@ -217,7 +219,10 @@ export class SurveyElementBuilder {
 		choices?: Record<string, Itemset> | null,
 	): any {
 		const children = d[constants.CHILDREN];
-		const result = new GroupedSection({ ...d, [constants.TYPE]: constants.GROUP } as any);
+		const result = new GroupedSection({
+			...d,
+			[constants.TYPE]: constants.GROUP,
+		} as any);
 
 		for (const columnDict of d[constants.COLUMNS] ?? []) {
 			if (columnDict[constants.NAME] === "none") continue;
@@ -228,8 +233,14 @@ export class SurveyElementBuilder {
 			});
 			if (children) {
 				for (const child of children) {
-					const questionDict = SurveyElementBuilder._nameAndLabelSubstitutions(child, columnDict);
-					const question = this.createSurveyElementFromDict(questionDict, choices);
+					const questionDict = SurveyElementBuilder._nameAndLabelSubstitutions(
+						child,
+						columnDict,
+					);
+					const question = this.createSurveyElementFromDict(
+						questionDict,
+						choices,
+					);
 					column.addChildren(question as any);
 				}
 			}
@@ -362,10 +373,14 @@ export function createSurvey(opts: {
 /**
  * Create a Survey from an XLS/XLSX/CSV file path.
  */
-export function createSurveyFromXls(pathOrFile: string, defaultName?: string): Survey {
+export function createSurveyFromXls(
+	pathOrFile: string,
+	defaultName?: string,
+): Survey {
 	const name = defaultName ?? undefined;
 	const d = parseFileToJson(pathOrFile, { defaultName: name });
-	const readerName = defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
+	const readerName =
+		defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
 	const survey = createSurveyElementFromDict(d) as Survey;
 	if (!survey.id_string) {
 		survey.id_string = readerName;
@@ -391,7 +406,10 @@ function loadFileToDict(filePath: string): [string, Record<string, any>] {
 /**
  * Create a Survey from a file path (XLS, XLSX, CSV, or JSON).
  */
-export function createSurveyFromPath(filePath: string, includeDirectory = false): Survey {
+export function createSurveyFromPath(
+	filePath: string,
+	includeDirectory = false,
+): Survey {
 	let nameOfMainSection: string;
 	let sections: Record<string, any>;
 
@@ -415,7 +433,11 @@ function collectCompatibleFiles(directory: string): Record<string, any> {
 	const sections: Record<string, any> = {};
 	const files = fs.readdirSync(directory);
 	for (const file of files) {
-		if (file.endsWith(".xls") || file.endsWith(".xlsx") || file.endsWith(".json")) {
+		if (
+			file.endsWith(".xls") ||
+			file.endsWith(".xlsx") ||
+			file.endsWith(".json")
+		) {
 			const fullPath = path.join(directory, file);
 			const [name, section] = loadFileToDict(fullPath);
 			sections[name] = section;

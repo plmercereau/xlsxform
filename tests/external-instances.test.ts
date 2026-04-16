@@ -25,7 +25,9 @@ describe("ExternalInstanceTests", () => {
 				|        | type         | name   | label |
 				|        | csv-external | mydata |       |
 			`,
-			model__contains: ['<instance id="mydata" src="jr://file-csv/mydata.csv"/>'],
+			model__contains: [
+				'<instance id="mydata" src="jr://file-csv/mydata.csv"/>',
+			],
 		});
 	});
 
@@ -277,9 +279,9 @@ describe("ExternalInstanceTests", () => {
 			errored: true,
 			error__contains: [
 				"Instance name: 'states', " +
-				"Existing type: 'file', Existing URI: 'jr://file-csv/states.csv', " +
-				"Duplicate type: 'choice', Duplicate URI: 'None', " +
-				"Duplicate context: 'survey'.",
+					"Existing type: 'file', Existing URI: 'jr://file-csv/states.csv', " +
+					"Duplicate type: 'choice', Duplicate URI: 'None', " +
+					"Duplicate context: 'survey'.",
 			],
 		});
 	});
@@ -298,9 +300,9 @@ describe("ExternalInstanceTests", () => {
 			errored: true,
 			error__contains: [
 				"Instance name: 'fruits', " +
-				"Existing type: 'external', Existing URI: 'jr://file/fruits.xml', " +
-				"Duplicate type: 'pulldata', Duplicate URI: 'jr://file-csv/fruits.csv', " +
-				"Duplicate context: '[type: group, name: g1]'.",
+					"Existing type: 'external', Existing URI: 'jr://file/fruits.xml', " +
+					"Duplicate type: 'pulldata', Duplicate URI: 'jr://file-csv/fruits.csv', " +
+					"Duplicate context: '[type: group, name: g1]'.",
 			],
 		});
 	});
@@ -319,9 +321,9 @@ describe("ExternalInstanceTests", () => {
 			errored: true,
 			error__contains: [
 				"Instance name: 'fruits', " +
-				"Existing type: 'pulldata', Existing URI: 'jr://file-csv/fruits.csv', " +
-				"Duplicate type: 'external', Duplicate URI: 'jr://file/fruits.xml', " +
-				"Duplicate context: '[type: group, name: g1]'.",
+					"Existing type: 'pulldata', Existing URI: 'jr://file-csv/fruits.csv', " +
+					"Duplicate type: 'external', Duplicate URI: 'jr://file/fruits.xml', " +
+					"Duplicate context: '[type: group, name: g1]'.",
 			],
 		});
 	});
@@ -440,9 +442,9 @@ describe("ExternalInstanceTests", () => {
 
 	it("test_pulldata_calculate_multi_line_expression__one_call", () => {
 		const qd =
-			"if(\${a},\n" +
-			"pulldata('my_data_b', 'my_ref', 'metainstanceID', \${b}),\n" +
-			"(count-selected(\${c})))";
+			"if(${a},\n" +
+			"pulldata('my_data_b', 'my_ref', 'metainstanceID', ${b}),\n" +
+			"(count-selected(${c})))";
 		assertPyxformXform({
 			ss_structure: {
 				survey: [
@@ -465,9 +467,9 @@ describe("ExternalInstanceTests", () => {
 
 	it("test_pulldata_calculate_multi_line_expression__multiple_calls", () => {
 		const qd =
-			"if(\${a},\n" +
-			"pulldata('my_data_b', 'my_ref', 'metainstanceID', \${b}),\n" +
-			"pulldata('my_data_c', 'my_ref', 'metainstanceID', \${c}))";
+			"if(${a},\n" +
+			"pulldata('my_data_b', 'my_ref', 'metainstanceID', ${b}),\n" +
+			"pulldata('my_data_c', 'my_ref', 'metainstanceID', ${c}))";
 		assertPyxformXform({
 			ss_structure: {
 				survey: [
@@ -491,8 +493,8 @@ describe("ExternalInstanceTests", () => {
 
 	it("test_pulldata_calculate_single_line_expression__multiple_calls", () => {
 		const qd =
-			"if(\${a}, pulldata('my_data_b', 'my_ref', 'metainstanceID', \${b}), " +
-			"pulldata('my_data_c', 'my_ref', 'metainstanceID', \${c}))";
+			"if(${a}, pulldata('my_data_b', 'my_ref', 'metainstanceID', ${b}), " +
+			"pulldata('my_data_c', 'my_ref', 'metainstanceID', ${c}))";
 		assertPyxformXform({
 			ss_structure: {
 				survey: [

@@ -24,14 +24,23 @@ const xpq = {
 			and @${key}="${value}"
 		]
 	`,
-	body_control: (qname: string, controlType: string, namespace = "http://www.w3.org/2002/xforms") => `
+	body_control: (
+		qname: string,
+		controlType: string,
+		namespace = "http://www.w3.org/2002/xforms",
+	) => `
 		/h:html/h:body/*[
 			namespace-uri()='${namespace}'
 			and local-name()='${controlType}'
 			and @ref = '/test_name/${qname}'
 		]
 	`,
-	setvalue: (opts: { path: string; ref: string; event: string; value?: string }) => {
+	setvalue: (opts: {
+		path: string;
+		ref: string;
+		event: string;
+		value?: string;
+	}) => {
 		const valuePart = opts.value ? `and @value="${opts.value}" ` : "";
 		return `
 		/h:html/${opts.path}/x:setvalue[
@@ -393,9 +402,7 @@ describe("TestRepeatOutput", () => {
 				|         | end repeat         | member                    |                                                |                             |
 				|         | end repeat         | household                 |                                                |                             |
 			`,
-			xml__contains: [
-				'<itemset nodeset="../../../member[ ./age  &gt; 18]">',
-			],
+			xml__contains: ['<itemset nodeset="../../../member[ ./age  &gt; 18]">'],
 		});
 	});
 
@@ -414,9 +421,7 @@ describe("TestRepeatOutput", () => {
 				|         | end repeat         | adult                     |                                                |                             |
 				|         | end repeat         | household                 |                                                |                             |
 			`,
-			xml__contains: [
-				'<itemset nodeset="../../person[ ./age  &gt; 18]">',
-			],
+			xml__contains: ['<itemset nodeset="../../person[ ./age  &gt; 18]">'],
 		});
 	});
 
@@ -493,13 +498,15 @@ describe("TestRepeatOutput", () => {
 					path: "h:head/x:model",
 					ref: "/test_name/r1/q2",
 					event: "odk-instance-first-load",
-					value: "indexed-repeat( /test_name/r1/q1 ,  /test_name/r1 , position(..)-1)",
+					value:
+						"indexed-repeat( /test_name/r1/q1 ,  /test_name/r1 , position(..)-1)",
 				}),
 				xpq.setvalue({
 					path: "h:body/x:group[@ref='/test_name/r1']/x:repeat[@nodeset='/test_name/r1']",
 					ref: "/test_name/r1/q2",
 					event: "odk-new-repeat",
-					value: "indexed-repeat( /test_name/r1/q1 ,  /test_name/r1 , position(..)-1)",
+					value:
+						"indexed-repeat( /test_name/r1/q1 ,  /test_name/r1 , position(..)-1)",
 				}),
 			],
 		});
@@ -523,13 +530,15 @@ describe("TestRepeatOutput", () => {
 					path: "h:head/x:model",
 					ref: "/test_name/r1/r2/q4",
 					event: "odk-instance-first-load",
-					value: "indexed-repeat( /test_name/r1/r2/q3 ,  /test_name/r1 , 1,  /test_name/r1/r2 , 2)",
+					value:
+						"indexed-repeat( /test_name/r1/r2/q3 ,  /test_name/r1 , 1,  /test_name/r1/r2 , 2)",
 				}),
 				xpq.setvalue({
 					path: "h:body/x:group/x:repeat[@nodeset='/test_name/r1']/x:group/x:repeat[@nodeset='/test_name/r1/r2']",
 					ref: "/test_name/r1/r2/q4",
 					event: "odk-new-repeat",
-					value: "indexed-repeat( /test_name/r1/r2/q3 ,  /test_name/r1 , 1,  /test_name/r1/r2 , 2)",
+					value:
+						"indexed-repeat( /test_name/r1/r2/q3 ,  /test_name/r1 , 1,  /test_name/r1/r2 , 2)",
 				}),
 			],
 		});
@@ -614,13 +623,15 @@ describe("TestRepeatOutput", () => {
 					path: "h:head/x:model",
 					ref: "/test_name/g1/r1/q4",
 					event: "odk-instance-first-load",
-					value: "if( ../q1  = 1, '', indexed-repeat( /test_name/g1/r1/q4 ,  /test_name/g1/r1 ,  ../q1  - 1))",
+					value:
+						"if( ../q1  = 1, '', indexed-repeat( /test_name/g1/r1/q4 ,  /test_name/g1/r1 ,  ../q1  - 1))",
 				}),
 				xpq.setvalue({
 					path: "h:body/x:group/x:group/x:repeat[@nodeset='/test_name/g1/r1']",
 					ref: "/test_name/g1/r1/q4",
 					event: "odk-new-repeat",
-					value: "if( ../q1  = 1, '', indexed-repeat( /test_name/g1/r1/q4 ,  /test_name/g1/r1 ,  ../q1  - 1))",
+					value:
+						"if( ../q1  = 1, '', indexed-repeat( /test_name/g1/r1/q4 ,  /test_name/g1/r1 ,  ../q1  - 1))",
 				}),
 			],
 		});
@@ -1428,7 +1439,9 @@ describe("TestRepeatCount", () => {
 				xpq.model_instance_item("r1_count"),
 				xpq.model_instance_bind("r1_count", "string"),
 				xpq.model_instance_bind_attr(
-					"r1_count", "calculate", "count-selected( /test_name/q1 )"
+					"r1_count",
+					"calculate",
+					"count-selected( /test_name/q1 )",
 				),
 				xpq.model_instance_bind_attr("r1_count", "readonly", "true()"),
 				`
@@ -1480,7 +1493,9 @@ describe("TestRepeatCount", () => {
 				xpq.model_instance_item("r1_count"),
 				xpq.model_instance_bind("r1_count", "string"),
 				xpq.model_instance_bind_attr(
-					"r1_count", "calculate", "count-selected( /test_name/q1 )"
+					"r1_count",
+					"calculate",
+					"count-selected( /test_name/q1 )",
 				),
 				xpq.model_instance_bind_attr("r1_count", "readonly", "true()"),
 				`

@@ -28,7 +28,7 @@ describe("LanguageWarningTest", () => {
 			warnings_count: 1,
 			warnings__contains: [
 				"The following language declarations do not contain valid machine-readable " +
-				"codes: English. Learn more: http://xlsform.org#multiple-language-support",
+					"codes: English. Learn more: http://xlsform.org#multiple-language-support",
 			],
 		});
 	});
@@ -43,7 +43,7 @@ describe("LanguageWarningTest", () => {
 			warnings_count: 1,
 			warnings__contains: [
 				"The following language declarations do not contain valid machine-readable " +
-				"codes: English (schm), Bosnian (bos). Learn more: http://xlsform.org#multiple-language-support",
+					"codes: English (schm), Bosnian (bos). Learn more: http://xlsform.org#multiple-language-support",
 			],
 		});
 	});

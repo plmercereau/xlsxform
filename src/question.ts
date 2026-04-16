@@ -47,7 +47,11 @@ export class Question extends SurveyElement {
 			for (const [k, v] of Object.entries(qtdEntry)) {
 				if (typeof v === "object" && v !== null && !Array.isArray(v)) {
 					const template = { ...v };
-					if (k in merged && typeof merged[k] === "object" && merged[k] !== null) {
+					if (
+						k in merged &&
+						typeof merged[k] === "object" &&
+						merged[k] !== null
+					) {
 						Object.assign(template, merged[k] as Record<string, any>);
 					}
 					(merged as any)[k] = template;
@@ -74,7 +78,7 @@ export class Question extends SurveyElement {
 	}
 
 	xmlInstance(survey: any): Element {
-		let defaultVal = this.default;
+		const defaultVal = this.default;
 		let text: string | undefined;
 		if (defaultVal && !defaultIsDynamic(defaultVal, this.type)) {
 			text = String(defaultVal);
@@ -133,7 +137,10 @@ export class Question extends SurveyElement {
 
 		// Add parameters that map to control attributes
 		if (this.parameters) {
-			if (this.parameters.incremental && (this.type === "geoshape" || this.type === "geotrace")) {
+			if (
+				this.parameters.incremental &&
+				(this.type === "geoshape" || this.type === "geotrace")
+			) {
 				attrs.incremental = this.parameters.incremental;
 			}
 			if (this.parameters.rows) {
@@ -146,15 +153,22 @@ export class Question extends SurveyElement {
 		// Add setvalue children for triggered questions (trigger column)
 		if (survey.setvalues_by_triggering_ref) {
 			const triggerKey = this.name;
-			for (const [key, targets] of Object.entries(survey.setvalues_by_triggering_ref as Record<string, [string, string][]>)) {
+			for (const [key, targets] of Object.entries(
+				survey.setvalues_by_triggering_ref as Record<
+					string,
+					[string, string][]
+				>,
+			)) {
 				// Match trigger key: could be plain name, ${name}, or comma-separated ${name1},${name2}
 				// Extract all pyxform references from the key
 				const RE_REF = /\$\{([^}]+)\}/g;
 				let refMatch: RegExpExecArray | null;
 				const refNames: string[] = [];
 				RE_REF.lastIndex = 0;
-				while ((refMatch = RE_REF.exec(key)) !== null) {
+				refMatch = RE_REF.exec(key);
+				while (refMatch !== null) {
 					refNames.push(refMatch[1]);
+					refMatch = RE_REF.exec(key);
 				}
 				// If no ${...} references found, treat the key itself as the name
 				if (refNames.length === 0) {
@@ -170,7 +184,10 @@ export class Question extends SurveyElement {
 								ref: targetElement.getXpath(),
 							};
 							if (targetValue) {
-								setvalueAttrs.value = survey.insertXpaths(targetValue, targetElement);
+								setvalueAttrs.value = survey.insertXpaths(
+									targetValue,
+									targetElement,
+								);
 							}
 							children.push(node("setvalue", { attrs: setvalueAttrs }));
 						}
@@ -182,13 +199,20 @@ export class Question extends SurveyElement {
 		// Add odk:setgeopoint children for background-geopoint triggered questions
 		if (survey.setgeopoint_by_triggering_ref) {
 			const triggerKey = this.name;
-			for (const [key, targets] of Object.entries(survey.setgeopoint_by_triggering_ref as Record<string, [string, string][]>)) {
+			for (const [key, targets] of Object.entries(
+				survey.setgeopoint_by_triggering_ref as Record<
+					string,
+					[string, string][]
+				>,
+			)) {
 				const RE_REF = /\$\{([^}]+)\}/g;
 				let refMatch: RegExpExecArray | null;
 				const refNames: string[] = [];
 				RE_REF.lastIndex = 0;
-				while ((refMatch = RE_REF.exec(key)) !== null) {
+				refMatch = RE_REF.exec(key);
+				while (refMatch !== null) {
 					refNames.push(refMatch[1]);
+					refMatch = RE_REF.exec(key);
 				}
 				if (refNames.length === 0) {
 					refNames.push(key);
@@ -203,9 +227,14 @@ export class Question extends SurveyElement {
 								ref: targetElement.getXpath(),
 							};
 							if (targetValue) {
-								setgeopointAttrs.value = survey.insertXpaths(targetValue, targetElement);
+								setgeopointAttrs.value = survey.insertXpaths(
+									targetValue,
+									targetElement,
+								);
 							}
-							children.push(node("odk:setgeopoint", { attrs: setgeopointAttrs }));
+							children.push(
+								node("odk:setgeopoint", { attrs: setgeopointAttrs }),
+							);
 						}
 					}
 				}
@@ -274,10 +303,20 @@ export class OsmUploadQuestion extends UploadQuestion {
 		if (!result) return null;
 
 		for (const tag of this._osmTags) {
-			const labelText = typeof tag.label === "string" ? tag.label :
-				(tag.label && typeof tag.label === "object" ? Object.values(tag.label)[0] : "");
-			const labelEl = node("label", labelText ? { text: labelText } : undefined);
-			const tagEl = node("tag", { children: [labelEl], attrs: { key: tag.name } });
+			const labelText =
+				typeof tag.label === "string"
+					? tag.label
+					: tag.label && typeof tag.label === "object"
+						? Object.values(tag.label)[0]
+						: "";
+			const labelEl = node(
+				"label",
+				labelText ? { text: labelText } : undefined,
+			);
+			const tagEl = node("tag", {
+				children: [labelEl],
+				attrs: { key: tag.name },
+			});
 			result.appendChild(tagEl);
 		}
 
@@ -345,11 +384,13 @@ export class MultipleChoiceQuestion extends Question {
 	itemset: string | null;
 	list_name: string | null;
 
-	constructor(data: QuestionData & {
-		itemset?: string | null;
-		list_name?: string | null;
-		choices?: Itemset | Record<string, any>[] | null;
-	}) {
+	constructor(
+		data: QuestionData & {
+			itemset?: string | null;
+			list_name?: string | null;
+			choices?: Itemset | Record<string, any>[] | null;
+		},
+	) {
 		const { choices: choicesData, ...rest } = data;
 		super(rest);
 		this.itemset = data.itemset ?? null;
@@ -364,7 +405,7 @@ export class MultipleChoiceQuestion extends Question {
 
 	protected buildXml(survey: any): Element | null {
 		if (!this.bind?.type || !["string", "odk:rank"].includes(this.bind.type)) {
-			throw new PyXFormError('Invalid value for bind type.');
+			throw new PyXFormError("Invalid value for bind type.");
 		}
 
 		const result = this._buildXml(survey);
@@ -435,12 +476,16 @@ export class MultipleChoiceQuestion extends Question {
 
 				if (targetRepeat && targetElement) {
 					const targetRepeatXpath = targetRepeat.getXpath();
-					const targetRepeatParts = targetRepeatXpath.split("/").filter(Boolean);
+					const targetRepeatParts = targetRepeatXpath
+						.split("/")
+						.filter(Boolean);
 
 					// Compute the relative path of the target variable within the repeat
 					const targetXpath = targetElement.getXpath();
 					const targetXpathParts = targetXpath.split("/").filter(Boolean);
-					const relativeFieldPath = targetXpathParts.slice(targetRepeatParts.length).join("/");
+					const relativeFieldPath = targetXpathParts
+						.slice(targetRepeatParts.length)
+						.join("/");
 					itemsetValueRef = relativeFieldPath;
 					itemsetLabelRef = relativeFieldPath;
 
@@ -462,7 +507,11 @@ export class MultipleChoiceQuestion extends Question {
 						const contextParts = contextXpath.split("/").filter(Boolean);
 						const repeatParentParts = targetRepeatParts.slice(0, -1);
 						let commonLen = 0;
-						for (let i = 0; i < Math.min(contextParts.length, repeatParentParts.length); i++) {
+						for (
+							let i = 0;
+							i < Math.min(contextParts.length, repeatParentParts.length);
+							i++
+						) {
 							if (contextParts[i] === repeatParentParts[i]) {
 								commonLen = i + 1;
 							} else {
@@ -482,27 +531,39 @@ export class MultipleChoiceQuestion extends Question {
 							// - Variables in the current question's context → current()/../var
 							const rawFilter = this.choice_filter;
 							RE_PYXFORM_REF.lastIndex = 0;
-							choiceFilter = rawFilter.replace(RE_PYXFORM_REF, (_match: string, refName: string) => {
-								const refElement = survey.getElementByName?.(refName);
-								if (!refElement) return _match;
-								const refXpath = refElement.getXpath();
-								const refParts = refXpath.split("/").filter(Boolean);
-								// Check if this variable is inside the target repeat
-								const isInTargetRepeat = refParts.length > targetRepeatParts.length &&
-									targetRepeatParts.every((p: string, i: number) => refParts[i] === p);
-								if (isInTargetRepeat) {
-									// Variable is in the target repeat - use ./ relative to the repeat instance
-									const fieldWithinRepeat = refParts.slice(targetRepeatParts.length).join("/");
-									return ` ./${fieldWithinRepeat} `;
-								}
-								// Variable is NOT in the target repeat - use current()/../var
-								// (relative to the current question's context)
-								const resolved = survey.getPathRelativeToLcar(this, refElement, refXpath);
-								if (resolved !== refXpath) {
-									return ` current()/${resolved} `;
-								}
-								return ` ${refXpath} `;
-							});
+							choiceFilter = rawFilter.replace(
+								RE_PYXFORM_REF,
+								(_match: string, refName: string) => {
+									const refElement = survey.getElementByName?.(refName);
+									if (!refElement) return _match;
+									const refXpath = refElement.getXpath();
+									const refParts = refXpath.split("/").filter(Boolean);
+									// Check if this variable is inside the target repeat
+									const isInTargetRepeat =
+										refParts.length > targetRepeatParts.length &&
+										targetRepeatParts.every(
+											(p: string, i: number) => refParts[i] === p,
+										);
+									if (isInTargetRepeat) {
+										// Variable is in the target repeat - use ./ relative to the repeat instance
+										const fieldWithinRepeat = refParts
+											.slice(targetRepeatParts.length)
+											.join("/");
+										return ` ./${fieldWithinRepeat} `;
+									}
+									// Variable is NOT in the target repeat - use current()/../var
+									// (relative to the current question's context)
+									const resolved = survey.getPathRelativeToLcar(
+										this,
+										refElement,
+										refXpath,
+									);
+									if (resolved !== refXpath) {
+										return ` current()/${resolved} `;
+									}
+									return ` ${refXpath} `;
+								},
+							);
 						} else {
 							choiceFilter = `./${relativeFieldPath} != ''`;
 						}
@@ -512,7 +573,7 @@ export class MultipleChoiceQuestion extends Question {
 
 						if (choiceFilter) {
 							// Replace absolute paths to target repeat fields with ./
-							const absRepeatPath = targetRepeatXpath + "/";
+							const absRepeatPath = `${targetRepeatXpath}/`;
 							choiceFilter = choiceFilter.split(absRepeatPath).join(" ./");
 						} else {
 							choiceFilter = `./${relativeFieldPath} != ''`;
@@ -545,9 +606,7 @@ export class MultipleChoiceQuestion extends Question {
 			}
 
 			if (this.parameters) {
-				if (
-					this.parameters.randomize?.toLowerCase() === "true"
-				) {
+				if (this.parameters.randomize?.toLowerCase() === "true") {
 					nodeset = `randomize(${nodeset}`;
 					if (this.parameters.seed) {
 						const seed = survey.insertXpaths(this.parameters.seed, this).trim();
@@ -565,27 +624,29 @@ export class MultipleChoiceQuestion extends Question {
 				attrs: { nodeset },
 			});
 			result.appendChild(result.ownerDocument!.importNode(itemsetElem, true));
-		} else if (choices && choices.used_by_search) {
+		} else if (choices?.used_by_search) {
 			// Options processing specific to XLSForms using the "search()" function.
 			// The _choice_itext_ref is prepared by Survey._redirectIsSearchItext.
 			for (const option of choices.options) {
 				let labelNode: Element;
 				if (choices.requires_itext && option._choice_itext_ref) {
-					labelNode = node("label", { attrs: { ref: option._choice_itext_ref } });
+					labelNode = node("label", {
+						attrs: { ref: option._choice_itext_ref },
+					});
 				} else if (this.label) {
 					const { text: labelText, hasOutput } = survey.insertOutputValues(
 						typeof option.label === "string" ? option.label : "",
 						option,
 					);
-					labelNode = node("label", { text: labelText, toParseString: hasOutput });
+					labelNode = node("label", {
+						text: labelText,
+						toParseString: hasOutput,
+					});
 				} else {
 					labelNode = node("label");
 				}
 				const itemElem = node("item", {
-					children: [
-						labelNode,
-						node("value", { text: option.name }),
-					],
+					children: [labelNode, node("value", { text: option.name })],
 				});
 				result.appendChild(result.ownerDocument!.importNode(itemElem, true));
 			}
@@ -608,7 +669,9 @@ export class RangeQuestion extends Question {
 	itemset: string | null;
 	list_name: string | null;
 
-	constructor(data: QuestionData & { itemset?: string | null; list_name?: string | null }) {
+	constructor(
+		data: QuestionData & { itemset?: string | null; list_name?: string | null },
+	) {
 		super(data);
 		this.itemset = data.itemset ?? null;
 		this.list_name = data.list_name ?? null;
@@ -634,8 +697,12 @@ export class RangeQuestion extends Question {
 				const listName = this.parameters.tick_labelset;
 				const itemsetElem = node("itemset", {
 					children: [
-						node("value", { attrs: { ref: constants.DEFAULT_ITEMSET_VALUE_REF } }),
-						node("label", { attrs: { ref: constants.DEFAULT_ITEMSET_LABEL_REF } }),
+						node("value", {
+							attrs: { ref: constants.DEFAULT_ITEMSET_VALUE_REF },
+						}),
+						node("label", {
+							attrs: { ref: constants.DEFAULT_ITEMSET_LABEL_REF },
+						}),
 					],
 					attrs: { nodeset: `instance('${listName}')/root/item` },
 				});
@@ -674,7 +741,10 @@ export function defaultIsDynamic(
 	// Priority-ordered token patterns (highest priority first)
 	const tokenPatterns: [string, RegExp][] = [
 		// DATETIME (priority 25): matches full datetime with optional timezone
-		["DATETIME", /^-?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(((\+|-)\d{2}:\d{2})|Z)?/],
+		[
+			"DATETIME",
+			/^-?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(((\+|-)\d{2}:\d{2})|Z)?/,
+		],
 		// DATE (priority 24)
 		["DATE", /^-?\d{4}-\d{2}-\d{2}/],
 		// TIME (priority 23): matches time with optional timezone
@@ -729,12 +799,21 @@ export function defaultIsDynamic(
 
 	// Dynamic token types
 	const dynamicTypes = new Set([
-		"OPS_MATH", "OPS_UNION", "XPATH_PRED", "PYXFORM_REF", "FUNC_CALL",
+		"OPS_MATH",
+		"OPS_UNION",
+		"XPATH_PRED",
+		"PYXFORM_REF",
+		"FUNC_CALL",
 	]);
 
 	// Types where '-' in OPS_MATH should NOT be considered dynamic
 	const minusExemptTypes = new Set([
-		"date", "dateTime", "geopoint", "geotrace", "geoshape", "time",
+		"date",
+		"dateTime",
+		"geopoint",
+		"geotrace",
+		"geoshape",
+		"time",
 	]);
 
 	let remaining = elementDefault;

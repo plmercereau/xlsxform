@@ -4,12 +4,18 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { describe, it, expect } from "vitest";
-import { SurveyReader } from "../src/xls2json.js";
+import { describe, expect, it } from "vitest";
 import { csvToDict, xlsxToDict } from "../src/xls2json-backends.js";
+import { SurveyReader } from "../src/xls2json.js";
 import { convert } from "../src/xls2xform.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 const TEST_EXPECTED_OUTPUT_PATH = path.join(
 	__dirname,
 	"..",

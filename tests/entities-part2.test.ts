@@ -23,7 +23,7 @@ const xpe = {
 	`,
 	model_instance_meta: (
 		list_name: string,
-		meta_path: string = "",
+		meta_path = "",
 		opts: {
 			repeat?: boolean | null;
 			template?: boolean | null;
@@ -32,7 +32,13 @@ const xpe = {
 			label?: boolean | null;
 		} = {},
 	) => {
-		const { repeat = false, template = false, create = false, update = false, label = false } = opts;
+		const {
+			repeat = false,
+			template = false,
+			create = false,
+			update = false,
+			label = false,
+		} = opts;
 		const assertion = (val: boolean | null, expr: string) => {
 			if (val === true) return expr;
 			if (val === false) return `not(${expr})`;
@@ -72,14 +78,14 @@ const xpe = {
 		  @id='${list_name}' and @src='jr://file-csv/${list_name}.csv'
 		]
 	`,
-	model_setvalue_meta_id: (meta_path: string = "") => `
+	model_setvalue_meta_id: (meta_path = "") => `
 		/h:html/h:head/x:model/x:setvalue[
 		  @ref='/test_name${meta_path}/meta/entity/@id'
 		  and @event='odk-instance-first-load'
 		  and @value='uuid()'
 		]
 	`,
-	model_no_setvalue_meta_id: (meta_path: string = "") => `
+	model_no_setvalue_meta_id: (meta_path = "") => `
 		/h:html/h:head/x:model[
 		  not(./x:setvalue[@ref='/test_name${meta_path}/meta/entity/@id'])
 		]
@@ -90,7 +96,7 @@ const xpe = {
 		  and @entities:saveto='${saveto}'
 		]
 	`,
-	model_bind_meta_id: (expression: string = "", meta_path: string = "") => {
+	model_bind_meta_id: (expression = "", meta_path = "") => {
 		const exprPart = expression
 			? `@calculate='${expression}'`
 			: "not(@calculate)";
@@ -103,7 +109,7 @@ const xpe = {
 		]
 		`;
 	},
-	model_bind_meta_create: (expression: string, meta_path: string = "") => `
+	model_bind_meta_create: (expression: string, meta_path = "") => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/@create'
 		  and @calculate="${expression}"
@@ -111,7 +117,7 @@ const xpe = {
 		  and @readonly='true()'
 		]
 	`,
-	model_bind_meta_update: (expression: string, meta_path: string = "") => `
+	model_bind_meta_update: (expression: string, meta_path = "") => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/@update'
 		  and @calculate="${expression}"
@@ -119,7 +125,11 @@ const xpe = {
 		  and @readonly='true()'
 		]
 	`,
-	model_bind_meta_baseversion: (list_name: string, id_path: string, meta_path: string = "") => `
+	model_bind_meta_baseversion: (
+		list_name: string,
+		id_path: string,
+		meta_path = "",
+	) => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/@baseVersion'
 		  and @calculate="instance('${list_name}')/root/item[name= ${id_path} ]/__version"
@@ -127,7 +137,11 @@ const xpe = {
 		  and @readonly='true()'
 		]
 	`,
-	model_bind_meta_trunkversion: (list_name: string, id_path: string, meta_path: string = "") => `
+	model_bind_meta_trunkversion: (
+		list_name: string,
+		id_path: string,
+		meta_path = "",
+	) => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/@trunkVersion'
 		  and @calculate="instance('${list_name}')/root/item[name= ${id_path} ]/__trunkVersion"
@@ -135,7 +149,11 @@ const xpe = {
 		  and @readonly='true()'
 		]
 	`,
-	model_bind_meta_branchid: (list_name: string, id_path: string, meta_path: string = "") => `
+	model_bind_meta_branchid: (
+		list_name: string,
+		id_path: string,
+		meta_path = "",
+	) => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/@branchId'
 		  and @calculate="instance('${list_name}')/root/item[name= ${id_path} ]/__branchId"
@@ -143,7 +161,7 @@ const xpe = {
 		  and @readonly='true()'
 		]
 	`,
-	model_bind_meta_label: (value: string, meta_path: string = "") => `
+	model_bind_meta_label: (value: string, meta_path = "") => `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/label'
 		  and @calculate='${value}'
@@ -159,7 +177,7 @@ const xpe = {
 		  and @jr:preload='uid'
 		]
 	`,
-	body_repeat_setvalue_meta_id: (repeat_path: string = "", meta_path: string = "") => `
+	body_repeat_setvalue_meta_id: (repeat_path = "", meta_path = "") => `
 		/h:html/h:body${repeat_path}/x:setvalue[
 		  @ref='/test_name${meta_path}/meta/entity/@id'
 		  and @event='odk-new-repeat'
@@ -181,7 +199,7 @@ const xps = {
  * XPath helper functions matching pyxform's tests/xpath_helpers/questions.py
  */
 const xpq = {
-	setvalue: (path: string, ref: string, event: string, value: string = "") => {
+	setvalue: (path: string, ref: string, event: string, value = "") => {
 		const valuePart = value ? `and @value="${value}" ` : "";
 		return `
 		/h:html/${path}/x:setvalue[
@@ -195,10 +213,7 @@ const xpq = {
 
 // Error message fragment used in ENTITY_009
 const ENTITY_009_MSG = (row: number, scope: string, other_row: number) =>
-	`[row : ${row}] On the 'entities' sheet, the entity declaration is invalid. ` +
-	`Each container (survey, group, repeat) may have only one entity declaration, ` +
-	`but there are no valid containers available in the scope: '${scope}', which ` +
-	`has been allocated to the entity on row '${other_row}'.`;
+	`[row : ${row}] On the 'entities' sheet, the entity declaration is invalid. Each container (survey, group, repeat) may have only one entity declaration, but there are no valid containers available in the scope: '${scope}', which has been allocated to the entity on row '${other_row}'.`;
 
 describe("TestEntitiesParsing (second half)", () => {
 	it("test_list_name_or_dataset_alias__error", () => {
@@ -245,9 +260,7 @@ describe("TestEntitiesParsing (second half)", () => {
 				| | e2        | E2    |
 			`,
 			errored: true,
-			error__contains: [
-				ENTITY_009_MSG(3, "/survey", 2),
-			],
+			error__contains: [ENTITY_009_MSG(3, "/survey", 2)],
 		});
 	});
 
@@ -264,9 +277,7 @@ describe("TestEntitiesParsing (second half)", () => {
 				| | e2        | \${q1} |
 			`,
 			errored: true,
-			error__contains: [
-				ENTITY_009_MSG(3, "/survey", 2),
-			],
+			error__contains: [ENTITY_009_MSG(3, "/survey", 2)],
 		});
 	});
 
@@ -286,9 +297,7 @@ describe("TestEntitiesParsing (second half)", () => {
 				| | e3        | E3    |
 			`,
 			errored: true,
-			error__contains: [
-				ENTITY_009_MSG(4, "/survey", 2),
-			],
+			error__contains: [ENTITY_009_MSG(4, "/survey", 2)],
 		});
 	});
 
@@ -307,9 +316,7 @@ describe("TestEntitiesParsing (second half)", () => {
 				| | e2        | E2    |
 			`,
 			errored: true,
-			error__contains: [
-				ENTITY_009_MSG(3, "/survey", 2),
-			],
+			error__contains: [ENTITY_009_MSG(3, "/survey", 2)],
 		});
 	});
 });
@@ -322,7 +329,9 @@ describe("TestEntitiesOutput", () => {
 				| | type | name | label |
 				| | text | q1   | Q1    |
 			`,
-			xml__excludes: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
+			xml__excludes: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
+			],
 		});
 	});
 
@@ -337,7 +346,9 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
+			],
 		});
 	});
 
@@ -352,9 +363,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_entities_version("2024.1.0"),
-			],
+			xml__xpath_match: [xpe.model_entities_version("2024.1.0")],
 		});
 	});
 
@@ -370,7 +379,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 			],
 		});
 	});
@@ -405,9 +418,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_entities_version("2024.1.0"),
-			],
+			xml__xpath_match: [xpe.model_entities_version("2024.1.0")],
 		});
 	});
 
@@ -424,9 +435,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_entities_version("2025.1.0"),
-			],
+			xml__xpath_match: [xpe.model_entities_version("2025.1.0")],
 		});
 	});
 
@@ -479,7 +488,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 			],
 		});
 	});
@@ -511,7 +524,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 			],
 		});
 	});
@@ -528,7 +545,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 			],
 		});
 	});
@@ -552,9 +573,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_id(),
 				xpe.model_setvalue_meta_id(),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 1],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 1]],
 		});
 	});
 
@@ -574,17 +593,20 @@ describe("TestEntitiesOutput", () => {
 			xml__xpath_match: [
 				xpe.model_no_instance_csv("e1"),
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, create: true, label: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_label(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_id("", "/r1"),
 				xpe.model_setvalue_meta_id("/r1"),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r1']", "/r1",
+					"/x:group/x:repeat[@nodeset='/test_name/r1']",
+					"/r1",
 				),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -607,9 +629,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_setvalue_meta_id(),
 				xpe.model_bind_meta_create(" /test_name/q1  = ''"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 1],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 1]],
 		});
 	});
 
@@ -628,18 +648,21 @@ describe("TestEntitiesOutput", () => {
 			`,
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, create: true, label: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_label(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_id("", "/r1"),
 				xpe.model_setvalue_meta_id("/r1"),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r1']", "/r1",
+					"/x:group/x:repeat[@nodeset='/test_name/r1']",
+					"/r1",
 				),
 				xpe.model_bind_meta_create(" ../../../q1  = ''", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -665,9 +688,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_trunkversion("e1", "/test_name/q1"),
 				xpe.model_bind_meta_branchid("e1", "/test_name/q1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -688,15 +709,17 @@ describe("TestEntitiesOutput", () => {
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
 				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_branchid("e1", "current()/../../../q1", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -721,9 +744,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_trunkversion("e1", "/test_name/q1"),
 				xpe.model_bind_meta_branchid("e1", "/test_name/q1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -745,15 +766,17 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_instance_csv("e1"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_branchid("e1", "current()/../../../q1", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -778,9 +801,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_branchid("e1", "/test_name/q1"),
 				xpe.model_bind_meta_label("E1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -800,17 +821,24 @@ describe("TestEntitiesOutput", () => {
 			`,
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true, label: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true, label: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					update: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_branchid("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_label("E1", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -834,12 +862,13 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_trunkversion("e1", "/test_name/q1"),
 				xpe.model_bind_meta_branchid("e1", "/test_name/q1"),
 				xpq.setvalue(
-					"h:head/x:model", "/test_name/q1", "odk-instance-first-load", "uuid()",
+					"h:head/x:model",
+					"/test_name/q1",
+					"odk-instance-first-load",
+					"uuid()",
 				),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 1],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 1]],
 		});
 	});
 
@@ -860,7 +889,11 @@ describe("TestEntitiesOutput", () => {
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
 				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
@@ -878,9 +911,7 @@ describe("TestEntitiesOutput", () => {
 					"uuid()",
 				),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -905,9 +936,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_branchid("e1", "/test_name/q1"),
 				xpe.model_bind_meta_update(" /test_name/q1  != ''"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -928,16 +957,18 @@ describe("TestEntitiesOutput", () => {
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
 				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_branchid("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_update(" ../../../q1  != ''", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -963,9 +994,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_update(" /test_name/q1  != ''"),
 				xpe.model_bind_meta_create(" /test_name/q1  != ''"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -985,8 +1014,17 @@ describe("TestEntitiesOutput", () => {
 			`,
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true, create: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true, create: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					update: true,
+					create: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+					create: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
@@ -994,9 +1032,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_update(" ../../../q1  != ''", "/r1"),
 				xpe.model_bind_meta_create(" ../../../q1  != ''", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -1014,7 +1050,11 @@ describe("TestEntitiesOutput", () => {
 			`,
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "", { update: true, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					update: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id(" /test_name/q1 "),
 				xpe.model_bind_meta_baseversion("e1", "/test_name/q1"),
 				xpe.model_bind_meta_trunkversion("e1", "/test_name/q1"),
@@ -1023,9 +1063,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_create(" /test_name/q1  != ''"),
 				xpe.model_bind_meta_label("E1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -1045,8 +1083,19 @@ describe("TestEntitiesOutput", () => {
 			`,
 			xml__xpath_match: [
 				xpe.model_bind_meta_instanceid(),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, update: true, create: true, label: true }),
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, template: true, update: true, create: true, label: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					update: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					update: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_baseversion("e1", "current()/../../../q1", "/r1"),
 				xpe.model_bind_meta_trunkversion("e1", "current()/../../../q1", "/r1"),
@@ -1055,9 +1104,7 @@ describe("TestEntitiesOutput", () => {
 				xpe.model_bind_meta_create(" ../../../q1  != ''", "/r1"),
 				xpe.model_bind_meta_label("E1", "/r1"),
 			],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 0],
-			],
+			xml__xpath_count: [["/h:html//x:setvalue", 0]],
 		});
 	});
 
@@ -1072,9 +1119,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/q1", "e1p1")],
 		});
 	});
 
@@ -1091,9 +1136,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/g1/q1", "e1p1")],
 		});
 	});
 
@@ -1110,9 +1153,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/r1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/r1/q1", "e1p1")],
 		});
 	});
 
@@ -1131,9 +1172,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/r1/g1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/r1/g1/q1", "e1p1")],
 		});
 	});
 
@@ -1152,9 +1191,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label |
 				| | e1        | E1    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/g1/r1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/g1/r1/q1", "e1p1")],
 		});
 	});
 
@@ -1170,9 +1207,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label | entity_id |
 				| | e1        | E1    | uuid()    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/q1", "e1p1")],
 		});
 	});
 
@@ -1190,9 +1225,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label | entity_id |
 				| | e1        | E1    | uuid()    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/g1/q1", "e1p1")],
 		});
 	});
 
@@ -1210,9 +1243,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label | entity_id |
 				| | e1        | E1    | uuid()    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/r1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/r1/q1", "e1p1")],
 		});
 	});
 
@@ -1232,9 +1263,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label | entity_id |
 				| | e1        | E1    | uuid()    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/r1/g1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/r1/g1/q1", "e1p1")],
 		});
 	});
 
@@ -1254,9 +1283,7 @@ describe("TestEntitiesOutput", () => {
 				| | list_name | label | entity_id |
 				| | e1        | E1    | uuid()    |
 			`,
-			xml__xpath_match: [
-				xpe.model_bind_question_saveto("/g1/r1/q1", "e1p1"),
-			],
+			xml__xpath_match: [xpe.model_bind_question_saveto("/g1/r1/q1", "e1p1")],
 		});
 	});
 
@@ -1384,7 +1411,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g2/q2", "e1p2"),
 			],
@@ -1410,7 +1441,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | \${q1} |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g1/q2", "e1p2"),
 				xpe.model_bind_question_saveto("/g2/q3", "e1p3"),
@@ -1439,7 +1474,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/g2/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g1/g3/q2", "e1p2"),
 			],
@@ -1465,7 +1504,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "/x:r1", { repeat: true, create: true, label: true }),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/r1/g1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/r1/g2/q2", "e1p2"),
 			],
@@ -1487,7 +1530,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g1/q2", "e1p2"),
 			],
@@ -1511,7 +1558,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g1/g2/q2", "e1p2"),
 			],
@@ -1535,7 +1586,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | \${q2} |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { repeat: null, create: true, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					repeat: null,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/g1/g2/q2", "e1p2"),
 				xpe.model_bind_meta_label(" /test_name/g1/g2/q2 ", ""),
@@ -1560,11 +1615,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | E1    |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta(
-					"e1",
-					"/x:r1[not(@jr:template)]",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1[not(@jr:template)]", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe.model_bind_question_saveto("/r1/q1", "e1p1"),
 				xpe.model_bind_question_saveto("/r1/g2/q2", "e1p2"),
 			],
@@ -1712,13 +1767,14 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | concat(\${q1}, \${q2}) |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta(
-					"e1",
-					"/x:r1[not(@jr:template)]",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1[not(@jr:template)]", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe.model_bind_meta_label(
-					"concat( ../../../q1 ,  /test_name/g1/g2/q2 )", "/r1",
+					"concat( ../../../q1 ,  /test_name/g1/g2/q2 )",
+					"/r1",
 				),
 			],
 		});
@@ -1743,13 +1799,14 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | concat(\${q1}, \${q2}) |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta(
-					"e1",
-					"/x:r1[not(@jr:template)]",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1[not(@jr:template)]", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe.model_bind_meta_label(
-					"concat( ../../../q1 ,  /test_name/g1/g2/q2 )", "/r1",
+					"concat( ../../../q1 ,  /test_name/g1/g2/q2 )",
+					"/r1",
 				),
 			],
 		});
@@ -1769,7 +1826,11 @@ describe("TestEntitiesOutput", () => {
 				| | e1        | \${q1} |
 			`,
 			xml__xpath_match: [
-				xpe.model_instance_meta("e1", "", { create: true, repeat: null, label: true }),
+				xpe.model_instance_meta("e1", "", {
+					create: true,
+					repeat: null,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/g1/q1", "e1p1"),
 				xpe.model_bind_meta_label(" /test_name/g1/q1 ", ""),
 			],
@@ -1800,26 +1861,30 @@ describe("TestEntitiesCreateRepeat", () => {
 			warnings_count: 0,
 			xml__xpath_match: [
 				xpe.model_entities_version("2025.1.0"),
-				xpe.model_instance_meta(
-					"e1", "/x:r2",
-					{ repeat: true, template: true, create: true, label: true },
-				),
-				xpe.model_instance_meta(
-					"e1", "/x:r2",
-					{ repeat: true, create: true, label: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r2", {
+					repeat: true,
+					template: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r2", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id("", "/r2"),
 				xpe.model_setvalue_meta_id("/r2"),
 				xpe.model_bind_meta_label(" ../../../q3 ", "/r2"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r2']", "/r2",
+					"/x:group/x:repeat[@nodeset='/test_name/r2']",
+					"/r2",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -1845,26 +1910,30 @@ describe("TestEntitiesCreateRepeat", () => {
 			warnings_count: 0,
 			xml__xpath_match: [
 				xpe.model_entities_version("2025.1.0"),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, template: true, create: true, label: true },
-				),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, create: true, label: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id("", "/r1"),
 				xpe.model_setvalue_meta_id("/r1"),
 				xpe.model_bind_meta_label(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r1']", "/r1",
+					"/x:group/x:repeat[@nodeset='/test_name/r1']",
+					"/r1",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -1896,26 +1965,30 @@ describe("TestEntitiesCreateRepeat", () => {
 			warnings_count: 0,
 			xml__xpath_match: [
 				xpe.model_entities_version("2025.1.0"),
-				xpe.model_instance_meta(
-					"e1", "/x:r2",
-					{ repeat: true, template: true, create: true, label: true },
-				),
-				xpe.model_instance_meta(
-					"e1", "/x:r2",
-					{ repeat: true, create: true, label: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r2", {
+					repeat: true,
+					template: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r2", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_meta_id("", "/r2"),
 				xpe.model_setvalue_meta_id("/r2"),
 				xpe.model_bind_meta_label(" ../../../q3 ", "/r2"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r2']", "/r2",
+					"/x:group/x:repeat[@nodeset='/test_name/r2']",
+					"/r2",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -1936,21 +2009,25 @@ describe("TestEntitiesCreateRepeat", () => {
 			warnings_count: 0,
 			xml__xpath_match: [
 				xpe.model_entities_version("2025.1.0"),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, template: true, create: true, label: true },
-				),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, create: true, label: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/r1/q1", "p1"),
 				xpe.model_bind_meta_id("", "/r1"),
 				xpe.model_setvalue_meta_id("/r1"),
 				xpe.model_bind_meta_label(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r1']", "/r1",
+					"/x:group/x:repeat[@nodeset='/test_name/r1']",
+					"/r1",
 				),
 				// repeat model instance question
 				`
@@ -1967,10 +2044,10 @@ describe("TestEntitiesCreateRepeat", () => {
 				]
 				`,
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -1993,21 +2070,25 @@ describe("TestEntitiesCreateRepeat", () => {
 			warnings_count: 0,
 			xml__xpath_match: [
 				xpe.model_entities_version("2025.1.0"),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, template: true, create: true, label: true },
-				),
-				xpe.model_instance_meta(
-					"e1", "/x:r1",
-					{ repeat: true, create: true, label: true },
-				),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					template: true,
+					create: true,
+					label: true,
+				}),
+				xpe.model_instance_meta("e1", "/x:r1", {
+					repeat: true,
+					create: true,
+					label: true,
+				}),
 				xpe.model_bind_question_saveto("/r1/q1", "p1"),
 				xpe.model_bind_meta_id("", "/r1"),
 				xpe.model_setvalue_meta_id("/r1"),
 				xpe.model_bind_meta_label(" ../../../q1 ", "/r1"),
 				xpe.model_bind_meta_instanceid(),
 				xpe.body_repeat_setvalue_meta_id(
-					"/x:group/x:repeat[@nodeset='/test_name/r1']", "/r1",
+					"/x:group/x:repeat[@nodeset='/test_name/r1']",
+					"/r1",
 				),
 				// repeat template for adjacent repeat doesn't get meta block
 				`
@@ -2026,10 +2107,10 @@ describe("TestEntitiesCreateRepeat", () => {
 				]
 				`,
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -2086,10 +2167,10 @@ describe("TestEntitiesCreateRepeat", () => {
 					"/r1/g1/r2/g2/g3",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -2147,10 +2228,10 @@ describe("TestEntitiesCreateRepeat", () => {
 					"/r1/g1/r2/g2/g3",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 2],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 2]],
 		});
 	});
 
@@ -2236,10 +2317,10 @@ describe("TestEntitiesCreateRepeat", () => {
 					"/r1/g1/r2/g2/g3",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
-			xml__xpath_count: [
-				["/h:html//x:setvalue", 4],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
 			],
+			xml__xpath_count: [["/h:html//x:setvalue", 4]],
 		});
 	});
 
@@ -2385,7 +2466,9 @@ describe("TestEntitiesCreateRepeat", () => {
 					"/r1/g1/r2/g2/g3/g4",
 				),
 			],
-			xml__contains: ['xmlns:entities="http://www.opendatakit.org/xforms/entities"'],
+			xml__contains: [
+				'xmlns:entities="http://www.opendatakit.org/xforms/entities"',
+			],
 			xml__xpath_count: [
 				["/h:html//x:setvalue", 8],
 				["/h:html/h:head/x:model/x:instance/x:test_name//x:entity", 12],

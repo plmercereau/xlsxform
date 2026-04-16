@@ -31,7 +31,7 @@ describe("TriggerSetvalueTests", () => {
 			`,
 			errored: true,
 			error__contains: [
-				"[row : 2] On the 'survey' sheet, the 'trigger' value is invalid. Reference variables must start with '\${', then a question name, and end with '}'.",
+				"[row : 2] On the 'survey' sheet, the 'trigger' value is invalid. Reference variables must start with '${', then a question name, and end with '}'.",
 			],
 		});
 	});
@@ -158,7 +158,7 @@ describe("TriggerSetvalueTests", () => {
 			`,
 			errored: true,
 			error__contains: [
-				"The question \${one} is not user-visible so it can't be used as a calculation trigger for question \${one-ts}.",
+				"The question ${one} is not user-visible so it can't be used as a calculation trigger for question ${one-ts}.",
 			],
 		});
 	});
@@ -174,7 +174,7 @@ describe("TriggerSetvalueTests", () => {
 			`,
 			errored: true,
 			error__contains: [
-				"The question \${one} is not user-visible so it can't be used as a calculation trigger for question \${one-ts}.",
+				"The question ${one} is not user-visible so it can't be used as a calculation trigger for question ${one-ts}.",
 			],
 		});
 	});
@@ -190,7 +190,7 @@ describe("TriggerSetvalueTests", () => {
 			`,
 			errored: true,
 			error__contains: [
-				"The question \${two} is not user-visible so it can't be used as a calculation trigger for question \${two-ts}.",
+				"The question ${two} is not user-visible so it can't be used as a calculation trigger for question ${two-ts}.",
 			],
 		});
 	});
@@ -313,7 +313,9 @@ describe("TriggerSetvalueTests", () => {
 				for (let i = 0; i < combo.length; i++) {
 					result = result.replace(`{${i}}`, combo[i]);
 				}
-				result = result.replace(/\$\{\{a\}\}/g, "${a}").replace(/\$\{\{b\}\}/g, "${b}");
+				result = result
+					.replace(/\$\{\{a\}\}/g, "${a}")
+					.replace(/\$\{\{b\}\}/g, "${b}");
 				caseSet.add(result);
 			}
 		}
@@ -349,11 +351,11 @@ describe("TriggerSetvalueTests", () => {
 
 	it("should error with bad comma delimiter in multiple triggers", () => {
 		const cases = [
-			"\${a}\${b}",
-			",\${a}\${b}",
-			"\${a},\${b}\${c}",
-			"\${a}\${b},",
-			"\${a},\${b}\${c}",
+			"${a}${b}",
+			",${a}${b}",
+			"${a},${b}${c}",
+			"${a}${b},",
+			"${a},${b}${c}",
 		];
 		for (const triggerCase of cases) {
 			assertPyxformXform({

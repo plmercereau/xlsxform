@@ -5,8 +5,8 @@
 import { createSurveyElementFromDict } from "./builder.js";
 import type { Survey } from "./survey.js";
 import { coalesce } from "./utils.js";
-import { workbookToJson } from "./xls2json.js";
 import { getXlsform } from "./xls2json-backends.js";
+import { workbookToJson } from "./xls2json.js";
 
 export interface ConvertResult {
 	xform: string;
@@ -28,10 +28,7 @@ export function convert(opts: {
 }): ConvertResult {
 	const warnings = coalesce(opts.warnings, []) as string[];
 
-	const workbookDict = getXlsform(
-		opts.xlsform,
-		opts.fileType ?? undefined,
-	);
+	const workbookDict = getXlsform(opts.xlsform, opts.fileType ?? undefined);
 
 	const pyxformData = workbookToJson({
 		workbookDict,

@@ -90,9 +90,7 @@ describe("TestRangeParsing", () => {
 		for (const sep of cases) {
 			assertPyxformXform({
 				md: md.replace("{sep}", sep),
-				xml__xpath_match: [
-					bodyRange("q1", { start: "2", end: "9" }),
-				],
+				xml__xpath_match: [bodyRange("q1", { start: "2", end: "9" })],
 			});
 		}
 	});
@@ -519,10 +517,7 @@ describe("TestRangeParsing", () => {
 				| | list_name | name | label |
 				| | c1        | 1    | N1    |
 			`,
-			xml__xpath_match: [
-				bodyRange("q1"),
-				rangeItemset("q1", "c1"),
-			],
+			xml__xpath_match: [bodyRange("q1"), rangeItemset("q1", "c1")],
 		});
 	});
 
@@ -921,14 +916,14 @@ describe("TestRangeParsing", () => {
 			| | range | q1   | Q1    | {params}   |
 		`;
 		const cases: Record<string, string>[] = [
-			{ start: "-10", end: "-1", step: "1" },    // neg/asc
-			{ start: "-10", end: "-1", step: "-1" },   // neg/empty
-			{ start: "-1", end: "-10", step: "1" },    // neg/empty
-			{ start: "-1", end: "-10", step: "-1" },   // neg/desc
-			{ start: "1", end: "10", step: "1" },      // pos/asc
-			{ start: "1", end: "10", step: "-1" },     // pos/empty
-			{ start: "10", end: "1", step: "1" },      // pos/empty
-			{ start: "10", end: "1", step: "-1" },     // pos/desc
+			{ start: "-10", end: "-1", step: "1" }, // neg/asc
+			{ start: "-10", end: "-1", step: "-1" }, // neg/empty
+			{ start: "-1", end: "-10", step: "1" }, // neg/empty
+			{ start: "-1", end: "-10", step: "-1" }, // neg/desc
+			{ start: "1", end: "10", step: "1" }, // pos/asc
+			{ start: "1", end: "10", step: "-1" }, // pos/empty
+			{ start: "10", end: "1", step: "1" }, // pos/empty
+			{ start: "10", end: "1", step: "-1" }, // pos/desc
 		];
 		for (const params of cases) {
 			const paramStr = Object.entries(params)

@@ -31,7 +31,13 @@ interface ErrorDetail {
 	msg: string;
 }
 
-function makeDetail(name: string, msg: string): ErrorDetail & { value: string; format: (kwargs: Record<string, string>) => string } {
+function makeDetail(
+	name: string,
+	msg: string,
+): ErrorDetail & {
+	value: string;
+	format: (kwargs: Record<string, string>) => string;
+} {
 	return {
 		name,
 		msg,

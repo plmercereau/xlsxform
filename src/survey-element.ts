@@ -55,10 +55,28 @@ export class SurveyElement {
 
 		// Store any extra data
 		const knownKeys = new Set([
-			"name", "label", "hint", "guidance_hint", "type", "bind",
-			"control", "media", "instance", "default", "parent", "children",
-			"choices", "itemset", "list_name", "choice_filter", "parameters",
-			"trigger", "query", "sms_field", "actions", "flat",
+			"name",
+			"label",
+			"hint",
+			"guidance_hint",
+			"type",
+			"bind",
+			"control",
+			"media",
+			"instance",
+			"default",
+			"parent",
+			"children",
+			"choices",
+			"itemset",
+			"list_name",
+			"choice_filter",
+			"parameters",
+			"trigger",
+			"query",
+			"sms_field",
+			"actions",
+			"flat",
 		]);
 		const extra: Record<string, any> = {};
 		for (const [k, v] of Object.entries(data)) {
@@ -114,7 +132,9 @@ export class SurveyElement {
 	needsItextRef(): boolean {
 		return (
 			(this.label != null && typeof this.label === "object") ||
-			(this.media != null && typeof this.media === "object" && Object.keys(this.media).length > 0)
+			(this.media != null &&
+				typeof this.media === "object" &&
+				Object.keys(this.media).length > 0)
 		);
 	}
 
@@ -310,7 +330,11 @@ export class SurveyElement {
 		}
 		if (!this.bind) return;
 
-		const TRANSLATABLE_BIND_KEYS = new Set(["jr:constraintMsg", "jr:requiredMsg", "jr:noAppErrorString"]);
+		const TRANSLATABLE_BIND_KEYS = new Set([
+			"jr:constraintMsg",
+			"jr:requiredMsg",
+			"jr:noAppErrorString",
+		]);
 		const skipCalculate = this.hasTrigger();
 
 		const bindDict: Record<string, string> = {};
@@ -319,7 +343,10 @@ export class SurveyElement {
 			if (skipCalculate && k === "calculate") continue;
 			if (typeof v === "string") {
 				// Apply binding conversions (yes→true(), no→false(), etc.)
-				if (constants.CONVERTIBLE_BIND_ATTRIBUTES.has(k) && v in BINDING_CONVERSIONS) {
+				if (
+					constants.CONVERTIBLE_BIND_ATTRIBUTES.has(k) &&
+					v in BINDING_CONVERSIONS
+				) {
 					v = BINDING_CONVERSIONS[v];
 				}
 				// Translatable bind attrs with ${ref} → use itext reference
@@ -333,7 +360,6 @@ export class SurveyElement {
 				if (TRANSLATABLE_BIND_KEYS.has(k)) {
 					bindDict[k] = `jr:itext('${this.translationPath(k)}')`;
 				}
-				continue;
 			} else {
 				bindDict[k] = String(v);
 			}
@@ -354,7 +380,9 @@ export class SurveyElement {
 	/**
 	 * Iterate over ancestors, optionally filtering by a condition.
 	 */
-	*iterAncestors(condition?: (e: SurveyElement) => boolean): Generator<{ element: SurveyElement; distance: number }> {
+	*iterAncestors(
+		condition?: (e: SurveyElement) => boolean,
+	): Generator<{ element: SurveyElement; distance: number }> {
 		let distance = 1;
 		let current = this.parent;
 		while (current != null) {
@@ -389,7 +417,11 @@ export class SurveyElement {
 		while (selfCurrent || otherCurrent) {
 			if (selfCurrent) {
 				selfAncestors.set(selfCurrent, selfDistance);
-				if (selfCurrent.type && typeFilter.has(selfCurrent.type) && otherAncestors.has(selfCurrent)) {
+				if (
+					selfCurrent.type &&
+					typeFilter.has(selfCurrent.type) &&
+					otherAncestors.has(selfCurrent)
+				) {
 					lca = selfCurrent;
 					break;
 				}
@@ -399,7 +431,11 @@ export class SurveyElement {
 
 			if (otherCurrent) {
 				otherAncestors.set(otherCurrent, otherDistance);
-				if (otherCurrent.type && typeFilter.has(otherCurrent.type) && selfAncestors.has(otherCurrent)) {
+				if (
+					otherCurrent.type &&
+					typeFilter.has(otherCurrent.type) &&
+					selfAncestors.has(otherCurrent)
+				) {
 					lca = otherCurrent;
 					break;
 				}
@@ -411,18 +447,25 @@ export class SurveyElement {
 		if (lca === null) {
 			return ["Unrelated", null, null, null];
 		}
-		return ["Common Ancestor", selfAncestors.get(lca)!, otherAncestors.get(lca)!, lca];
+		return [
+			"Common Ancestor",
+			selfAncestors.get(lca)!,
+			otherAncestors.get(lca)!,
+			lca,
+		];
 	}
 
 	/**
 	 * Get translations from this element.
 	 */
-	*getTranslations(
-		defaultLanguage: string,
-	): Generator<Record<string, any>> {
+	*getTranslations(defaultLanguage: string): Generator<Record<string, any>> {
 		// Bind translations (constraintMsg, requiredMsg, noAppErrorString)
 		if (this.bind && typeof this.bind === "object") {
-			for (const bindKey of ["jr:constraintMsg", "jr:requiredMsg", "jr:noAppErrorString"]) {
+			for (const bindKey of [
+				"jr:constraintMsg",
+				"jr:requiredMsg",
+				"jr:noAppErrorString",
+			]) {
 				const val = this.bind[bindKey];
 				if (typeof val === "object" && val !== null) {
 					for (const [lang, text] of Object.entries(val)) {
@@ -500,7 +543,9 @@ export class SurveyElement {
 			for (const [mediaType, mediaValue] of Object.entries(this.media)) {
 				if (typeof mediaValue === "object" && mediaValue !== null) {
 					// Translated media: { English: "file.jpg", French: "fichier.jpg" }
-					for (const [lang, text] of Object.entries(mediaValue as Record<string, string>)) {
+					for (const [lang, text] of Object.entries(
+						mediaValue as Record<string, string>,
+					)) {
 						yield {
 							display_element: mediaType,
 							path: this.translationPath("label"),
@@ -542,7 +587,7 @@ export class SurveyElement {
 		for (const key of Object.keys(this)) {
 			if (key.startsWith("_")) continue;
 			if (internalKeys.has(key)) continue;
-			let val = (this as any)[key];
+			const val = (this as any)[key];
 			if (val == null) continue;
 			if (key === "children" && Array.isArray(val)) {
 				const children = val
@@ -583,10 +628,12 @@ export class SurveyElement {
 					filtered[ck] = cv;
 				}
 				if (Object.keys(filtered).length > 0) result[key] = filtered;
-			} else if (typeof val === "object" && !Array.isArray(val) && Object.keys(val).length === 0) {
-				continue; // skip empty objects
+			} else if (
+				typeof val === "object" &&
+				!Array.isArray(val) &&
+				Object.keys(val).length === 0
+			) {
 			} else if (val === "" || val === false) {
-				continue; // skip empty strings and false
 			} else {
 				result[key] = val;
 			}

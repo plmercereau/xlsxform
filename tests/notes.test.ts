@@ -78,43 +78,54 @@ describe("TestNotes", () => {
 		const cases: Case[] = [
 			// A pyxform token.
 			{
-				label: "\${text}",
+				label: "${text}",
 				match: new Set([" /test_name/text "]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and equals.
 			{
-				label: "instance('c1')/root/item[name = \${q1}]/label",
-				match: new Set(["instance('c1')/root/item[name =  /test_name/q1 ]/label"]),
+				label: "instance('c1')/root/item[name = ${q1}]/label",
+				match: new Set([
+					"instance('c1')/root/item[name =  /test_name/q1 ]/label",
+				]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and equals (double quotes).
 			{
 				label: `instance("c1")/root/item[name = \${q1}]/label`,
-				match: new Set([`instance("c1")/root/item[name =  /test_name/q1 ]/label`]),
+				match: new Set([
+					`instance("c1")/root/item[name =  /test_name/q1 ]/label`,
+				]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and function.
 			{
-				label: "instance('c2')/root/item[contains(name, \${q2})]/label",
-				match: new Set(["instance('c2')/root/item[contains(name,  /test_name/q2 )]/label"]),
+				label: "instance('c2')/root/item[contains(name, ${q2})]/label",
+				match: new Set([
+					"instance('c2')/root/item[contains(name,  /test_name/q2 )]/label",
+				]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and function (double quotes).
 			{
 				label: `instance("c2")/root/item[contains("name", \${q2})]/label`,
-				match: new Set([`instance("c2")/root/item[contains("name",  /test_name/q2 )]/label`]),
+				match: new Set([
+					`instance("c2")/root/item[contains("name",  /test_name/q2 )]/label`,
+				]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and function (mixed quotes).
 			{
 				label: `instance('c2')/root/item[contains("name", \${q2})]/label`,
-				match: new Set([`instance('c2')/root/item[contains("name",  /test_name/q2 )]/label`]),
+				match: new Set([
+					`instance('c2')/root/item[contains("name",  /test_name/q2 )]/label`,
+				]),
 				xpath: defaultXpath,
 			},
 			// Instance expression with predicate using pyxform token and equals.
 			{
-				label: "instance('c2')/root/item[contains(name, instance('c1')/root/item[name = \${q1}]/label)]/label",
+				label:
+					"instance('c2')/root/item[contains(name, instance('c1')/root/item[name = ${q1}]/label)]/label",
 				match: new Set([
 					"instance('c2')/root/item[contains(name, instance('c1')/root/item[name =  /test_name/q1 ]/label)]/label",
 				]),

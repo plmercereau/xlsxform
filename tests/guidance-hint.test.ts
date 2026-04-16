@@ -77,7 +77,9 @@ describe("GuidanceHintTest", () => {
 				|        | string | name | as shown on birth certificate |
 			`,
 			errored: true,
-			error__contains: ["The survey element named 'name' has no label or hint."],
+			error__contains: [
+				"The survey element named 'name' has no label or hint.",
+			],
 		});
 	});
 
@@ -90,7 +92,9 @@ describe("GuidanceHintTest", () => {
 				|        | string | name | as shown on birth certificate| comme sur le certificat de naissance |
 			`,
 			errored: true,
-			error__contains: ["The survey element named 'name' has no label or hint."],
+			error__contains: [
+				"The survey element named 'name' has no label or hint.",
+			],
 		});
 	});
 

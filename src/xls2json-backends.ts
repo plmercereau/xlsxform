@@ -58,7 +58,9 @@ function trimTrailingEmpty<T>(list: T[], nEmpty: number): T[] {
 	return list;
 }
 
-function getExcelColumnHeaders(firstRow: (string | null | undefined)[]): (string | null)[] {
+function getExcelColumnHeaders(
+	firstRow: (string | null | undefined)[],
+): (string | null)[] {
 	const maxAdjacentEmptyCols = 20;
 	const columnHeaderList: (string | null)[] = [];
 	let adjacentEmptyCols = 0;
@@ -121,7 +123,11 @@ export function xlsxValueToStr(value: any): string {
 /**
  * Convert an XLS cell value to unicode string (equivalent to Python xls_value_to_unicode).
  */
-export function xlsValueToUnicode(value: any, valueType: number, datemode: number): string {
+export function xlsValueToUnicode(
+	value: any,
+	valueType: number,
+	datemode: number,
+): string {
 	// xlrd cell types
 	const XL_CELL_BOOLEAN = 4;
 	const XL_CELL_NUMBER = 2;
@@ -219,7 +225,9 @@ function processWorkbook(wb: XLSX.WorkBook): Record<string, any> {
 	return resultBook;
 }
 
-function sheetToRows(sheet: XLSX.WorkSheet): [Record<string, any>[], Record<string, null>[]] {
+function sheetToRows(
+	sheet: XLSX.WorkSheet,
+): [Record<string, any>[], Record<string, null>[]] {
 	const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
 	// Read first row as headers
 	const rawHeaders: (string | null)[] = [];
@@ -382,7 +390,9 @@ function mdStrpCell(cell: string): string | null {
 	return cell.trim().replace(/\\\|/g, "|");
 }
 
-function mdTableToSsStructure(mdstr: string): Record<string, (string | null)[][]> {
+function mdTableToSsStructure(
+	mdstr: string,
+): Record<string, (string | null)[][]> {
 	let sheetName: string | false = false;
 	let sheetArr: (string | null)[][] | false = false;
 	const sheets: Record<string, (string | null)[][]> = {};
@@ -472,7 +482,12 @@ function listToDicts(arr: (string | null)[][]): Record<string, any>[] {
 	return arr.slice(1).map((row) => {
 		const d: Record<string, any> = {};
 		for (let i = 0; i < row.length; i++) {
-			if (i < headers.length && headers[i] !== null && row[i] !== null && row[i] !== "") {
+			if (
+				i < headers.length &&
+				headers[i] !== null &&
+				row[i] !== null &&
+				row[i] !== ""
+			) {
 				d[headers[i]!] = row[i];
 			}
 		}
@@ -600,7 +615,11 @@ function parseMdRow(line: string): string[] {
 	const cells: string[] = [];
 	let current = "";
 	for (let i = 0; i < content.length; i++) {
-		if (content[i] === "\\" && i + 1 < content.length && content[i + 1] === "|") {
+		if (
+			content[i] === "\\" &&
+			i + 1 < content.length &&
+			content[i + 1] === "|"
+		) {
 			current += "|";
 			i++;
 		} else if (content[i] === "|") {
@@ -633,7 +652,10 @@ export function dictToDefinitionData(d: Record<string, any>): DefinitionData {
 /**
  * Convert a raw dict result (from file backends) to DefinitionData.
  */
-function rawDictToDefinitionData(d: Record<string, any>, fallbackFormName?: string): DefinitionData {
+function rawDictToDefinitionData(
+	d: Record<string, any>,
+	fallbackFormName?: string,
+): DefinitionData {
 	return {
 		survey: d.survey ?? [],
 		choices: d.choices ?? [],
@@ -655,7 +677,9 @@ function rawDictToDefinitionData(d: Record<string, any>, fallbackFormName?: stri
 /**
  * Determine file type and call appropriate backend.
  */
-function getProcessorForFileType(filePath: string): (p: string) => Record<string, any> {
+function getProcessorForFileType(
+	filePath: string,
+): (p: string) => Record<string, any> {
 	const ext = path.extname(filePath).toLowerCase();
 	switch (ext) {
 		case ".xlsx":
@@ -704,7 +728,9 @@ export function getXlsform(
 		if (fileType === "md" || xlsform.includes("|")) {
 			return mdToDict(xlsform);
 		}
-		throw new PyXFormError("Unsupported input type: string without markdown format");
+		throw new PyXFormError(
+			"Unsupported input type: string without markdown format",
+		);
 	}
 
 	throw new PyXFormError("Unsupported xlsform input type.");
@@ -760,7 +786,7 @@ export function convertFileToCsvString(filePath: string): string {
 		}
 	}
 
-	return lines.join("\n") + "\n";
+	return `${lines.join("\n")}\n`;
 }
 
 function csvEscapeField(field: string): string {

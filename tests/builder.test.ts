@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { createSurvey, createSurveyElementFromDict, SurveyElementBuilder } from "../src/builder.js";
+import {
+	SurveyElementBuilder,
+	createSurvey,
+	createSurveyElementFromDict,
+} from "../src/builder.js";
 import { PyXFormError } from "../src/errors.js";
 
 describe("BuilderTests", () => {
@@ -85,9 +89,7 @@ describe("BuilderTests", () => {
 							type: "group",
 							name: "grp",
 							label: "My Group",
-							children: [
-								{ type: "text", name: "q1", label: "Q1" },
-							],
+							children: [{ type: "text", name: "q1", label: "Q1" }],
 						},
 					],
 				},
@@ -112,9 +114,7 @@ describe("BuilderTests", () => {
 							type: "repeat",
 							name: "rep",
 							label: "My Repeat",
-							children: [
-								{ type: "text", name: "q1", label: "Q1" },
-							],
+							children: [{ type: "text", name: "q1", label: "Q1" }],
 						},
 					],
 				},

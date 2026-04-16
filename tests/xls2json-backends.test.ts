@@ -3,22 +3,34 @@
  */
 
 import * as path from "node:path";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { createSurveyElementFromDict } from "../src/builder.js";
 import {
-	xlsxToDict,
-	xlsToDict,
 	csvToDict,
 	getXlsform,
+	xlsToDict,
 	xlsValueToUnicode,
+	xlsxToDict,
 	xlsxValueToStr,
 } from "../src/xls2json-backends.js";
 import { mdToDictFromFile } from "../src/xls2json-backends.js";
 import { workbookToJson } from "../src/xls2json.js";
-import { createSurveyElementFromDict } from "../src/builder.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
-const BUG_EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "bug_example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
+const BUG_EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"bug_example_xls",
+);
 
 function pathToTextFixture(filename: string): string {
 	return path.join(EXAMPLE_XLS_PATH, filename);
@@ -58,7 +70,9 @@ describe("TestXLS2JSONBackends", () => {
 		const fileTypes = [".xlsx", ".xls", ".csv", ".md"];
 
 		for (const fileType of fileTypes) {
-			const data = getXlsform(pathToTextFixture(`case_insensitivity${fileType}`));
+			const data = getXlsform(
+				pathToTextFixture(`case_insensitivity${fileType}`),
+			);
 
 			// All sheets should be recognised - check that important fields are not empty
 			expect(data.survey).toBeDefined();
@@ -108,7 +122,10 @@ describe("TestXLS2JSONBackends", () => {
 				"LABEL",
 				"YES_NO",
 			]);
-			expect(Object.keys(data.entities_header![0])).toEqual(["DATASET", "LABEL"]);
+			expect(Object.keys(data.entities_header![0])).toEqual([
+				"DATASET",
+				"LABEL",
+			]);
 			expect(Object.keys(data.osm_header![0])).toEqual([
 				"LIST_NAME",
 				"NAME",
@@ -162,7 +179,10 @@ describe("TestXLS2JSONBackends", () => {
 
 	it("test_xlsx_with_many_empty_cells", () => {
 		// Test xlsx_to_dict performance with large sheets
-		const xlsxPath = path.join(BUG_EXAMPLE_XLS_PATH, "UCL_Biomass_Plot_Form.xlsx");
+		const xlsxPath = path.join(
+			BUG_EXAMPLE_XLS_PATH,
+			"UCL_Biomass_Plot_Form.xlsx",
+		);
 		const before = Date.now();
 		const xlsxData = xlsxToDict(xlsxPath);
 		const after = Date.now();

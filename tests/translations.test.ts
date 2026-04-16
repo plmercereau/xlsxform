@@ -272,7 +272,11 @@ const xpc = {
 		]
 		`;
 	},
-	model_itext_choice_text_label_by_pos(lang: string, cname: string, choices: string[]) {
+	model_itext_choice_text_label_by_pos(
+		lang: string,
+		cname: string,
+		choices: string[],
+	) {
 		const choicesXp = choices
 			.map(
 				(cl, idx) => `
@@ -353,8 +357,13 @@ const xpc = {
 
 // --- Warning message formatter (replicates Python format_missing_translations_msg) ---
 
-function formatMissingTranslationsMsg(_in: Record<string, Record<string, string[]>>): string {
-	function getSheetMsg(name: string, sheet?: Record<string, string[]>): string | null {
+function formatMissingTranslationsMsg(
+	_in: Record<string, Record<string, string[]>>,
+): string {
+	function getSheetMsg(
+		name: string,
+		sheet?: Record<string, string[]>,
+	): string | null {
 		if (!sheet) return null;
 		const langs = Object.keys(sheet).sort();
 		if (langs.length === 0) return null;
@@ -362,11 +371,15 @@ function formatMissingTranslationsMsg(_in: Record<string, Record<string, string[
 		for (const lang of langs) {
 			const cols = sheet[lang];
 			if (cols.length === 1) {
-				langMsgs.push(`Language '${lang}' is missing the ${name} ${cols[0]} column.`);
+				langMsgs.push(
+					`Language '${lang}' is missing the ${name} ${cols[0]} column.`,
+				);
 			}
 			if (cols.length > 1) {
 				const c = [...cols].sort().join(", ");
-				langMsgs.push(`Language '${lang}' is missing the ${name} columns ${c}.`);
+				langMsgs.push(
+					`Language '${lang}' is missing the ${name} columns ${c}.`,
+				);
 			}
 		}
 		return langMsgs.join("\n");
@@ -452,8 +465,10 @@ describe("TestTranslations", () => {
 	});
 
 	it("should handle missing media itext translation", () => {
-		const q1_default = "A.01 Have you received informed consent from the respondent?";
-		const q1_russian = "\u041F\u043E\u043B\u0443\u0447\u0438\u043B\u0438 \u043B\u0438 \u0432\u044B \u0444\u043E\u0440\u043C\u0443 \u0441\u043E\u0433\u043B\u0430\u0441\u0438\u044F \u043E\u0442 \u0440\u0435\u0441\u043F\u043E\u043D\u0434\u0435\u043D\u0442\u0430?";
+		const q1_default =
+			"A.01 Have you received informed consent from the respondent?";
+		const q1_russian =
+			"\u041F\u043E\u043B\u0443\u0447\u0438\u043B\u0438 \u043B\u0438 \u0432\u044B \u0444\u043E\u0440\u043C\u0443 \u0441\u043E\u0433\u043B\u0430\u0441\u0438\u044F \u043E\u0442 \u0440\u0435\u0441\u043F\u043E\u043D\u0434\u0435\u043D\u0442\u0430?";
 		const xp = xpathHelper({ question_type: "select1", question_name: "q1" });
 		assertPyxformXform({
 			md: `
@@ -475,9 +490,18 @@ describe("TestTranslations", () => {
 				xp.question_itext_form("Kyrgyz", "audio", "something.mp3"),
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("yn", ["0", "1"]),
-				xpc.model_itext_choice_text_label_by_pos("default", "yn", ["No", "Yes"]),
-				xpc.model_itext_choice_text_label_by_pos("Russian", "yn", ["\u041D\u0435\u0442", "\u0414\u0430"]),
-				xpc.model_itext_choice_text_label_by_pos("Kyrgyz", "yn", ["\u041D\u0435\u0442 (ky)", "\u0414\u0430 (ky)"]),
+				xpc.model_itext_choice_text_label_by_pos("default", "yn", [
+					"No",
+					"Yes",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("Russian", "yn", [
+					"\u041D\u0435\u0442",
+					"\u0414\u0430",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("Kyrgyz", "yn", [
+					"\u041D\u0435\u0442 (ky)",
+					"\u0414\u0430 (ky)",
+				]),
 				xps.language_is_default(DEFAULT_LANG),
 				xps.language_is_not_default("Russian"),
 				xps.language_is_not_default("Kyrgyz"),
@@ -561,7 +585,10 @@ describe("TestTranslations", () => {
 				xp.question_no_itext_form(DEFAULT_LANG, "audio", "greeting.mp3"),
 				xp.constraint_msg_itext(DEFAULT_LANG, "-"),
 				xp.required_msg_itext(DEFAULT_LANG, "-"),
-				xpc.model_itext_choice_text_label_by_pos("default", "c1", ["la-d", "lb-d"]),
+				xpc.model_itext_choice_text_label_by_pos("default", "c1", [
+					"la-d",
+					"lb-d",
+				]),
 				xpc.model_no_itext_choice_media_by_pos(DEFAULT_LANG, "c1", [
 					[
 						["audio", "la-d.mp3"],
@@ -614,7 +641,10 @@ describe("TestTranslations", () => {
 				xpq.model_itext_label("q1", "fr", "-"),
 				xpc.model_instance_choices_label("c0", [["n", "l"]]),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("en", "c1", ["-", "lb-e"]),
 				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["-", "lb-f"]),
 			],
@@ -641,7 +671,10 @@ describe("TestTranslations", () => {
 				xpq.body_label_inline("select1", "q1", "Question 1"),
 				xpc.model_instance_choices_label("c0", [["n", "l"]]),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("en", "c1", ["-", "lb-e"]),
 				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["-", "lb-f"]),
 			],
@@ -669,7 +702,10 @@ describe("TestTranslations", () => {
 				xpq.model_itext_label("q1", DEFAULT_LANG, "Question 1"),
 				xpq.model_itext_label("q1", "en", "Question A"),
 				xpc.model_instance_choices_label("c0", [["n", "l"]]),
-				xpc.model_instance_choices_label("c1", [["na", "la"], ["nb", "lb"]]),
+				xpc.model_instance_choices_label("c1", [
+					["na", "la"],
+					["nb", "lb"],
+				]),
 			],
 		});
 	});
@@ -697,9 +733,21 @@ describe("TestTranslations", () => {
 				xpq.model_itext_label("q1", "en", "Question A"),
 				xpq.model_itext_form("q1", "en", "image", "c1.png"),
 				xpc.model_instance_choices_label("c0", [["n", "l"]]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la", "lb", "lc"]),
-				xpc.model_itext_choice_text_label_by_pos("en", "c1", ["-", "lb-e", "lc-e"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["-", "-", "lc-f"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la",
+					"lb",
+					"lc",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("en", "c1", [
+					"-",
+					"lb-e",
+					"lc-e",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"-",
+					"-",
+					"lc-f",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("de", "c1", ["-", "-", "-"]),
 				xpc.model_itext_choice_media_by_pos("de", "c1", [
 					[[null, null]],
@@ -1221,7 +1269,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_media_by_pos(DEFAULT_LANG, "c1", FORMS_AB),
 			],
 		});
@@ -1242,7 +1293,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos("Eng (en)", "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos("Eng (en)", "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_media_by_pos("Eng (en)", "c1", FORMS_AB),
 			],
 		});
@@ -1263,7 +1317,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpc.body_itemset_references_itext("select1", "q1", "c1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_media_by_pos(DEFAULT_LANG, "c1", FORMS_AB),
 			],
 		});
@@ -1284,7 +1341,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpc.body_itemset_references_itext("select1", "q1", "c1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos("Eng (en)", "c1", ["la", "lb"]),
+				xpc.model_itext_choice_text_label_by_pos("Eng (en)", "c1", [
+					"la",
+					"lb",
+				]),
 				xpc.model_itext_choice_media_by_pos("Eng (en)", "c1", FORMS_AB),
 			],
 		});
@@ -1309,7 +1369,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la-d", "lb-d"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la-d",
+					"lb-d",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e"]),
 				xpc.model_itext_choice_media_by_pos(DEFAULT_LANG, "c1", FORMS_L_AUDIO),
 				xpc.model_no_itext_choice_media_by_pos("eng", "c1", FORMS_L_AUDIO),
@@ -1371,7 +1434,10 @@ describe("TestTranslationsChoices", () => {
 				xp.question_label_in_body("Question 1"),
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["la-d", "lb-d"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"la-d",
+					"lb-d",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e"]),
 				xpc.model_itext_choice_media_by_pos("eng", "c1", [
 					[
@@ -1469,7 +1535,10 @@ describe("TestTranslationsChoices", () => {
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
 				// Output of a dash for empty translation is not a bug, it's a reminder /
 				// placeholder since XForms spec requires a value for every translation.
-				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", ["-", "-"]),
+				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
+					"-",
+					"-",
+				]),
 				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e"]),
 				xpc.model_itext_choice_media_by_pos(DEFAULT_LANG, "c1", FORMS_L_AUDIO),
 				xpc.model_no_itext_choice_media_by_pos("eng", "c1", FORMS_L_AUDIO),
@@ -1530,7 +1599,10 @@ describe("TestTranslationsChoices", () => {
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
 				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e"]),
-				xpc.model_itext_choice_text_label_by_pos("french", "c1", ["la-f", "lb-f"]),
+				xpc.model_itext_choice_text_label_by_pos("french", "c1", [
+					"la-f",
+					"lb-f",
+				]),
 				xpc.model_itext_choice_media_by_pos("eng", "c1", FORMS_L_AUDIO),
 				xpc.model_no_itext_choice_media_by_pos("french", "c1", FORMS_L_AUDIO),
 				xps.language_is_not_default("eng"),
@@ -1563,7 +1635,10 @@ describe("TestTranslationsChoices", () => {
 				xpq.body_select1_itemset("q1"),
 				xpc.model_instance_choices_itext("c1", ["na", "nb"]),
 				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e"]),
-				xpc.model_itext_choice_text_label_by_pos("french", "c1", ["la-f", "lb-f"]),
+				xpc.model_itext_choice_text_label_by_pos("french", "c1", [
+					"la-f",
+					"lb-f",
+				]),
 				xpc.model_itext_choice_media_by_pos("eng", "c1", FORMS_L_AUDIO),
 				xpc.model_no_itext_choice_media_by_pos("french", "c1", FORMS_L_AUDIO),
 				xps.language_is_default("eng"),
@@ -1589,10 +1664,22 @@ describe("TestTranslationsChoices", () => {
 				|         | with-dash | nb   | l2b-en   | l2b-fr   |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("en", "with_us", ["l1a-en", "l1b-en"]),
-				xpc.model_itext_choice_text_label_by_pos("en", "with-dash", ["l2a-en", "l2b-en"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "with_us", ["l1a-fr", "l1b-fr"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "with-dash", ["l2a-fr", "l2b-fr"]),
+				xpc.model_itext_choice_text_label_by_pos("en", "with_us", [
+					"l1a-en",
+					"l1b-en",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("en", "with-dash", [
+					"l2a-en",
+					"l2b-en",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "with_us", [
+					"l1a-fr",
+					"l1b-fr",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "with-dash", [
+					"l2a-fr",
+					"l2b-fr",
+				]),
 			],
 		});
 	});
@@ -1615,8 +1702,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       |           | b.jpg             |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",
@@ -1644,8 +1739,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb-e       |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("en", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("en", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				`
 				/h:html/h:head/x:model/x:itext[
 				  not(descendant::x:translation[@lang='default'])
@@ -1701,8 +1804,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | other | Other      |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("en", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "-"]),
+				xpc.model_itext_choice_text_label_by_pos("en", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"-",
+				]),
 				`
 				/h:html/h:head/x:model/x:itext[
 				  not(descendant::x:translation[@lang='default'])
@@ -1731,8 +1842,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",
@@ -1762,8 +1881,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       | lb-f      |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["-", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["-", "lb-f", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"-",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"-",
+					"lb-f",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",
@@ -1794,8 +1921,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",
@@ -1829,8 +1964,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",
@@ -1871,8 +2014,16 @@ describe("TestTranslationsOrOther", () => {
 				|         | c1        | nb   | lb    | lb-e       |           |
 			`,
 			xml__xpath_match: [
-				xpc.model_itext_choice_text_label_by_pos("eng", "c1", ["la-e", "lb-e", "Other"]),
-				xpc.model_itext_choice_text_label_by_pos("fr", "c1", ["la-f", "-", "Other"]),
+				xpc.model_itext_choice_text_label_by_pos("eng", "c1", [
+					"la-e",
+					"lb-e",
+					"Other",
+				]),
+				xpc.model_itext_choice_text_label_by_pos("fr", "c1", [
+					"la-f",
+					"-",
+					"Other",
+				]),
 				xpc.model_itext_choice_text_label_by_pos(DEFAULT_LANG, "c1", [
 					"la",
 					"lb",

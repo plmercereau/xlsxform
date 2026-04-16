@@ -43,7 +43,7 @@ describe("TestMetadata", () => {
 			warnings_count: 1,
 			warnings__contains: [
 				"[row : 2] simserial is no longer supported on most devices. " +
-				"Only old versions of Collect on Android versions older than 11 still support it.",
+					"Only old versions of Collect on Android versions older than 11 still support it.",
 			],
 		});
 	});
@@ -59,7 +59,7 @@ describe("TestMetadata", () => {
 			warnings_count: 1,
 			warnings__contains: [
 				"[row : 2] subscriberid is no longer supported on most devices. " +
-				"Only old versions of Collect on Android versions older than 11 still support it.",
+					"Only old versions of Collect on Android versions older than 11 still support it.",
 			],
 		});
 	});
@@ -123,7 +123,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 2] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -140,7 +140,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 2] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -157,7 +157,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 2] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -174,7 +174,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -193,7 +193,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -212,7 +212,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -229,7 +229,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -248,7 +248,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});
@@ -267,7 +267,7 @@ describe("TestMetadata", () => {
 			errored: true,
 			error__contains: [
 				"[row : 3] On the 'survey' sheet, the 'name' value 'meta' is invalid. " +
-				"The name 'meta' is reserved for form metadata.",
+					"The name 'meta' is reserved for form metadata.",
 			],
 		});
 	});

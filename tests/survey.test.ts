@@ -2,14 +2,14 @@
  * Port of test_survey.py - Survey class tests.
  */
 
-import { readFileSync } from "fs";
-import { resolve } from "path";
-import { describe, it, expect } from "vitest";
-import { assertPyxformXform } from "./helpers/test-case.js";
-import { Survey, getPathRelativeToLcarStandalone } from "../src/survey.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import * as constants from "../src/constants.js";
 import { InputQuestion } from "../src/question.js";
 import { GroupedSection, RepeatingSection } from "../src/section.js";
-import * as constants from "../src/constants.js";
+import { Survey, getPathRelativeToLcarStandalone } from "../src/survey.js";
+import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestSurvey", () => {
 	it("should not hit 64 recursion limit with many xpath references one to one", () => {
@@ -110,7 +110,11 @@ function buildSurveyFromPathSpec(
 
 	if (targetName === "t") {
 		lcar = new RepeatingSection({ name: "a", type: constants.REPEAT });
-		target = new InputQuestion({ name: targetName, label: "target", type: "string" });
+		target = new InputQuestion({
+			name: targetName,
+			label: "target",
+			type: "string",
+		});
 	} else if (targetName === "at") {
 		lcar = new RepeatingSection({ name: targetName, type: constants.REPEAT });
 		target = lcar;
@@ -199,7 +203,10 @@ function assertRelativePath(opts: {
 	);
 
 	const referenceParent = opts.referenceParent === "1";
-	const expected: [number, string] = [parseInt(opts.outSteps, 10), opts.outPath];
+	const expected: [number, string] = [
+		Number.parseInt(opts.outSteps, 10),
+		opts.outPath,
+	];
 	const expectNone = opts.expectNone === "1";
 
 	const relation = source.lowestCommonAncestor(target, constants.REPEAT);

@@ -192,12 +192,9 @@ describe("TestSecondaryInstanceTest", () => {
 				'<text id="choices-0">',
 				'<value> One - <output value=" /test_name/txt "/>',
 			],
-			model__contains: [
-				"<itextId>choices-0</itextId>",
-				"<name>one</name>",
-			],
+			model__contains: ["<itextId>choices-0</itextId>", "<name>one</name>"],
 			xml__contains: ['<label ref="jr:itext(itextId)"/>'],
-			xml__excludes: ['<label ref="label"/>', "<label>One - \${txt}</label>"],
+			xml__excludes: ['<label ref="label"/>', "<label>One - ${txt}</label>"],
 		});
 	});
 

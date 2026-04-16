@@ -4,10 +4,16 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { describe, it, expect, afterAll } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { createSurveyFromPath } from "../src/builder.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 
 function pathToTextFixture(filename: string): string {
 	return path.join(EXAMPLE_XLS_PATH, filename);
@@ -36,7 +42,7 @@ describe("DumpAndLoadTests", () => {
 
 		for (const survey of Object.values(surveys)) {
 			survey.jsonDump();
-			const jsonPath = survey.name + ".json";
+			const jsonPath = `${survey.name}.json`;
 			jsonPaths.push(jsonPath);
 			const surveyFromDump = createSurveyFromPath(jsonPath);
 			expect(survey.toJsonDict()).toEqual(surveyFromDump.toJsonDict());

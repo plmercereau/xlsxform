@@ -3,9 +3,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { Survey } from "../src/survey.js";
-import { SurveyInstance } from "../src/instance.js";
 import { createSurveyElementFromDict } from "../src/builder.js";
+import { SurveyInstance } from "../src/instance.js";
+import { Survey } from "../src/survey.js";
 
 describe("Json2XformExportingPrepTests", () => {
 	it("test_simple_survey_instantiation", () => {
@@ -82,7 +82,7 @@ describe("Json2XformExportingPrepTests", () => {
 
 		const instance = surv.instantiate();
 		const importXml =
-			'<?xml version=\'1.0\' ?><data id="build_WaterSimple_1295821382"><name>JK Resevoir</name><users_per_month>300</users_per_month><geopoint>40.783594633609184 -73.96436698913574 300.0 4.0</geopoint></data>';
+			"<?xml version='1.0' ?><data id=\"build_WaterSimple_1295821382\"><name>JK Resevoir</name><users_per_month>300</users_per_month><geopoint>40.783594633609184 -73.96436698913574 300.0 4.0</geopoint></data>";
 		instance.importFromXml(importXml);
 	});
 

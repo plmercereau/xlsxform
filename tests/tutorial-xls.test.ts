@@ -6,7 +6,13 @@ import * as path from "node:path";
 import { describe, it } from "vitest";
 import { createSurveyFromPath } from "../src/builder.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 
 function pathToTextFixture(filename: string): string {
 	return path.join(EXAMPLE_XLS_PATH, filename);

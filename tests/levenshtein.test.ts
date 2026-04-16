@@ -2,7 +2,7 @@
  * Port of test_levenshtein.py - Test Levenshtein distance.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { levenshteinDistance } from "../src/xls2json.js";
 
 describe("TestLevenshteinDistance", () => {

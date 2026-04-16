@@ -846,11 +846,11 @@ describe("TestGroupInternalRepresentations", () => {
 				| | group     |
 			`,
 			xml__contains: [
-				'<family_name/>',
-				'<father>',
-				'<phone_number/>',
-				'<age/>',
-				'</father>',
+				"<family_name/>",
+				"<father>",
+				"<phone_number/>",
+				"<age/>",
+				"</father>",
 			],
 		});
 	});
@@ -875,11 +875,11 @@ describe("TestGroupInternalRepresentations", () => {
 				| | group     |
 			`,
 			xml__contains: [
-				'<family_name/>',
-				'<father>',
-				'<phone_number/>',
-				'<age/>',
-				'</father>',
+				"<family_name/>",
+				"<father>",
+				"<phone_number/>",
+				"<age/>",
+				"</father>",
 			],
 		});
 	});

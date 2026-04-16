@@ -10,7 +10,7 @@ import { assertPyxformXform } from "./helpers/test-case.js";
 
 function xpe_model_instance_meta(
 	list_name: string,
-	meta_path: string = "",
+	meta_path = "",
 	opts: {
 		repeat?: boolean | null;
 		template?: boolean | null;
@@ -64,7 +64,7 @@ function xpe_model_no_instance_csv(list_name: string): string {
 	`;
 }
 
-function xpe_model_setvalue_meta_id(meta_path: string = ""): string {
+function xpe_model_setvalue_meta_id(meta_path = ""): string {
 	return `
 		/h:html/h:head/x:model/x:setvalue[
 		  @ref='/test_name${meta_path}/meta/entity/@id'
@@ -74,10 +74,7 @@ function xpe_model_setvalue_meta_id(meta_path: string = ""): string {
 	`;
 }
 
-function xpe_model_bind_question_saveto(
-	qpath: string,
-	saveto: string,
-): string {
+function xpe_model_bind_question_saveto(qpath: string, saveto: string): string {
 	return `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${qpath}'
@@ -86,10 +83,7 @@ function xpe_model_bind_question_saveto(
 	`;
 }
 
-function xpe_model_bind_meta_id(
-	expression: string = "",
-	meta_path: string = "",
-): string {
+function xpe_model_bind_meta_id(expression = "", meta_path = ""): string {
 	const exprAssert = expression
 		? `@calculate='${expression}'`
 		: "not(@calculate)";
@@ -105,7 +99,7 @@ function xpe_model_bind_meta_id(
 
 function xpe_model_bind_meta_create(
 	expression: string,
-	meta_path: string = "",
+	meta_path = "",
 ): string {
 	return `
 		/h:html/h:head/x:model/x:bind[
@@ -117,10 +111,7 @@ function xpe_model_bind_meta_create(
 	`;
 }
 
-function xpe_model_bind_meta_label(
-	value: string,
-	meta_path: string = "",
-): string {
+function xpe_model_bind_meta_label(value: string, meta_path = ""): string {
 	return `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${meta_path}/meta/entity/label'
@@ -160,8 +151,8 @@ function xpe_model_no_entities_version(): string {
 }
 
 function xpe_body_repeat_setvalue_meta_id(
-	repeat_path: string = "",
-	meta_path: string = "",
+	repeat_path = "",
+	meta_path = "",
 ): string {
 	return `
 		/h:html/h:body${repeat_path}/x:setvalue[
@@ -1043,11 +1034,11 @@ describe("TestEntitiesParsing", () => {
 					label: true,
 					repeat: true,
 				}),
-				xpe_model_instance_meta(
-					"e2",
-					"/x:r1[not(@jr:template)]/x:g1/x:g2",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe_model_instance_meta("e2", "/x:r1[not(@jr:template)]/x:g1/x:g2", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe_model_bind_question_saveto("/r1/q1", "e1p1"),
 				xpe_model_bind_question_saveto("/r1/g1/q2", "e1p2"),
 				xpe_model_bind_question_saveto("/r1/g1/g2/g3/q3", "e2p1"),
@@ -1134,11 +1125,11 @@ describe("TestEntitiesParsing", () => {
 					label: true,
 					repeat: true,
 				}),
-				xpe_model_instance_meta(
-					"e2",
-					"/x:r1[not(@jr:template)]/x:g1/x:g2",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe_model_instance_meta("e2", "/x:r1[not(@jr:template)]/x:g1/x:g2", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe_model_bind_question_saveto("/r1/q1", "e1p1"),
 				xpe_model_bind_question_saveto("/r1/g1/q2", "e1p2"),
 				xpe_model_bind_question_saveto("/r1/g1/g2/g3/q3", "e2p1"),
@@ -1225,16 +1216,16 @@ describe("TestEntitiesParsing", () => {
 					label: true,
 					repeat: true,
 				}),
-				xpe_model_instance_meta(
-					"e2",
-					"/x:r1[not(@jr:template)]/x:g1/x:g2",
-					{ create: true, label: true, repeat: true },
-				),
-				xpe_model_instance_meta(
-					"e3",
-					"/x:r1[not(@jr:template)]/x:g1/x:g5",
-					{ create: true, label: true, repeat: true },
-				),
+				xpe_model_instance_meta("e2", "/x:r1[not(@jr:template)]/x:g1/x:g2", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
+				xpe_model_instance_meta("e3", "/x:r1[not(@jr:template)]/x:g1/x:g5", {
+					create: true,
+					label: true,
+					repeat: true,
+				}),
 				xpe_model_bind_question_saveto("/r1/q1", "e1p1"),
 				xpe_model_bind_question_saveto("/r1/g1/q2", "e1p2"),
 				xpe_model_bind_question_saveto("/r1/g1/g2/g3/q3", "e2p1"),
@@ -2159,6 +2150,4 @@ describe("TestEntitiesParsing", () => {
 			warnings_count: 0,
 		});
 	});
-
 });
-

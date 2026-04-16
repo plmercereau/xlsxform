@@ -40,7 +40,7 @@ describe("BindConversionsTest", () => {
 				|        | text  | text | text  | true()     | required, \${foo}   |
 			`,
 			xml__contains: [
-				"<bind nodeset=\"/data/text\" required=\"true()\" type=\"string\" jr:requiredMsg=\"jr:itext('/data/text:jr:requiredMsg')\"",
+				'<bind nodeset="/data/text" required="true()" type="string" jr:requiredMsg="jr:itext(\'/data/text:jr:requiredMsg\')"',
 				'<value> required, <output value=" /data/foo "/> </value>',
 			],
 		});

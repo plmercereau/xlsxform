@@ -36,7 +36,9 @@ describe("TestImageParameters", () => {
 					error__contains: [
 						"[row : 2] Parameter 'app' has an invalid Android package name - the package name must have at least one '.' separator.",
 					],
-					md: md.replace("{parameter}", parameter).replace("{appearance}", appearance),
+					md: md
+						.replace("{parameter}", parameter)
+						.replace("{appearance}", appearance),
 					xml__xpath_match: [
 						"/h:html/h:body/x:upload[not(@intent) and @mediatype='image/*' and @ref='/data/my_image']",
 					],
@@ -61,7 +63,9 @@ describe("TestImageParameters", () => {
 					error__contains: [
 						"[row : 2] Parameter 'app' has an invalid Android package name - package name is missing.",
 					],
-					md: md.replace("{parameter}", parameter).replace("{appearance}", appearance),
+					md: md
+						.replace("{parameter}", parameter)
+						.replace("{appearance}", appearance),
 					xml__xpath_match: [
 						"/h:html/h:body/x:upload[not(@intent) and @mediatype='image/*' and @ref='/data/my_image']",
 					],

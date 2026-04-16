@@ -10,8 +10,7 @@ import AdmZip from "adm-zip";
 import { PyXFormError } from "../../errors.js";
 import { CapturingHandler, requestGet } from "../util.js";
 
-const UTC_FMT_REGEX =
-	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
+const UTC_FMT_REGEX = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
 
 function formatUtc(date: Date): string {
 	const y = date.getUTCFullYear();
@@ -111,6 +110,7 @@ export class UpdateInfo {
 
 export const captureHandler = new CapturingHandler();
 
+// biome-ignore lint/complexity/noStaticOnlyClass: mirrors Python class structure used by tests
 export class UpdateHandler {
 	static async _requestLatestJson(
 		url: string,
@@ -121,9 +121,7 @@ export class UpdateHandler {
 
 	static _checkPath(filePath: string): boolean {
 		if (!fs.existsSync(filePath)) {
-			throw new PyXFormError(
-				`Expected path does not exist: ${filePath}`,
-			);
+			throw new PyXFormError(`Expected path does not exist: ${filePath}`);
 		}
 		return true;
 	}
@@ -134,10 +132,7 @@ export class UpdateHandler {
 		return JSON.parse(data);
 	}
 
-	static _writeJson(
-		filePath: string,
-		content: Record<string, unknown>,
-	): void {
+	static _writeJson(filePath: string, content: Record<string, unknown>): void {
 		const data = JSON.stringify(content, Object.keys(content).sort(), 2);
 		fs.writeFileSync(filePath, data, { encoding: "utf-8" });
 	}
@@ -160,9 +155,7 @@ export class UpdateHandler {
 		if (!fs.existsSync(updateInfo.latestPath)) {
 			return true;
 		}
-		const lastCheck = UpdateHandler._readLastCheck(
-			updateInfo.lastCheckPath,
-		);
+		const lastCheck = UpdateHandler._readLastCheck(updateInfo.lastCheckPath);
 		if (lastCheck === null) {
 			return true;
 		}
@@ -179,9 +172,7 @@ export class UpdateHandler {
 	): Promise<Record<string, unknown>> {
 		const utcNow = new Date();
 		if (UpdateHandler._checkNecessary(updateInfo, utcNow)) {
-			const latest = await UpdateHandler._requestLatestJson(
-				updateInfo.apiUrl,
-			);
+			const latest = await UpdateHandler._requestLatestJson(updateInfo.apiUrl);
 			UpdateHandler._writeJson(updateInfo.latestPath, latest);
 			UpdateHandler._writeLastCheck(updateInfo.lastCheckPath, utcNow);
 			return latest;
@@ -189,9 +180,7 @@ export class UpdateHandler {
 		return UpdateHandler._readJson(updateInfo.latestPath);
 	}
 
-	static _getReleaseMessage(
-		jsonData: Record<string, unknown>,
-	): string {
+	static _getReleaseMessage(jsonData: Record<string, unknown>): string {
 		return `- Tag name = ${jsonData.tag_name}\n- Tag URL = ${jsonData.html_url}\n\n`;
 	}
 
@@ -200,9 +189,7 @@ export class UpdateHandler {
 		if (!fs.existsSync(updateInfo.installedPath)) {
 			installedInfo = "- None!\n\n";
 		} else {
-			const installed = UpdateHandler._readJson(
-				updateInfo.installedPath,
-			);
+			const installed = UpdateHandler._readJson(updateInfo.installedPath);
 			installedInfo = UpdateHandler._getReleaseMessage(installed);
 		}
 
@@ -212,9 +199,7 @@ export class UpdateHandler {
 		if (latestFiles.length === 0) {
 			fileMessage = `- None!\n\n${updateInfo.manualMsg}`;
 		} else {
-			const fileNames = latestFiles.map(
-				(x) => `- ${x.name}`,
-			);
+			const fileNames = latestFiles.map((x) => `- ${x.name}`);
 			fileMessage = fileNames.join("\n");
 		}
 
@@ -337,9 +322,7 @@ export class UpdateHandler {
 		}
 		const data = openZipFile.readFile(zipItem);
 		if (data === null) {
-			throw new Error(
-				`Bad CRC-32 for file '${zipItem.entryName}'`,
-			);
+			throw new Error(`Bad CRC-32 for file '${zipItem.entryName}'`);
 		}
 		fs.writeFileSync(fileOutPath, data);
 	}
@@ -377,16 +360,9 @@ export class UpdateHandler {
 			}
 			fs.mkdirSync(updateInfo.binNewPath, { recursive: true });
 
-			const installed = path.join(
-				updateInfo.binNewPath,
-				"installed.json",
-			);
+			const installed = path.join(updateInfo.binNewPath, "installed.json");
 			UpdateHandler._writeJson(installed, latest);
-			const url = UpdateHandler._findDownloadUrl(
-				updateInfo,
-				latest,
-				fileName,
-			);
+			const url = UpdateHandler._findDownloadUrl(updateInfo, latest, fileName);
 			await UpdateHandler._downloadFile(url, filePath);
 
 			const ext = path.extname(filePath);
@@ -404,9 +380,7 @@ export class UpdateHandler {
 			return latest;
 		} catch (err) {
 			if (err instanceof PyXFormError) {
-				throw new PyXFormError(
-					`\n\nUpdate failed!\n\n${err.message}`,
-				);
+				throw new PyXFormError(`\n\nUpdate failed!\n\n${err.message}`);
 			}
 			throw err;
 		}
@@ -434,15 +408,9 @@ export class UpdateHandler {
 			installed = UpdateHandler._readJson(updateInfo.installedPath);
 			latest = await UpdateHandler._getLatest(updateInfo);
 			if (installed.tag_name === latest.tag_name && !force) {
-				const installedInfo =
-					UpdateHandler._getReleaseMessage(installed);
+				const installedInfo = UpdateHandler._getReleaseMessage(installed);
 				const latestInfo = UpdateHandler._getReleaseMessage(latest);
-				const message =
-					"\nUpdate failed!\n\n" +
-					"The installed release appears to be the latest. " +
-					"To update anyway, use the '--force' flag.\n\n" +
-					`Installed release:\n\n${installedInfo}` +
-					`Latest release:\n\n${latestInfo}`;
+				const message = `\nUpdate failed!\n\nThe installed release appears to be the latest. To update anyway, use the '--force' flag.\n\nInstalled release:\n\n${installedInfo}Latest release:\n\n${latestInfo}`;
 				throw new PyXFormError(message);
 			}
 			await UpdateHandler._install(updateInfo, fileName);
@@ -455,48 +423,28 @@ export class UpdateHandler {
 			updateInfo.validatorBasename,
 		);
 
-		if (
-			updateInfo.installCheck &&
-			updateInfo.installCheck(newBinFilePath)
-		) {
+		if (updateInfo.installCheck?.(newBinFilePath)) {
 			UpdateHandler._replaceOldBinPath(updateInfo);
-			const message =
-				"\nUpdate success!\n\n" +
-				"Install check of the latest release succeeded.\n\n" +
-				`Latest release:\n\n${latestInfo}`;
+			const message = `\nUpdate success!\n\nInstall check of the latest release succeeded.\n\nLatest release:\n\n${latestInfo}`;
 			captureHandler.info(message);
 			return true;
 		}
-		const message =
-			"\nUpdate failed!\n\n" +
-			"The latest release does not appear to work. " +
-			`It is saved here in case it's needed:\n${newBinFilePath}\n\n` +
-			"The installed release has not been changed.\n\n" +
-			`Installed release:\n\n${installedInfo}` +
-			`Latest release:\n\n${latestInfo}`;
+		const message = `\nUpdate failed!\n\nThe latest release does not appear to work. It is saved here in case it's needed:\n${newBinFilePath}\n\nThe installed release has not been changed.\n\nInstalled release:\n\n${installedInfo}Latest release:\n\n${latestInfo}`;
 		throw new PyXFormError(message);
 	}
 
 	static check(updateInfo: UpdateInfo): boolean {
 		if (!fs.existsSync(updateInfo.installedPath)) {
-			throw new PyXFormError(
-				"\nCheck failed!\n\nNo installed release found.",
-			);
+			throw new PyXFormError("\nCheck failed!\n\nNo installed release found.");
 		}
 
 		const installed = UpdateHandler._readJson(updateInfo.installedPath);
-		if (updateInfo.installCheck && updateInfo.installCheck()) {
-			const message =
-				"\nCheck success!\n\n" +
-				"The installed release appears to work.\n\n" +
-				`Installed release:\n\n${UpdateHandler._getReleaseMessage(installed)}`;
+		if (updateInfo.installCheck?.()) {
+			const message = `\nCheck success!\n\nThe installed release appears to work.\n\nInstalled release:\n\n${UpdateHandler._getReleaseMessage(installed)}`;
 			captureHandler.info(message);
 			return true;
 		}
-		const message =
-			"\nCheck failed!\n\n" +
-			"The installed release does not appear to work.\n\n" +
-			`Installed release:\n\n${UpdateHandler._getReleaseMessage(installed)}`;
+		const message = `\nCheck failed!\n\nThe installed release does not appear to work.\n\nInstalled release:\n\n${UpdateHandler._getReleaseMessage(installed)}`;
 		throw new PyXFormError(message);
 	}
 }
@@ -506,7 +454,8 @@ export class EnketoValidateUpdater {
 
 	constructor() {
 		this.updateInfo = new UpdateInfo({
-			apiUrl: "https://api.github.com/repos/enketo/enketo-validate/releases/latest",
+			apiUrl:
+				"https://api.github.com/repos/enketo/enketo-validate/releases/latest",
 			repoUrl: "https://github.com/enketo/enketo-validate",
 			validateSubfolder: "enketo_validate",
 			installCheck: this._installCheck.bind(this),

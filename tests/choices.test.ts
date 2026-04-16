@@ -689,9 +689,7 @@ describe("TestChoicesSheet", () => {
 			| | list_name | name | label |
 			| | c1        | .n   | N1    |
 			`,
-			xml__xpath_match: [
-				xpcModelInstanceChoicesLabel("c1", [[".n", "N1"]]),
-			],
+			xml__xpath_match: [xpcModelInstanceChoicesLabel("c1", [[".n", "N1"]])],
 		});
 	});
 });

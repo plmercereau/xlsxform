@@ -15,7 +15,9 @@ describe("TestParametersRows", () => {
 			|        | type   | name     | label | body::rows     |
 			|        | text   | name     | Name  | 7              |
 			`,
-			xml__xpath_match: ["/h:html/h:body/x:input[@ref='/data/name' and @rows='7']"],
+			xml__xpath_match: [
+				"/h:html/h:body/x:input[@ref='/data/name' and @rows='7']",
+			],
 		});
 	});
 
@@ -27,7 +29,9 @@ describe("TestParametersRows", () => {
 			|        | type   | name     | label | body::rows     | parameters     |
 			|        | text   | name     | Name  | 7              | rows=8         |
 			`,
-			xml__xpath_match: ["/h:html/h:body/x:input[@ref='/data/name' and @rows='8']"],
+			xml__xpath_match: [
+				"/h:html/h:body/x:input[@ref='/data/name' and @rows='8']",
+			],
 		});
 	});
 
@@ -39,7 +43,9 @@ describe("TestParametersRows", () => {
 			|        | type   | name     | label | parameters     |
 			|        | text   | name     | Name  | rows=7         |
 			`,
-			xml__xpath_match: ["/h:html/h:body/x:input[@ref='/data/name' and @rows='7']"],
+			xml__xpath_match: [
+				"/h:html/h:body/x:input[@ref='/data/name' and @rows='7']",
+			],
 		});
 	});
 

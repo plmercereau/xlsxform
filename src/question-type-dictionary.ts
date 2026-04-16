@@ -222,7 +222,10 @@ const _QUESTION_TYPE_DICT: Record<string, QuestionTypeEntry> = {
 			"jr:preloadParams": "simserial",
 		},
 	},
-	"add decimal prompt": { control: { tag: "input" }, bind: { type: "decimal" } },
+	"add decimal prompt": {
+		control: { tag: "input" },
+		bind: { type: "decimal" },
+	},
 	"number of days in last six months": {
 		control: { tag: "input" },
 		bind: { type: "int", constraint: "0 <= . and . <= 183" },
@@ -236,7 +239,10 @@ const _QUESTION_TYPE_DICT: Record<string, QuestionTypeEntry> = {
 		},
 	},
 	int: { control: { tag: "input" }, bind: { type: "int" } },
-	"add barcode prompt": { control: { tag: "input" }, bind: { type: "barcode" } },
+	"add barcode prompt": {
+		control: { tag: "input" },
+		bind: { type: "barcode" },
+	},
 	"select multiple using": {
 		control: { tag: "select" },
 		bind: { type: "string" },

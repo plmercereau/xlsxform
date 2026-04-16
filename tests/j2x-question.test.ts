@@ -16,7 +16,11 @@ function xpq_model_instance_item(q_name: string): string {
 function xpq_model_instance_bind(q_name: string, _type: string): string {
 	return `/h:html/h:head/x:model/x:bind[@nodeset='/test_name/${q_name}' and @type='${_type}']`;
 }
-function xpq_body_label_inline(q_type: string, q_name: string, q_label: string): string {
+function xpq_body_label_inline(
+	q_type: string,
+	q_name: string,
+	q_label: string,
+): string {
 	return `/h:html/h:body/x:${q_type}[@ref='/test_name/${q_name}']/x:label[not(@ref) and text()='${q_label}']`;
 }
 function xpq_body_label_itext(q_type: string, q_name: string): string {
@@ -25,20 +29,37 @@ function xpq_body_label_itext(q_type: string, q_name: string): string {
 function xpq_model_instance_exists(i_id: string): string {
 	return `/h:html/h:head/x:model[./x:instance[@id='${i_id}']]`;
 }
-function xpq_model_itext_label(q_name: string, lang: string, q_label: string): string {
+function xpq_model_itext_label(
+	q_name: string,
+	lang: string,
+	q_label: string,
+): string {
 	return `/h:html/h:head/x:model/x:itext/x:translation[@lang='${lang}']/x:text[@id='/test_name/${q_name}:label']/x:value[not(@form) and text()='${q_label}']`;
 }
 
-function xpc_model_instance_choices_itext(cname: string, choices: string[]): string {
-	const choices_xp = choices.map((cv, idx) =>
-		`./x:item[./x:name/text() = '${cv}' and not(./x:label) and ./x:itextId = '${cname}-${idx}']`
-	).join("\n              and ");
+function xpc_model_instance_choices_itext(
+	cname: string,
+	choices: string[],
+): string {
+	const choices_xp = choices
+		.map(
+			(cv, idx) =>
+				`./x:item[./x:name/text() = '${cv}' and not(./x:label) and ./x:itextId = '${cname}-${idx}']`,
+		)
+		.join("\n              and ");
 	return `/h:html/h:head/x:model/x:instance[@id='${cname}']/x:root[${choices_xp}]`;
 }
-function xpc_model_itext_choice_text_label_by_pos(lang: string, cname: string, choices: string[]): string {
-	const choices_xp = choices.map((cl, idx) =>
-		`./x:text[@id='${cname}-${idx}' and ./x:value[not(@form) and text()='${cl}']]`
-	).join("\n              and ");
+function xpc_model_itext_choice_text_label_by_pos(
+	lang: string,
+	cname: string,
+	choices: string[],
+): string {
+	const choices_xp = choices
+		.map(
+			(cl, idx) =>
+				`./x:text[@id='${cname}-${idx}' and ./x:value[not(@form) and text()='${cl}']]`,
+		)
+		.join("\n              and ");
 	return `/h:html/h:head/x:model/x:itext/x:translation[@lang='${lang}' and ${choices_xp}]`;
 }
 
@@ -53,7 +74,12 @@ describe("Json2XformQuestionValidationTests", () => {
 		assertPyxformXform({
 			ss_structure: {
 				survey: [
-					{ type: "select_one c1", name: "q1", "label::f": "ftext", "label::e": "etext" },
+					{
+						type: "select_one c1",
+						name: "q1",
+						"label::f": "ftext",
+						"label::e": "etext",
+					},
 				],
 				choices: [
 					{ list_name: "c1", name: "a", "label::f": "fa", "label::e": "ea" },
@@ -123,7 +149,12 @@ describe("Json2XformQuestionValidationTests", () => {
 		assertPyxformXform({
 			ss_structure: {
 				survey: [
-					{ type: "select_multiple c1", name: "q1", "label::f": "ftext", "label::e": "etext" },
+					{
+						type: "select_multiple c1",
+						name: "q1",
+						"label::f": "ftext",
+						"label::e": "etext",
+					},
 				],
 				choices: [
 					{ list_name: "c1", name: "a", "label::f": "fa", "label::e": "ea" },

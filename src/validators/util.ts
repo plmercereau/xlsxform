@@ -7,7 +7,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { PyXFormError } from "../errors.js";
 
-export const HERE = path.resolve(path.dirname(new URL(import.meta.url).pathname));
+export const HERE = path.resolve(
+	path.dirname(new URL(import.meta.url).pathname),
+);
 
 /**
  * HTTP GET request. Returns the response as a Buffer.
@@ -91,7 +93,8 @@ export class CapturingHandler {
 export function which(cmd: string): string | null {
 	const pathEnv = process.env.PATH || "";
 	const pathDirs = pathEnv.split(path.delimiter);
-	const extensions = process.platform === "win32" ? [".exe", ".cmd", ".bat", ".com", ""] : [""];
+	const extensions =
+		process.platform === "win32" ? [".exe", ".cmd", ".bat", ".com", ""] : [""];
 
 	for (const dir of pathDirs) {
 		for (const ext of extensions) {

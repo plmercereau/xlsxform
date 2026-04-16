@@ -12,7 +12,9 @@ function xmlNodeToDict(node: any): Record<string, any> {
 	if (!node || !node.nodeName) {
 		throw new PyXFormError("Invalid value for `node`.");
 	}
-	const childNodes = node.childNodes ? Array.from(node.childNodes) as any[] : [];
+	const childNodes = node.childNodes
+		? (Array.from(node.childNodes) as any[])
+		: [];
 
 	if (childNodes.length === 0) {
 		return { [node.nodeName]: null };
@@ -53,7 +55,11 @@ function* flattenDict(
 			for (let i = 0; i < value.length; i++) {
 				const itemPrefix = [...newPrefix];
 				itemPrefix[itemPrefix.length - 1] += `[${i + 1}]`;
-				if (value[i] && typeof value[i] === "object" && !Array.isArray(value[i])) {
+				if (
+					value[i] &&
+					typeof value[i] === "object" &&
+					!Array.isArray(value[i])
+				) {
 					yield* flattenDict(value[i], itemPrefix);
 				} else {
 					yield [itemPrefix, value[i]];
@@ -75,7 +81,9 @@ function getAllAttributes(node: any): [string, string][] {
 			}
 		}
 	}
-	const childNodes = node.childNodes ? Array.from(node.childNodes) as any[] : [];
+	const childNodes = node.childNodes
+		? (Array.from(node.childNodes) as any[])
+		: [];
 	for (const child of childNodes) {
 		result.push(...getAllAttributes(child));
 	}

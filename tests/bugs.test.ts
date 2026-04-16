@@ -5,15 +5,21 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it, expect } from "vitest";
-import { convert } from "../src/xls2xform.js";
-import { parseFileToJson, SurveyReader } from "../src/xls2json.js";
+import { describe, expect, it } from "vitest";
 import { createSurveyElementFromDict } from "../src/builder.js";
-import { getXlsform, xlsxToDict } from "../src/xls2json-backends.js";
-import { PyXFormError, ErrorCode, ODKValidateError } from "../src/errors.js";
+import { ErrorCode, ODKValidateError, PyXFormError } from "../src/errors.js";
 import type { Survey } from "../src/survey.js";
+import { getXlsform, xlsxToDict } from "../src/xls2json-backends.js";
+import { SurveyReader, parseFileToJson } from "../src/xls2json.js";
+import { convert } from "../src/xls2xform.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 const BUG_EXAMPLE_XLS_PATH = path.join(
 	__dirname,
 	"..",
@@ -21,12 +27,26 @@ const BUG_EXAMPLE_XLS_PATH = path.join(
 	"tests",
 	"bug_example_xls",
 );
-const TEST_OUTPUT_PATH = path.join(__dirname, "..", "pyxform", "tests", "test_output");
+const TEST_OUTPUT_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"test_output",
+);
 
 function hasExternalChoices(jsonStruct: any): boolean {
-	if (typeof jsonStruct === "object" && jsonStruct !== null && !Array.isArray(jsonStruct)) {
+	if (
+		typeof jsonStruct === "object" &&
+		jsonStruct !== null &&
+		!Array.isArray(jsonStruct)
+	) {
 		for (const [k, v] of Object.entries(jsonStruct)) {
-			if (k === "type" && typeof v === "string" && v.startsWith("select one external")) {
+			if (
+				k === "type" &&
+				typeof v === "string" &&
+				v.startsWith("select one external")
+			) {
 				return true;
 			}
 			if (hasExternalChoices(v)) return true;
@@ -61,7 +81,10 @@ describe("TestXFormConversion", () => {
 	it("test_conversion_raises_calculate_without_calculation", () => {
 		expect(() => {
 			convert({
-				xlsform: path.join(BUG_EXAMPLE_XLS_PATH, "calculate_without_calculation.xls"),
+				xlsform: path.join(
+					BUG_EXAMPLE_XLS_PATH,
+					"calculate_without_calculation.xls",
+				),
 				warnings: [],
 			});
 		}).toThrow("[row : 34] Missing calculation.");
@@ -73,7 +96,7 @@ describe("ValidateWrapper", () => {
 		const filename = "ODKValidateWarnings.xlsx";
 		const pathToExcelFile = path.join(BUG_EXAMPLE_XLS_PATH, filename);
 		const rootFilename = "ODKValidateWarnings";
-		const outputPath = path.join(os.tmpdir(), rootFilename + ".xml");
+		const outputPath = path.join(os.tmpdir(), `${rootFilename}.xml`);
 
 		// Do the conversion
 		const warnings: string[] = [];
@@ -115,7 +138,9 @@ describe("BadChoicesSheetHeaders", () => {
 			warnings,
 		});
 
-		const expected = ErrorCode.HEADER_004.format({ column: "header with spaces" });
+		const expected = ErrorCode.HEADER_004.format({
+			column: "header with spaces",
+		});
 		const observed = warnings.filter((w) => w === expected);
 		expect(observed.length).toBe(1);
 	});
@@ -123,7 +148,10 @@ describe("BadChoicesSheetHeaders", () => {
 	it("test_values_with_spaces_are_cleaned", () => {
 		const filename = "spaces_in_choices_header.xls";
 		const pathToExcelFile = path.join(BUG_EXAMPLE_XLS_PATH, filename);
-		const surveyReader = new SurveyReader(pathToExcelFile, "spaces_in_choices_header");
+		const surveyReader = new SurveyReader(
+			pathToExcelFile,
+			"spaces_in_choices_header",
+		);
 		const result = surveyReader.toJsonDict();
 
 		expect(result.submission_url).toBe(

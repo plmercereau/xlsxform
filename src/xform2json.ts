@@ -51,7 +51,11 @@ export function _tryParse(root: string): Element {
 		try {
 			const doc = fileParser.parseFromString(content, "text/xml");
 			const docEl = doc?.documentElement;
-			if (docEl && parseErrors.length === 0 && docEl.nodeName !== "parsererror") {
+			if (
+				docEl &&
+				parseErrors.length === 0 &&
+				docEl.nodeName !== "parsererror"
+			) {
 				return docEl;
 			}
 		} catch (_e) {
@@ -60,7 +64,9 @@ export function _tryParse(root: string): Element {
 		throw new XMLParseError(`Failed to parse XML from file: ${root}`);
 	}
 
-	throw new IOError(`Could not parse XML string and input is not a valid file path.`);
+	throw new IOError(
+		"Could not parse XML string and input is not a valid file path.",
+	);
 }
 
 /**
@@ -145,7 +151,8 @@ function _getChildElements(node: Element): Element[] {
 	const elements: Element[] = [];
 	for (let i = 0; i < node.childNodes.length; i++) {
 		const child = node.childNodes[i];
-		if (child.nodeType === 1) { // ELEMENT_NODE
+		if (child.nodeType === 1) {
+			// ELEMENT_NODE
 			elements.push(child as Element);
 		}
 	}
@@ -159,7 +166,8 @@ function _getDirectText(node: Element): string {
 	let text = "";
 	for (let i = 0; i < node.childNodes.length; i++) {
 		const child = node.childNodes[i];
-		if (child.nodeType === 3) { // TEXT_NODE
+		if (child.nodeType === 3) {
+			// TEXT_NODE
 			text += child.nodeValue ?? "";
 		}
 	}
@@ -179,7 +187,8 @@ function _getTailText(child: Element, parent: Element): string | null {
 			continue;
 		}
 		if (foundChild) {
-			if (n.nodeType === 3) { // TEXT_NODE
+			if (n.nodeType === 3) {
+				// TEXT_NODE
 				tail += n.nodeValue ?? "";
 			} else {
 				break;
@@ -308,7 +317,8 @@ class XFormToDictBuilder {
 	 */
 	private _stripNsPrefixes(obj: any): any {
 		if (typeof obj !== "object" || obj === null) return obj;
-		if (Array.isArray(obj)) return obj.map((item) => this._stripNsPrefixes(item));
+		if (Array.isArray(obj))
+			return obj.map((item) => this._stripNsPrefixes(item));
 
 		const result: Record<string, any> = {};
 		for (const [key, value] of Object.entries(obj)) {
@@ -335,7 +345,9 @@ class XFormToDictBuilder {
 		} else if (Array.isArray(instances)) {
 			idString = instances[0]?.[name]?.id ?? this.title;
 		} else {
-			throw new PyXFormError(`Unexpected type for model instances: ${typeof instances}`);
+			throw new PyXFormError(
+				`Unexpected type for model instances: ${typeof instances}`,
+			);
 		}
 		this.newDoc.id_string = idString;
 	}
@@ -362,9 +374,9 @@ class XFormToDictBuilder {
 		const removeRefs = (children: any[]) => {
 			for (const child of children) {
 				if (typeof child === "object" && child !== null) {
-					delete child.nodeset;
-					delete child.ref;
-					delete child.__order;
+					child.nodeset = undefined;
+					child.ref = undefined;
+					child.__order = undefined;
 					if (child.children) {
 						removeRefs(child.children);
 					}
@@ -399,7 +411,8 @@ class XFormToDictBuilder {
 			const ref = item.nodeset;
 			const name = XFormToDictBuilder._getNameFromRef(ref);
 			const parentRef = ref.substring(0, ref.indexOf(`/${name}`));
-			const question: Record<string, any> = this._getQuestionParamsFromBindings(ref) ?? {};
+			const question: Record<string, any> =
+				this._getQuestionParamsFromBindings(ref) ?? {};
 			question.name = name;
 			question.__order = this._getQuestionOrder(ref);
 
@@ -455,15 +468,21 @@ class XFormToDictBuilder {
 		}
 	}
 
-	private _getItemFunc(ref: string, name: string, item: any): Record<string, any> {
+	private _getItemFunc(
+		ref: string,
+		name: string,
+		item: any,
+	): Record<string, any> {
 		const rs: Record<string, any> = {};
 		const nameSplits = name.split("/");
 		rs.name = nameSplits[0];
-		ref = `${ref}/${rs.name}`;
-		rs.ref = ref;
+		const currentRef = `${ref}/${rs.name}`;
+		rs.ref = currentRef;
 		if (nameSplits.length > 1) {
 			rs.type = "group";
-			rs.children = [this._getItemFunc(ref, nameSplits.slice(1).join("/"), item)];
+			rs.children = [
+				this._getItemFunc(currentRef, nameSplits.slice(1).join("/"), item),
+			];
 		}
 		return rs;
 	}
@@ -484,14 +503,19 @@ class XFormToDictBuilder {
 		return this.orderedBindingRefs.length + 1;
 	}
 
-	private _getQuestionFromObject(obj: Record<string, any>, type?: string): Record<string, any> {
+	private _getQuestionFromObject(
+		obj: Record<string, any>,
+		type?: string,
+	): Record<string, any> {
 		let ref: string;
 		if ("ref" in obj) {
 			ref = obj.ref;
 		} else if ("nodeset" in obj) {
 			ref = obj.nodeset;
 		} else {
-			throw new PyXFormError(`Cannot find "ref" or "nodeset" in ${JSON.stringify(obj)}`);
+			throw new PyXFormError(
+				`Cannot find "ref" or "nodeset" in ${JSON.stringify(obj)}`,
+			);
 		}
 
 		const question: Record<string, any> = {
@@ -513,7 +537,12 @@ class XFormToDictBuilder {
 			}
 		}
 
-		if ("autoplay" in obj || "appearance" in obj || "count" in obj || "rows" in obj) {
+		if (
+			"autoplay" in obj ||
+			"appearance" in obj ||
+			"count" in obj ||
+			"rows" in obj
+		) {
 			question.control = {};
 		}
 		if ("appearance" in obj) {
@@ -539,7 +568,12 @@ class XFormToDictBuilder {
 			const children: any[] = [];
 			const items = Array.isArray(obj.item) ? obj.item : [obj.item];
 			for (const i of items) {
-				if (typeof i === "object" && i !== null && "label" in i && "value" in i) {
+				if (
+					typeof i === "object" &&
+					i !== null &&
+					"label" in i &&
+					"value" in i
+				) {
 					const [k, v] = this._getLabel(i.label);
 					children.push({ name: i.value, [k]: v });
 				}
@@ -548,15 +582,11 @@ class XFormToDictBuilder {
 		}
 
 		let questionType = question.type ?? type;
-		if (
-			questionType === "text" &&
-			question.bind &&
-			question.bind.readonly
-		) {
+		if (questionType === "text" && question.bind && question.bind.readonly) {
 			questionType = question.type = "note";
-			delete question.bind.readonly;
+			question.bind.readonly = undefined;
 			if (Object.keys(question.bind).length === 0) {
-				delete question.bind;
+				question.bind = undefined;
 			}
 		}
 
@@ -568,9 +598,8 @@ class XFormToDictBuilder {
 					if (!question.control) {
 						question.control = {};
 					}
-					question.control["jr:count"] = XFormToDictBuilder._shortenXpathsInString(
-						obj.repeat.count.trim(),
-					);
+					question.control["jr:count"] =
+						XFormToDictBuilder._shortenXpathsInString(obj.repeat.count.trim());
 				}
 			} else {
 				question.children = this._getChildrenQuestions(obj);
@@ -585,7 +614,7 @@ class XFormToDictBuilder {
 			question.type = QUESTION_TYPES[type];
 		}
 		if (questionType === "geopoint" && "hint" in question) {
-			delete question.hint;
+			question.hint = undefined;
 		}
 		if (!("type" in question) && type) {
 			question.type = questionType;
@@ -606,7 +635,9 @@ class XFormToDictBuilder {
 				const filterRefMatch = nodeset.match(filterRefRegex);
 				if (filterRefMatch) {
 					const filterRef = filterRefMatch[1];
-					const filterExpRegex = new RegExp(`${filterRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} (.*?)\\]$`);
+					const filterExpRegex = new RegExp(
+						`${filterRef.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (.*?)\\]$`,
+					);
 					const filterExpMatch = nodeset.match(filterExpRegex);
 					if (filterExpMatch) {
 						question.choice_filter = `\${${filterRef}}${filterExpMatch[1]}`;
@@ -619,7 +650,9 @@ class XFormToDictBuilder {
 		return question;
 	}
 
-	private _getChildrenQuestions(obj: Record<string, any>): Record<string, any>[] {
+	private _getChildrenQuestions(
+		obj: Record<string, any>,
+	): Record<string, any>[] {
 		const children: Record<string, any>[] = [];
 		for (const [k, v] of Object.entries(obj)) {
 			if (["ref", "label", "nodeset"].includes(k)) continue;
@@ -634,7 +667,9 @@ class XFormToDictBuilder {
 		return children;
 	}
 
-	private _getQuestionParamsFromBindings(ref: string): Record<string, any> | null {
+	private _getQuestionParamsFromBindings(
+		ref: string,
+	): Record<string, any> | null {
 		for (const item of this.bindings) {
 			if (item.nodeset === ref) {
 				// Remove from bind list
@@ -653,10 +688,18 @@ class XFormToDictBuilder {
 					if (key === "type") {
 						val = XFormToDictBuilder._getQuestionType(val);
 					}
-					if ([
-						"relevant", "required", "constraint", "constraintMsg",
-						"readonly", "calculate", "noAppErrorString", "requiredMsg",
-					].includes(key)) {
+					if (
+						[
+							"relevant",
+							"required",
+							"constraint",
+							"constraintMsg",
+							"readonly",
+							"calculate",
+							"noAppErrorString",
+							"requiredMsg",
+						].includes(key)
+					) {
 						if (key === "noAppErrorString") key = "jr:noAppErrorString";
 						if (key === "requiredMsg") key = "jr:requiredMsg";
 						if (key === "constraintMsg") {
@@ -682,8 +725,8 @@ class XFormToDictBuilder {
 				}
 				if ("preloadParams" in rs && "preload" in rs) {
 					rs.type = rs.preloadParams;
-					delete rs.preloadParams;
-					delete rs.preload;
+					rs.preloadParams = undefined;
+					rs.preload = undefined;
 				}
 				return rs;
 			}
@@ -714,7 +757,11 @@ class XFormToDictBuilder {
 	}
 
 	private _getLabel(labelObj: any, key = "label"): [string, any] {
-		if (typeof labelObj === "object" && labelObj !== null && !Array.isArray(labelObj)) {
+		if (
+			typeof labelObj === "object" &&
+			labelObj !== null &&
+			!Array.isArray(labelObj)
+		) {
 			if ("ref" in labelObj) {
 				const ref = labelObj.ref.replace("jr:itext('", "").replace("')", "");
 				return this._getTextFromTranslation(ref, key);
@@ -739,17 +786,24 @@ class XFormToDictBuilder {
 		return value;
 	}
 
-	private _getTextFromTranslation(ref: string, key = "label"): [string, any] {
+	private _getTextFromTranslation(ref: string, _key = "label"): [string, any] {
+		let key = _key;
 		const label: Record<string, any> = {};
 		for (const translation of this.translations) {
 			const lang = translation.lang;
-			const labelList = Array.isArray(translation.text) ? translation.text : [translation.text];
+			const labelList = Array.isArray(translation.text)
+				? translation.text
+				: [translation.text];
 			for (const lbl of labelList) {
 				if (!("value" in lbl) || lbl.value === "-") continue;
 				if (lbl.id === ref) {
 					let text: any = lbl.value;
 					const value = lbl.value;
-					if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+					if (
+						typeof value === "object" &&
+						value !== null &&
+						!Array.isArray(value)
+					) {
 						if ("output" in value) {
 							text = this._getOutputText(value);
 						}
@@ -767,7 +821,12 @@ class XFormToDictBuilder {
 					}
 					if (Array.isArray(value)) {
 						for (const item of value) {
-							if (typeof item === "object" && item !== null && "form" in item && "_text" in item) {
+							if (
+								typeof item === "object" &&
+								item !== null &&
+								"form" in item &&
+								"_text" in item
+							) {
 								const mType = item.form;
 								let v = item._text;
 								if (mType === "image") {
@@ -794,7 +853,11 @@ class XFormToDictBuilder {
 				}
 			}
 		}
-		if (key === "media" && Object.keys(label).length === 1 && "default" in label) {
+		if (
+			key === "media" &&
+			Object.keys(label).length === 1 &&
+			"default" in label
+		) {
 			return [key, label.default];
 		}
 		return [key, label];
@@ -828,7 +891,7 @@ class XFormToDictBuilder {
 				const item = { ...choice };
 				if ("itextId" in choice) {
 					const itextId = item.itextId;
-					delete item.itextId;
+					item.itextId = undefined;
 					const [k, lbl] = this._getTextFromTranslation(itextId, "label");
 					item[k] = lbl;
 				}
@@ -856,10 +919,16 @@ class XFormToDictBuilder {
 		};
 
 		// Pattern with spaces around xpath
-		text = text.replace(/( \/[a-z0-9_-]+(?:\/[a-z0-9_-]+)+ )/gi, replaceFunction);
+		let result = text.replace(
+			/( \/[a-z0-9_-]+(?:\/[a-z0-9_-]+)+ )/gi,
+			replaceFunction,
+		);
 		// Pattern without spaces
-		text = text.replace(/(\/[a-z0-9_-]+(?:\/[a-z0-9_-]+)+)/gi, replaceFunction);
-		return text;
+		result = result.replace(
+			/(\/[a-z0-9_-]+(?:\/[a-z0-9_-]+)+)/gi,
+			replaceFunction,
+		);
+		return result;
 	}
 }
 

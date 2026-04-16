@@ -17,9 +17,7 @@ describe("TestSettings", () => {
 		`;
 		assertPyxformXform({
 			md,
-			xml__xpath_match: [
-				"/h:html/h:head/h:title[text()='My Form']",
-			],
+			xml__xpath_match: ["/h:html/h:head/h:title[text()='My Form']"],
 		});
 	});
 
@@ -108,9 +106,7 @@ describe("TestSettings", () => {
 			md,
 			name: "bad@filename",
 			errored: true,
-			error__contains: [
-				"The 'form_name' value is invalid.",
-			],
+			error__contains: ["The 'form_name' value is invalid."],
 		});
 	});
 
@@ -565,7 +561,7 @@ describe("TestNamespaces", () => {
 			assertPyxformXform({
 				md,
 				xml__xpath_match: [
-					`/h:html/h:head/x:model[not(./x:submission/@odk:client-editable)]`,
+					"/h:html/h:head/x:model[not(./x:submission/@odk:client-editable)]",
 				],
 			});
 		}
@@ -580,7 +576,7 @@ describe("TestNamespaces", () => {
 		assertPyxformXform({
 			md: md3,
 			xml__xpath_match: [
-				`/h:html/h:head/x:model/x:submission[not(@odk:client-editable)]`,
+				"/h:html/h:head/x:model/x:submission[not(@odk:client-editable)]",
 			],
 		});
 	});

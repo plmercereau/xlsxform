@@ -43,19 +43,21 @@ const s1c1 = caseData(
 	".//x:instance",
 	new Set([
 		`<instance xmlns="http://www.w3.org/2002/xforms">\n` +
-		`        <test_name id="test_name">\n` +
-		`          <Part_ID/>\n` +
-		`          <Initial/>\n` +
-		`          <meta/>\n` +
-		`        </test_name>\n` +
-		`      </instance>`,
+			`        <test_name id="test_name">\n` +
+			"          <Part_ID/>\n" +
+			"          <Initial/>\n" +
+			"          <meta/>\n" +
+			"        </test_name>\n" +
+			"      </instance>",
 	]),
 	1,
 );
 // s1c2: mix of namespaces - body input label
 const s1c2 = caseData(
 	".//h:body/x:input[@ref='/test_name/Part_ID']/x:label",
-	new Set([`<label xmlns="http://www.w3.org/2002/xforms">Participant ID</label>`]),
+	new Set([
+		`<label xmlns="http://www.w3.org/2002/xforms">Participant ID</label>`,
+	]),
 	1,
 );
 // s1c3: multi-element match - the body element
@@ -63,13 +65,13 @@ const s1c3 = caseData(
 	".//h:body",
 	new Set([
 		`<h:body xmlns:h="http://www.w3.org/1999/xhtml">\n` +
-		`    <input ref="/test_name/Part_ID" xmlns="http://www.w3.org/2002/xforms">\n` +
-		`      <label>Participant ID</label>\n` +
-		`    </input>\n` +
-		`    <input ref="/test_name/Initial" xmlns="http://www.w3.org/2002/xforms">\n` +
-		`      <label>Initials</label>\n` +
-		`    </input>\n` +
-		`  </h:body>`,
+			`    <input ref="/test_name/Part_ID" xmlns="http://www.w3.org/2002/xforms">\n` +
+			"      <label>Participant ID</label>\n" +
+			"    </input>\n" +
+			`    <input ref="/test_name/Initial" xmlns="http://www.w3.org/2002/xforms">\n` +
+			"      <label>Initials</label>\n" +
+			"    </input>\n" +
+			"  </h:body>",
 	]),
 	1,
 );
@@ -108,11 +110,11 @@ const s2c2 = caseData(
 	".//h:body/x:input",
 	new Set([
 		`<input ref="/test_name/Part_ID" xmlns="http://www.w3.org/2002/xforms">\n` +
-		`      <label>Participant ID</label>\n` +
-		`    </input>`,
+			"      <label>Participant ID</label>\n" +
+			"    </input>",
 		`<input ref="/test_name/Initial" xmlns="http://www.w3.org/2002/xforms">\n` +
-		`      <label>Initials</label>\n` +
-		`    </input>`,
+			"      <label>Initials</label>\n" +
+			"    </input>",
 	]),
 	2,
 );

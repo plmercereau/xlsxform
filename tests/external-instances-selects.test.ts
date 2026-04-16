@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
-import * as path from "path";
+import * as path from "node:path";
 
 // ---------------------------------------------------------------------------
 // XPath helper for select_from_file assertions
@@ -21,7 +21,11 @@ interface XPathHelperSelectFromFile {
 	qFile: string;
 	fileId: string;
 	modelExternalInstanceAndBind(): string;
-	bodyItemsetNodesetAndRefs(value: string, label: string, nodesetPred?: string): string;
+	bodyItemsetNodesetAndRefs(
+		value: string,
+		label: string,
+		nodesetPred?: string,
+	): string;
 }
 
 function makeXPathHelperSelectFromFile(
@@ -102,14 +106,42 @@ function bodySelect1Itemset(qName: string): string {
 // ---------------------------------------------------------------------------
 
 describe("TestSelectFromFile", () => {
-	const xpCityCsv = makeXPathHelperSelectFromFile("select1", "city", "cities.csv");
-	const xpSubsCsv = makeXPathHelperSelectFromFile("select", "suburbs", "suburbs.csv");
-	const xpCityXml = makeXPathHelperSelectFromFile("select1", "city", "cities.xml");
-	const xpSubsXml = makeXPathHelperSelectFromFile("select", "suburbs", "suburbs.xml");
-	const xpCityGeojson = makeXPathHelperSelectFromFile("select1", "city", "cities.geojson");
-	const xpSubsGeojson = makeXPathHelperSelectFromFile("select", "suburbs", "suburbs.geojson");
+	const xpCityCsv = makeXPathHelperSelectFromFile(
+		"select1",
+		"city",
+		"cities.csv",
+	);
+	const xpSubsCsv = makeXPathHelperSelectFromFile(
+		"select",
+		"suburbs",
+		"suburbs.csv",
+	);
+	const xpCityXml = makeXPathHelperSelectFromFile(
+		"select1",
+		"city",
+		"cities.xml",
+	);
+	const xpSubsXml = makeXPathHelperSelectFromFile(
+		"select",
+		"suburbs",
+		"suburbs.xml",
+	);
+	const xpCityGeojson = makeXPathHelperSelectFromFile(
+		"select1",
+		"city",
+		"cities.geojson",
+	);
+	const xpSubsGeojson = makeXPathHelperSelectFromFile(
+		"select",
+		"suburbs",
+		"suburbs.geojson",
+	);
 
-	const xpTestArgs: [string, XPathHelperSelectFromFile, XPathHelperSelectFromFile][] = [
+	const xpTestArgs: [
+		string,
+		XPathHelperSelectFromFile,
+		XPathHelperSelectFromFile,
+	][] = [
 		[".csv", xpCityCsv, xpSubsCsv],
 		[".xml", xpCityXml, xpSubsXml],
 		[".geojson", xpCityGeojson, xpSubsGeojson],
@@ -203,11 +235,7 @@ describe("TestSelectFromFile", () => {
 					xpCity.modelExternalInstanceAndBind(),
 					xpSubs.modelExternalInstanceAndBind(),
 					xpCity.bodyItemsetNodesetAndRefs("val", "lbl"),
-					xpSubs.bodyItemsetNodesetAndRefs(
-						"val",
-						"lbl",
-						"[city= /test/city ]",
-					),
+					xpSubs.bodyItemsetNodesetAndRefs("val", "lbl", "[city= /test/city ]"),
 				],
 			});
 		}
@@ -300,13 +328,9 @@ describe("TestSelectFromFile", () => {
 		const exts = ["", ".exe", ".sav", ".pdf"];
 		for (const selectType of types) {
 			for (const ext of exts) {
-				const error =
-					`File name for '${selectType} cities${ext}' should end with ` +
-					"one of the supported file extensions";
+				const error = `File name for '${selectType} cities${ext}' should end with one of the supported file extensions`;
 				assertPyxformXform({
-					md: md
-						.replace(/\{select\}/g, selectType)
-						.replace(/\{ext\}/g, ext),
+					md: md.replace(/\{select\}/g, selectType).replace(/\{ext\}/g, ext),
 					errored: true,
 					error__contains: [error],
 				});

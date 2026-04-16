@@ -135,8 +135,8 @@ describe("TestParameterIncremental", () => {
 					errored: true,
 					error__contains: [
 						"[row : 2] On the 'survey' sheet, the 'parameters' value is invalid. " +
-						"For geoshape and geotrace questions, the 'incremental' parameter may either " +
-						"be 'true' or not included.",
+							"For geoshape and geotrace questions, the 'incremental' parameter may either " +
+							"be 'true' or not included.",
 					],
 				});
 			}

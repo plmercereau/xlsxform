@@ -15,9 +15,12 @@ import {
 } from "./entities.js";
 import { PyXFormError } from "./errors.js";
 import { isPyxformReference, isXmlTag } from "./parsing/expression.js";
-import { cleanTextValues, dealiasAndGroupHeaders } from "./parsing/sheet-headers.js";
-import { defaultIsDynamic } from "./question.js";
+import {
+	cleanTextValues,
+	dealiasAndGroupHeaders,
+} from "./parsing/sheet-headers.js";
 import { getMetaGroup } from "./question-type-dictionary.js";
+import { defaultIsDynamic } from "./question.js";
 import type { DefinitionData } from "./xls2json-backends.js";
 
 // --- Translation completeness checking ---
@@ -31,20 +34,30 @@ class TranslationChecker {
 	columnsSeen: Set<string> = new Set();
 	missing: Record<string, string[]> = {};
 
-	constructor(headers: string[], translatableColumns: Record<string, string | [string, string]>) {
+	constructor(
+		headers: string[],
+		translatableColumns: Record<string, string | [string, string]>,
+	) {
 		this._findTranslations(headers, translatableColumns);
 		this._findMissing();
 	}
 
-	private _findTranslations(headers: string[], translatableColumns: Record<string, string | [string, string]>) {
+	private _findTranslations(
+		headers: string[],
+		translatableColumns: Record<string, string | [string, string]>,
+	) {
 		// Detect delimiter: if any header uses "::", use "::"; otherwise use ":"
-		const useDoubleColon = headers.some(h => h.includes("::"));
+		const useDoubleColon = headers.some((h) => h.includes("::"));
 		const delimiter = useDoubleColon ? "::" : ":";
 		for (const header of headers) {
 			// Split on delimiter
-			let parts = header.split(delimiter).map(p => p.trim());
+			let parts = header.split(delimiter).map((p) => p.trim());
 			// When using single colon, handle "jr:" prefixed names
-			if (!useDoubleColon && parts.length >= 2 && parts[0].toLowerCase() === "jr") {
+			if (
+				!useDoubleColon &&
+				parts.length >= 2 &&
+				parts[0].toLowerCase() === "jr"
+			) {
 				parts = [`jr:${parts[1]}`, ...parts.slice(2)];
 			}
 
@@ -71,7 +84,8 @@ class TranslationChecker {
 					name = mapped;
 				}
 
-				const lang = tokens.length >= 2 ? tokens[1] : constants.DEFAULT_LANGUAGE_VALUE;
+				const lang =
+					tokens.length >= 2 ? tokens[1] : constants.DEFAULT_LANGUAGE_VALUE;
 
 				if (!this.seen[lang]) this.seen[lang] = [];
 				if (!this.seen[lang].includes(name)) {
@@ -84,7 +98,10 @@ class TranslationChecker {
 
 	seenDefaultOnly(): boolean {
 		const langs = Object.keys(this.seen);
-		return langs.length === 0 || (langs.length === 1 && constants.DEFAULT_LANGUAGE_VALUE in this.seen);
+		return (
+			langs.length === 0 ||
+			(langs.length === 1 && constants.DEFAULT_LANGUAGE_VALUE in this.seen)
+		);
 	}
 
 	private _findMissing() {
@@ -101,8 +118,13 @@ class TranslationChecker {
 	}
 }
 
-function formatMissingTranslationsMsg(_in: Record<string, Record<string, string[]>>): string | null {
-	function getSheetMsg(name: string, sheet?: Record<string, string[]>): string | null {
+function formatMissingTranslationsMsg(
+	_in: Record<string, Record<string, string[]>>,
+): string | null {
+	function getSheetMsg(
+		name: string,
+		sheet?: Record<string, string[]>,
+	): string | null {
 		if (!sheet) return null;
 		const langs = Object.keys(sheet).sort();
 		if (langs.length === 0) return null;
@@ -110,11 +132,15 @@ function formatMissingTranslationsMsg(_in: Record<string, Record<string, string[
 		for (const lang of langs) {
 			const cols = sheet[lang];
 			if (cols.length === 1) {
-				langMsgs.push(`Language '${lang}' is missing the ${name} ${cols[0]} column.`);
+				langMsgs.push(
+					`Language '${lang}' is missing the ${name} ${cols[0]} column.`,
+				);
 			}
 			if (cols.length > 1) {
 				const c = [...cols].sort().join(", ");
-				langMsgs.push(`Language '${lang}' is missing the ${name} columns ${c}.`);
+				langMsgs.push(
+					`Language '${lang}' is missing the ${name} columns ${c}.`,
+				);
 			}
 		}
 		return langMsgs.join("\n");
@@ -171,7 +197,10 @@ export function levenshteinDistance(a: string, b: string): number {
  * Find possible sheet name misspellings.
  * Returns a message fragment if similar names are found, or null otherwise.
  */
-function findSheetMisspellings(key: string, sheetNames: string[]): string | null {
+function findSheetMisspellings(
+	key: string,
+	sheetNames: string[],
+): string | null {
 	if (!sheetNames || sheetNames.length === 0) return null;
 	const candidates = sheetNames.filter(
 		(k) =>
@@ -195,7 +224,12 @@ const VALID_REF_NAME_RE = /^(?:last-saved#)?[a-zA-Z_][a-zA-Z0-9._-]*$/;
 /**
  * Validate pyxform reference syntax in a string. Returns error message or null.
  */
-function validatePyxformReferenceSyntax(value: string, rowNum: number, sheet: string, column: string): string | null {
+function validatePyxformReferenceSyntax(
+	value: string,
+	rowNum: number,
+	sheet: string,
+	column: string,
+): string | null {
 	// Check for unclosed references: ${ without matching }
 	let pos = 0;
 	while (pos < value.length) {
@@ -225,10 +259,12 @@ function extractPyxformReferences(value: string): string[] {
 	const refs: string[] = [];
 	let match: RegExpExecArray | null;
 	const re = new RegExp(PYXFORM_REF_RE.source, "g");
-	while ((match = re.exec(value)) !== null) {
+	match = re.exec(value);
+	while (match !== null) {
 		if (match[1]) {
 			refs.push(match[1]);
 		}
+		match = re.exec(value);
 	}
 	return refs;
 }
@@ -296,9 +332,7 @@ function validateAuditParams(
 	}
 
 	// Check if any location params are set
-	const hasLocationParams = [...AUDIT_LOCATION_PARAMS].some(
-		(p) => p in params,
-	);
+	const hasLocationParams = [...AUDIT_LOCATION_PARAMS].some((p) => p in params);
 
 	if (hasLocationParams) {
 		// All three must be present
@@ -374,7 +408,7 @@ function validateGeoParams(
 					`The question type '${type}' has invalid parameter(s): '${k}'.`,
 				);
 			}
-			if (v === "" || isNaN(Number(v))) {
+			if (v === "" || Number.isNaN(Number(v))) {
 				throw new PyXFormError(
 					"Parameter capture-accuracy must have a numeric value.",
 				);
@@ -391,7 +425,7 @@ function validateGeoParams(
 					`The question type '${type}' has invalid parameter(s): '${k}'.`,
 				);
 			}
-			if (v === "" || isNaN(Number(v))) {
+			if (v === "" || Number.isNaN(Number(v))) {
 				throw new PyXFormError(
 					"Parameter warning-accuracy must have a numeric value.",
 				);
@@ -409,9 +443,7 @@ function validateGeoParams(
 				);
 			}
 		} else {
-			throw new PyXFormError(
-				`The following are invalid parameter(s): '${k}'.`,
-			);
+			throw new PyXFormError(`The following are invalid parameter(s): '${k}'.`);
 		}
 	}
 }
@@ -439,7 +471,9 @@ function validateAudioParams(
 	if (!params || Object.keys(params).length === 0) return;
 
 	const allowedAudioParams = new Set(["quality"]);
-	const invalidParams = Object.keys(params).filter(k => !allowedAudioParams.has(k));
+	const invalidParams = Object.keys(params).filter(
+		(k) => !allowedAudioParams.has(k),
+	);
 	if (invalidParams.length > 0) {
 		throw new PyXFormError(
 			`The following are invalid parameter(s): '${invalidParams.join("', '")}'.`,
@@ -448,7 +482,9 @@ function validateAudioParams(
 
 	if ("quality" in params) {
 		const val = params.quality;
-		const validSet = isBackground ? VALID_BACKGROUND_AUDIO_QUALITIES : VALID_AUDIO_QUALITIES;
+		const validSet = isBackground
+			? VALID_BACKGROUND_AUDIO_QUALITIES
+			: VALID_AUDIO_QUALITIES;
 		if (!validSet.has(val)) {
 			throw new PyXFormError("Invalid value for quality.");
 		}
@@ -487,7 +523,7 @@ function validateAndroidPackageName(name: string): string | null {
 		return `${prefix}the package name cannot end in a '.' separator.`;
 	}
 	const segments = name.split(".");
-	if (segments.some(s => s === "")) {
+	if (segments.some((s) => s === "")) {
 		return `${prefix}package segments must be of non-zero length.`;
 	}
 	if (PACKAGE_NAME_REGEX.test(name)) {
@@ -535,11 +571,17 @@ function validateRangeParams(
 	const step = normalizedParams.step ?? "1";
 
 	// Validate numeric params
-	const numericParams = ["start", "end", "step", "tick_interval", "placeholder"];
+	const numericParams = [
+		"start",
+		"end",
+		"step",
+		"tick_interval",
+		"placeholder",
+	];
 	for (const paramName of numericParams) {
 		if (paramName in normalizedParams) {
 			const val = normalizedParams[paramName];
-			if (val === "" || isNaN(Number(val))) {
+			if (val === "" || Number.isNaN(Number(val))) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. For the 'range' question type, the parameter '${paramName}' must be a number.`,
 				);
@@ -553,9 +595,9 @@ function validateRangeParams(
 	const rangeSize = Math.abs(endNum - startNum);
 
 	// Appearance-restricted parameters (check early, before detailed validation)
-	const appearance = (
-		questionDict[constants.CONTROL]?.appearance ?? ""
-	).toString().trim();
+	const appearance = (questionDict[constants.CONTROL]?.appearance ?? "")
+		.toString()
+		.trim();
 	const hasTicksParams =
 		"tick_interval" in normalizedParams ||
 		"placeholder" in normalizedParams ||
@@ -607,7 +649,10 @@ function validateRangeParams(
 		const absStep = Math.abs(stepNum);
 
 		// Check placeholder is a multiple of step relative to start
-		if (absStep > 0 && !isMultiple(Math.abs(placeholderVal - startNum), absStep)) {
+		if (
+			absStep > 0 &&
+			!isMultiple(Math.abs(placeholderVal - startNum), absStep)
+		) {
 			throw new PyXFormError(
 				`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. For the 'range' question type, the parameter 'placeholder' must be a multiple of 'step'.`,
 			);
@@ -673,7 +718,7 @@ function validateRangeParams(
 			const choiceName = (choice[constants.NAME] ?? "").toString().trim();
 			if (!choiceName) continue;
 			const num = Number(choiceName);
-			if (isNaN(num) || !isFinite(num)) {
+			if (Number.isNaN(num) || !Number.isFinite(num)) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. For the 'range' question type, the parameter 'tick_labelset' choice list values may only`,
 				);
@@ -697,9 +742,10 @@ function validateRangeParams(
 
 		// Validate choices are multiples of step from start
 		const absStep = Math.abs(stepNum);
-		const tickIntervalVal = "tick_interval" in normalizedParams
-			? Math.abs(Number(normalizedParams.tick_interval))
-			: null;
+		const tickIntervalVal =
+			"tick_interval" in normalizedParams
+				? Math.abs(Number(normalizedParams.tick_interval))
+				: null;
 
 		// Use tick_interval if available, otherwise step
 		const tickStep = tickIntervalVal ?? absStep;
@@ -732,10 +778,7 @@ function validateRangeParams(
 			if (uniqueChoices.size === 2) {
 				const startStr = String(startNum);
 				const endStr = String(endNum);
-				if (
-					!uniqueChoices.has(startStr) ||
-					!uniqueChoices.has(endStr)
-				) {
+				if (!uniqueChoices.has(startStr) || !uniqueChoices.has(endStr)) {
 					throw new PyXFormError(
 						`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. For the 'range' question type, the parameter 'tick_labelset' choice list values may only`,
 					);
@@ -748,13 +791,11 @@ function validateRangeParams(
 	questionDict[constants.PARAMETERS] = normalizedParams;
 
 	// Detect decimal values and switch bind type to decimal if needed
-	const hasDecimalValue = Object.entries(normalizedParams).some(
-		([k, v]) => {
-			if (k === "tick_labelset") return false;
-			const num = Number(v);
-			return !isNaN(num) && v.includes(".");
-		},
-	);
+	const hasDecimalValue = Object.entries(normalizedParams).some(([k, v]) => {
+		if (k === "tick_labelset") return false;
+		const num = Number(v);
+		return !Number.isNaN(num) && v.includes(".");
+	});
 	if (hasDecimalValue) {
 		if (!questionDict[constants.BIND]) {
 			questionDict[constants.BIND] = {};
@@ -795,24 +836,42 @@ function validateChoices(
 		const listName = row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U];
 		if (!listName) continue;
 
-		const choiceName = (row[constants.NAME] ?? row["value"] ?? "").toString().trim();
+		const choiceName = (row[constants.NAME] ?? row.value ?? "")
+			.toString()
+			.trim();
 		const label = row[constants.LABEL] ?? row.label;
 
 		// Check if there are translated labels (label::lang)
-		const hasTranslatedLabel = Object.keys(row).some(k => k.startsWith("label::") || k.startsWith("label :"));
+		const hasTranslatedLabel = Object.keys(row).some(
+			(k) => k.startsWith("label::") || k.startsWith("label :"),
+		);
 
 		// Check if there is any media (image, audio, video, or translated variants)
-		const hasMedia = Object.keys(row).some(k => {
+		const hasMedia = Object.keys(row).some((k) => {
 			const kl = k.toLowerCase();
-			return (kl === "image" || kl === "audio" || kl === "video" ||
-				kl.startsWith("image::") || kl.startsWith("audio::") || kl.startsWith("video::") ||
-				kl.startsWith("image :") || kl.startsWith("audio :") || kl.startsWith("video :") ||
-				kl === "media::image" || kl === "media::audio" || kl === "media::video") &&
-				row[k] && (typeof row[k] !== "string" || row[k].trim());
+			return (
+				(kl === "image" ||
+					kl === "audio" ||
+					kl === "video" ||
+					kl.startsWith("image::") ||
+					kl.startsWith("audio::") ||
+					kl.startsWith("video::") ||
+					kl.startsWith("image :") ||
+					kl.startsWith("audio :") ||
+					kl.startsWith("video :") ||
+					kl === "media::image" ||
+					kl === "media::audio" ||
+					kl === "media::video") &&
+				row[k] &&
+				(typeof row[k] !== "string" || row[k].trim())
+			);
 		});
 
 		// Warn about missing labels (only if no translated labels)
-		if (!hasTranslatedLabel && (!label || (typeof label === "string" && !label.trim()))) {
+		if (
+			!hasTranslatedLabel &&
+			(!label || (typeof label === "string" && !label.trim()))
+		) {
 			warnings.push(
 				`[row : ${rowNum}] On the 'choices' sheet, the 'label' value is invalid. Choices should have a label. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
 			);
@@ -854,13 +913,10 @@ export function workbookToJson(opts: {
 	defaultLanguage?: string | null;
 	warnings?: string[];
 }): Record<string, any> {
-	const {
-		workbookDict,
-		defaultLanguage,
-		warnings = [],
-	} = opts;
+	const { workbookDict, defaultLanguage, warnings = [] } = opts;
 
-	let formName = opts.formName ?? opts.fallbackFormName ?? constants.DEFAULT_FORM_NAME;
+	let formName =
+		opts.formName ?? opts.fallbackFormName ?? constants.DEFAULT_FORM_NAME;
 	const sheetNames = workbookDict.sheet_names ?? [];
 
 	// Validate form name from file/API parameter
@@ -871,11 +927,9 @@ export function workbookToJson(opts: {
 	}
 
 	// Validate survey sheet presence
-	if ((!workbookDict.survey || workbookDict.survey.length === 0)) {
+	if (!workbookDict.survey || workbookDict.survey.length === 0) {
 		// Check if we have a survey sheet at all (by looking at sheet_names)
-		const hasSurveySheet = sheetNames.some(
-			(n) => n.toLowerCase() === "survey",
-		);
+		const hasSurveySheet = sheetNames.some((n) => n.toLowerCase() === "survey");
 		if (!hasSurveySheet) {
 			let msg = `You must have a sheet named 'survey'. `;
 			const similar = findSheetMisspellings(constants.SURVEY, sheetNames);
@@ -893,7 +947,8 @@ export function workbookToJson(opts: {
 		const row = settingsRows[0];
 		for (const [k, rawVal] of Object.entries(row)) {
 			const v = cleanTextValues(rawVal);
-			const alias = aliases.settingsHeader[k] ?? aliases.settingsHeader[k.toLowerCase()];
+			const alias =
+				aliases.settingsHeader[k] ?? aliases.settingsHeader[k.toLowerCase()];
 			if (alias) {
 				settings[alias] = v;
 			} else {
@@ -915,7 +970,9 @@ export function workbookToJson(opts: {
 		if (!hasSupportedSettings) {
 			const similar = findSheetMisspellings(constants.SETTINGS, sheetNames);
 			if (similar) {
-				warnings.push(similar + " To prevent this warning, prefix the sheet name with an underscore.");
+				warnings.push(
+					`${similar} To prevent this warning, prefix the sheet name with an underscore.`,
+				);
 			}
 		}
 	}
@@ -933,8 +990,10 @@ export function workbookToJson(opts: {
 
 	// id_string (form_id) sets the @id attribute but not the form name
 	// Default to fallbackFormName (filename), not formName
-	let idString = settings[constants.ID_STRING] as string | undefined
-		?? opts.fallbackFormName ?? constants.DEFAULT_FORM_NAME;
+	const idString =
+		(settings[constants.ID_STRING] as string | undefined) ??
+		opts.fallbackFormName ??
+		constants.DEFAULT_FORM_NAME;
 
 	// Validate Android package name if 'app' setting is present
 	if ("app" in settings) {
@@ -945,7 +1004,8 @@ export function workbookToJson(opts: {
 	}
 
 	// Determine clean_text_values setting (defaults to yes/true)
-	const cleanTextValuesEnabled = aliases.yesNo[settings.clean_text_values ?? "yes"] ?? true;
+	const cleanTextValuesEnabled =
+		aliases.yesNo[settings.clean_text_values ?? "yes"] ?? true;
 
 	// Process choices
 	const choicesData = workbookDict.choices ?? [];
@@ -961,16 +1021,21 @@ export function workbookToJson(opts: {
 				}
 			}
 		}
-		const choicesHeadersLower = new Set(choicesHeaders.map(h => h.toLowerCase()));
+		const choicesHeadersLower = new Set(
+			choicesHeaders.map((h) => h.toLowerCase()),
+		);
 		// Check for 'name' column (or its alias 'value')
-		const hasNameCol = choicesHeadersLower.has("name") || choicesHeadersLower.has("value");
+		const hasNameCol =
+			choicesHeadersLower.has("name") || choicesHeadersLower.has("value");
 		if (!hasNameCol) {
 			throw new PyXFormError(
 				`Invalid headers provided for sheet: 'choices'. One or more required column headers were not found: 'name'. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
 			);
 		}
 		// Check for 'list_name' column (or its alias 'list name')
-		const hasListNameCol = choicesHeadersLower.has("list_name") || choicesHeadersLower.has("list name");
+		const hasListNameCol =
+			choicesHeadersLower.has("list_name") ||
+			choicesHeadersLower.has("list name");
 		if (!hasListNameCol) {
 			throw new PyXFormError(
 				`Invalid headers provided for sheet: 'choices'. One or more required column headers were not found: 'list_name'. The choices sheet must have a 'list_name' and 'name' column. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
@@ -979,10 +1044,12 @@ export function workbookToJson(opts: {
 	}
 
 	const choicesByListName: Record<string, Record<string, any>[]> = {};
-	const choicesDefaultLang = settings[constants.DEFAULT_LANGUAGE_KEY] ?? constants.DEFAULT_LANGUAGE_VALUE;
+	const choicesDefaultLang =
+		settings[constants.DEFAULT_LANGUAGE_KEY] ??
+		constants.DEFAULT_LANGUAGE_VALUE;
 	// Detect delimiter for choices: if any header uses "::", use that; otherwise use ":"
-	const choicesUseDoubleColon = choicesData.some(
-		(r: Record<string, any>) => Object.keys(r).some((k: string) => k.includes("::"))
+	const choicesUseDoubleColon = choicesData.some((r: Record<string, any>) =>
+		Object.keys(r).some((k: string) => k.includes("::")),
 	);
 	const choicesDelimiter = choicesUseDoubleColon ? "::" : ":";
 	for (const row of choicesData) {
@@ -1000,7 +1067,7 @@ export function workbookToJson(opts: {
 			if (v == null || v === "") continue;
 
 			// Handle grouped columns: media::audio, media::image::English, etc.
-			const parts = k.split(choicesDelimiter).map(p => p.trim());
+			const parts = k.split(choicesDelimiter).map((p) => p.trim());
 			if (parts.length >= 2 && parts[0] === "media") {
 				// media::audio or media::audio::English
 				const mediaType = parts[1]; // e.g., "audio", "image", "big-image", "video"
@@ -1032,8 +1099,14 @@ export function workbookToJson(opts: {
 				if (Array.isArray(alias) && alias[0] === "media") {
 					const mediaType = alias[1]; // e.g., "audio", "image"
 					if (!choice.media) choice.media = {};
-					if (!choice.media[mediaType] || typeof choice.media[mediaType] === "string") {
-						const existing = typeof choice.media[mediaType] === "string" ? choice.media[mediaType] : undefined;
+					if (
+						!choice.media[mediaType] ||
+						typeof choice.media[mediaType] === "string"
+					) {
+						const existing =
+							typeof choice.media[mediaType] === "string"
+								? choice.media[mediaType]
+								: undefined;
 						choice.media[mediaType] = {};
 						if (existing) {
 							choice.media[mediaType][choicesDefaultLang] = existing;
@@ -1059,7 +1132,11 @@ export function workbookToJson(opts: {
 			const alias = aliases.listHeader[k];
 			if (alias && typeof alias === "string") {
 				// If a translation dict already exists for this key, add as default language
-				if (typeof choice[alias] === "object" && choice[alias] !== null && !Array.isArray(choice[alias])) {
+				if (
+					typeof choice[alias] === "object" &&
+					choice[alias] !== null &&
+					!Array.isArray(choice[alias])
+				) {
 					choice[alias][constants.DEFAULT_LANGUAGE_VALUE] = v;
 				} else {
 					choice[alias] = v;
@@ -1080,7 +1157,8 @@ export function workbookToJson(opts: {
 		const allChoiceHeaders = extractHeaders(choicesData);
 		for (const header of allChoiceHeaders) {
 			// Skip known valid headers with spaces (list_name / "list name")
-			if (header === constants.LIST_NAME_S || header === constants.LIST_NAME_U) continue;
+			if (header === constants.LIST_NAME_S || header === constants.LIST_NAME_U)
+				continue;
 			// Skip translated headers (e.g. "label::English (en)") - the language part can contain spaces
 			if (header.includes("::")) continue;
 			if (header === "" || header.includes(" ")) {
@@ -1134,16 +1212,26 @@ export function workbookToJson(opts: {
 	// Process survey rows
 	const surveyRows = workbookDict.survey ?? [];
 	const hasChoicesSheet = choicesData.length > 0;
-	const hasExternalChoicesSheet = (workbookDict.external_choices ?? []).length > 0;
+	const hasExternalChoicesSheet =
+		(workbookDict.external_choices ?? []).length > 0;
 	const entityReferencesByQuestion: Record<string, any> = {};
 
 	// Check for missing translations across survey and choices sheets
 	const surveyHeaders = extractHeaders(surveyRows);
 	const choicesHeaders = extractHeaders(choicesData);
-	const surveyTranslations = new TranslationChecker(surveyHeaders, aliases.TRANSLATABLE_SURVEY_COLUMNS);
-	const choicesTranslations = new TranslationChecker(choicesHeaders, aliases.TRANSLATABLE_CHOICES_COLUMNS);
+	const surveyTranslations = new TranslationChecker(
+		surveyHeaders,
+		aliases.TRANSLATABLE_SURVEY_COLUMNS,
+	);
+	const choicesTranslations = new TranslationChecker(
+		choicesHeaders,
+		aliases.TRANSLATABLE_CHOICES_COLUMNS,
+	);
 
-	if (Object.keys(surveyTranslations.missing).length > 0 || Object.keys(choicesTranslations.missing).length > 0) {
+	if (
+		Object.keys(surveyTranslations.missing).length > 0 ||
+		Object.keys(choicesTranslations.missing).length > 0
+	) {
 		const msg = formatMissingTranslationsMsg({
 			[constants.SURVEY]: surveyTranslations.missing,
 			[constants.CHOICES]: choicesTranslations.missing,
@@ -1157,7 +1245,9 @@ export function workbookToJson(opts: {
 	const externalChoicesListNames = new Set<string>();
 	const externalChoicesData = workbookDict.external_choices ?? [];
 	for (const row of externalChoicesData) {
-		const ln = (row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U] ?? "").toString().trim();
+		const ln = (row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U] ?? "")
+			.toString()
+			.trim();
 		if (ln) {
 			externalChoicesListNames.add(ln);
 		}
@@ -1167,14 +1257,35 @@ export function workbookToJson(opts: {
 	const osmTags: Record<string, Record<string, any>[]> = {};
 	const osmData = workbookDict.osm ?? [];
 	for (const row of osmData) {
-		const ln = (row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U] ?? "").toString().trim();
+		const ln = (row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U] ?? "")
+			.toString()
+			.trim();
 		if (ln) {
 			if (!osmTags[ln]) osmTags[ln] = [];
 			osmTags[ln].push(row);
 		}
 	}
 
-	const children = processSurveyRows(surveyRows, choicesByListName, warnings, settings, hasChoicesSheet, hasExternalChoicesSheet, sheetNames, choicesData, entityDeclarations, entityVariableReferences, entityReferencesByQuestion, surveyTranslations, choicesTranslations, externalChoicesListNames, formName, cleanTextValuesEnabled, workbookDict, osmTags);
+	const children = processSurveyRows(
+		surveyRows,
+		choicesByListName,
+		warnings,
+		settings,
+		hasChoicesSheet,
+		hasExternalChoicesSheet,
+		sheetNames,
+		choicesData,
+		entityDeclarations,
+		entityVariableReferences,
+		entityReferencesByQuestion,
+		surveyTranslations,
+		choicesTranslations,
+		externalChoicesListNames,
+		formName,
+		cleanTextValuesEnabled,
+		workbookDict,
+		osmTags,
+	);
 
 	// Build the final JSON structure
 	const smsKeyword = settings[constants.SMS_KEYWORD] ?? idString;
@@ -1184,7 +1295,8 @@ export function workbookToJson(opts: {
 		[constants.TITLE]: settings[constants.TITLE] ?? idString,
 		[constants.ID_STRING]: idString,
 		[constants.SMS_KEYWORD]: smsKeyword,
-		[constants.DEFAULT_LANGUAGE_KEY]: defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE,
+		[constants.DEFAULT_LANGUAGE_KEY]:
+			defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE,
 		[constants.CHILDREN]: children,
 	};
 
@@ -1201,7 +1313,10 @@ export function workbookToJson(opts: {
 		const metaGroups: Record<string, any>[] = [];
 		const nonMetaChildren: Record<string, any>[] = [];
 		for (const child of allChildren) {
-			if (child[constants.NAME] === "meta" && child[constants.TYPE] === constants.GROUP) {
+			if (
+				child[constants.NAME] === "meta" &&
+				child[constants.TYPE] === constants.GROUP
+			) {
 				metaGroups.push(child);
 			} else {
 				nonMetaChildren.push(child);
@@ -1218,7 +1333,8 @@ export function workbookToJson(opts: {
 		}
 	}
 
-	const effectiveDefaultLanguage = settings[constants.DEFAULT_LANGUAGE_KEY] ?? defaultLanguage;
+	const effectiveDefaultLanguage =
+		settings[constants.DEFAULT_LANGUAGE_KEY] ?? defaultLanguage;
 	if (effectiveDefaultLanguage) {
 		result[constants.DEFAULT_LANGUAGE_KEY] = effectiveDefaultLanguage;
 	}
@@ -1286,14 +1402,25 @@ function processSurveyRows(
 	surveyTranslations?: TranslationChecker,
 	choicesTranslations?: TranslationChecker,
 	externalChoicesListNames: Set<string> = new Set(),
-	formName: string = "data",
+	formName = "data",
 	stripWhitespace = false,
 	workbookDict?: DefinitionData,
 	osmTags: Record<string, Record<string, any>[]> = {},
 ): Record<string, any>[] {
 	const result: Record<string, any>[] = [];
 	let orOtherSeen = false;
-	const stack: { type: string; name: string; children: Record<string, any>[]; rowNum: number; namesInScope: Set<string>; namesLowerInScope: Set<string>; control_name?: string; control_type?: string; container_path?: ContainerPath; table_list?: boolean | string }[] = [];
+	const stack: {
+		type: string;
+		name: string;
+		children: Record<string, any>[];
+		rowNum: number;
+		namesInScope: Set<string>;
+		namesLowerInScope: Set<string>;
+		control_name?: string;
+		control_type?: string;
+		container_path?: ContainerPath;
+		table_list?: boolean | string;
+	}[] = [];
 	// Track names at the top (survey) scope
 	const topScopeNames = new Set<string>();
 	const topScopeNamesLower = new Set<string>();
@@ -1304,14 +1431,25 @@ function processSurveyRows(
 	// Track names that appear more than once across different scopes (ambiguous references)
 	const allQuestionNameCounts = new Map<string, number>();
 	// Track trigger references to validate after all questions are processed
-	const triggerReferences: { target: string; rowNum: number; questionName: string }[] = [];
+	const triggerReferences: {
+		target: string;
+		rowNum: number;
+		questionName: string;
+	}[] = [];
 	// Track hidden (non-user-visible) question names for trigger validation
 	const hiddenQuestionNames = new Set<string>();
 	// Track survey label/column references to validate after all questions are processed
-	const surveyColumnReferences: { target: string; rowNum: number; sheet: string; column: string }[] = [];
+	const surveyColumnReferences: {
+		target: string;
+		rowNum: number;
+		sheet: string;
+		column: string;
+	}[] = [];
 	let rowNum = 1; // 1-based, after header
 
-	const settingsDefaultLang = settings[constants.DEFAULT_LANGUAGE_KEY] ?? constants.DEFAULT_LANGUAGE_VALUE;
+	const settingsDefaultLang =
+		settings[constants.DEFAULT_LANGUAGE_KEY] ??
+		constants.DEFAULT_LANGUAGE_VALUE;
 
 	// Validate survey headers
 	const surveyHeaders = extractHeaders(rows);
@@ -1363,7 +1501,10 @@ function processSurveyRows(
 			resolvedSurveyHeaders.add(hl);
 		}
 		if (rows.length > 0 || (surveyHeader && surveyHeader.length > 0)) {
-			if (!resolvedSurveyHeaders.has("type") && !resolvedSurveyHeaders.has("command")) {
+			if (
+				!resolvedSurveyHeaders.has("type") &&
+				!resolvedSurveyHeaders.has("command")
+			) {
 				throw new PyXFormError(
 					`Invalid headers provided for sheet: 'survey'. One or more required column headers were not found: 'type'. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
 				);
@@ -1376,9 +1517,12 @@ function processSurveyRows(
 		const resolvedHeaders = new Map<string, string>();
 		for (const header of surveyHeaders) {
 			const headerLower = header.toLowerCase();
-			const alias = aliases.surveyHeader[header] ?? aliases.surveyHeader[headerLower];
+			const alias =
+				aliases.surveyHeader[header] ?? aliases.surveyHeader[headerLower];
 			const resolved = alias
-				? (Array.isArray(alias) ? alias.join("::") : alias)
+				? Array.isArray(alias)
+					? alias.join("::")
+					: alias
 				: headerLower;
 			const existing = resolvedHeaders.get(resolved);
 			if (existing && existing.toLowerCase() !== headerLower) {
@@ -1392,7 +1536,13 @@ function processSurveyRows(
 
 	for (const rawRow of rows) {
 		rowNum++;
-		const row = dealiasAndGroupHeaders(rawRow, aliases.surveyHeader as any, false, settingsDefaultLang, stripWhitespace);
+		const row = dealiasAndGroupHeaders(
+			rawRow,
+			aliases.surveyHeader as any,
+			false,
+			settingsDefaultLang,
+			stripWhitespace,
+		);
 
 		const type = (row[constants.TYPE] ?? "").toString().trim();
 		let name = (row[constants.NAME] ?? "").toString().trim();
@@ -1408,10 +1558,11 @@ function processSurveyRows(
 		const isBeginEnd = isEnd || isBeginLoop || isBeginGroupOrRepeat;
 
 		// Types that auto-assign their name when left blank
-		const autoNameTypes: Record<string, string | ((rowNum: number) => string)> = {
-			audit: "audit",
-			note: (rn: number) => `generated_note_name_${rn}`,
-		};
+		const autoNameTypes: Record<string, string | ((rowNum: number) => string)> =
+			{
+				audit: "audit",
+				note: (rn: number) => `generated_note_name_${rn}`,
+			};
 
 		if (!isEnd && !isBeginLoop && !name) {
 			// begin_group / begin_repeat with no name is also an error
@@ -1428,13 +1579,20 @@ function processSurveyRows(
 				);
 			}
 			// Auto-assign the name
-			const autoName = typeof autoNameEntry === "function" ? autoNameEntry(rowNum) : autoNameEntry;
+			const autoName =
+				typeof autoNameEntry === "function"
+					? autoNameEntry(rowNum)
+					: autoNameEntry;
 			name = autoName;
 			row[constants.NAME] = autoName;
 		}
 
 		// Validate reserved names (case-sensitive match only; uppercase variants are allowed)
-		if (!isBeginEnd && name && constants.RESERVED_NAMES_SURVEY_SHEET.has(name)) {
+		if (
+			!isBeginEnd &&
+			name &&
+			constants.RESERVED_NAMES_SURVEY_SHEET.has(name)
+		) {
 			throw new PyXFormError(
 				`[row : ${rowNum}] On the 'survey' sheet, the 'name' value '${name}' is invalid. The name '${name}' is reserved for form metadata.`,
 			);
@@ -1456,8 +1614,12 @@ function processSurveyRows(
 
 		// Validate name uniqueness within the current scope
 		if (!isEnd && name) {
-			const currentScopeNames = stack.length > 0 ? stack[stack.length - 1].namesInScope : topScopeNames;
-			const currentScopeNamesLower = stack.length > 0 ? stack[stack.length - 1].namesLowerInScope : topScopeNamesLower;
+			const currentScopeNames =
+				stack.length > 0 ? stack[stack.length - 1].namesInScope : topScopeNames;
+			const currentScopeNamesLower =
+				stack.length > 0
+					? stack[stack.length - 1].namesLowerInScope
+					: topScopeNamesLower;
 			if (currentScopeNames.has(name)) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] On the 'survey' sheet, the 'name' value '${name}' is invalid. Questions, groups, and repeats must be unique within their nearest parent group or repeat, or the survey if not inside a group or repeat.`,
@@ -1465,7 +1627,10 @@ function processSurveyRows(
 			}
 			// Case-insensitive duplicate warning
 			const nameLower = name.toLowerCase();
-			if (currentScopeNamesLower.has(nameLower) && !currentScopeNames.has(name)) {
+			if (
+				currentScopeNamesLower.has(nameLower) &&
+				!currentScopeNames.has(name)
+			) {
 				warnings.push(
 					`[row : ${rowNum}] On the 'survey' sheet, the 'name' value '${name}' is problematic. The name is a case-insensitive match to another name. Questions, groups, and repeats should be unique within the nearest parent group or repeat, or the survey if not inside a group or repeat. Some data processing tools are not case-sensitive, so the current names may make analysis difficult.`,
 				);
@@ -1474,9 +1639,16 @@ function processSurveyRows(
 			currentScopeNamesLower.add(nameLower);
 			// Track in the global set for reference validation
 			allQuestionNames.add(name);
-			allQuestionNameCounts.set(name, (allQuestionNameCounts.get(name) ?? 0) + 1);
+			allQuestionNameCounts.set(
+				name,
+				(allQuestionNameCounts.get(name) ?? 0) + 1,
+			);
 			// Track hidden (non-user-visible) questions for trigger validation
-			const hasLabel = row.label && (typeof row.label === "string" ? row.label.trim() !== "" : Object.keys(row.label).length > 0);
+			const hasLabel =
+				row.label &&
+				(typeof row.label === "string"
+					? row.label.trim() !== ""
+					: Object.keys(row.label).length > 0);
 			const hasCalculation = row.bind?.calculate || row.calculation;
 			if (type === "calculate" || (hasCalculation && !hasLabel)) {
 				hiddenQuestionNames.add(name);
@@ -1493,9 +1665,10 @@ function processSurveyRows(
 				);
 			}
 
-			const sectionType = beginMatch[1].toLowerCase() === "group"
-				? constants.GROUP
-				: constants.REPEAT;
+			const sectionType =
+				beginMatch[1].toLowerCase() === "group"
+					? constants.GROUP
+					: constants.REPEAT;
 
 			// Validate repeat names: must be unique globally and not same as survey root
 			if (sectionType === constants.REPEAT) {
@@ -1512,8 +1685,14 @@ function processSurveyRows(
 				repeatNames.add(name);
 			}
 
-			const parentPath = stack.length > 0 ? stack[stack.length - 1].container_path ?? ContainerPath.default() : ContainerPath.default();
-			const newPath = new ContainerPath([...parentPath.nodes, { name, type: sectionType }]);
+			const parentPath =
+				stack.length > 0
+					? (stack[stack.length - 1].container_path ?? ContainerPath.default())
+					: ContainerPath.default();
+			const newPath = new ContainerPath([
+				...parentPath.nodes,
+				{ name, type: sectionType },
+			]);
 			stack.push({
 				type: sectionType,
 				name,
@@ -1533,15 +1712,13 @@ function processSurveyRows(
 				[constants.CHILDREN]: stack[stack.length - 1].children,
 			};
 			// Remove type from row since we're setting it explicitly
-			delete sectionDict.type;
+			sectionDict.type = undefined;
 			sectionDict[constants.TYPE] = sectionType;
 
 			// Warn if repeat has no label
 			if (sectionType === constants.REPEAT && !sectionDict[constants.LABEL]) {
 				const msgDict = `{'name': '${row[constants.NAME] ?? ""}', 'type': '${row[constants.TYPE] ?? ""}'}`;
-				warnings.push(
-					`[row : ${rowNum}] Repeat has no label: ${msgDict}`,
-				);
+				warnings.push(`[row : ${rowNum}] Repeat has no label: ${msgDict}`);
 			}
 
 			// Handle repeat_count: generate a calculated node for non-simple references
@@ -1554,7 +1731,8 @@ function processSurveyRows(
 							`[row : ${rowNum}] On the 'survey' sheet, the repeat_count expression for '${name}' requires a generated element named '${generatedNodeName}', but a question with that name already exists. Please rename the existing question or use a simple variable reference for repeat_count.`,
 						);
 					}
-					const parentArray = stack.length > 1 ? stack[stack.length - 2].children : result;
+					const parentArray =
+						stack.length > 1 ? stack[stack.length - 2].children : result;
 					parentArray.push({
 						[constants.NAME]: generatedNodeName,
 						bind: {
@@ -1563,7 +1741,8 @@ function processSurveyRows(
 						},
 						[constants.TYPE]: "calculate",
 					});
-					sectionDict[constants.CONTROL]["jr:count"] = `\${${generatedNodeName}}`;
+					sectionDict[constants.CONTROL]["jr:count"] =
+						`\${${generatedNodeName}}`;
 					allQuestionNames.add(generatedNodeName);
 				}
 			}
@@ -1576,22 +1755,23 @@ function processSurveyRows(
 					let appearanceString = "field-list";
 					for (const w of appearanceMods) {
 						if (w !== constants.TABLE_LIST) {
-							appearanceString += " " + w;
+							appearanceString += ` ${w}`;
 						}
 					}
 					sectionDict[constants.CONTROL].appearance = appearanceString;
 					if (sectionDict[constants.LABEL] || sectionDict.hint) {
 						const generatedLabelElement: Record<string, any> = {
 							[constants.TYPE]: "note",
-							[constants.NAME]: "generated_table_list_label_" + String(rowNum),
+							[constants.NAME]: `generated_table_list_label_${String(rowNum)}`,
 						};
 						if (sectionDict[constants.LABEL]) {
-							generatedLabelElement[constants.LABEL] = sectionDict[constants.LABEL];
+							generatedLabelElement[constants.LABEL] =
+								sectionDict[constants.LABEL];
 							delete sectionDict[constants.LABEL];
 						}
 						if (sectionDict.hint) {
 							generatedLabelElement.hint = sectionDict.hint;
-							delete sectionDict.hint;
+							sectionDict.hint = undefined;
 						}
 						stack[stack.length - 1].children.push(generatedLabelElement);
 					}
@@ -1601,14 +1781,25 @@ function processSurveyRows(
 
 			// Handle intent: move intent from top-level to control.intent
 			if (sectionDict.intent) {
-				if (!sectionDict[constants.CONTROL]) sectionDict[constants.CONTROL] = {};
+				if (!sectionDict[constants.CONTROL])
+					sectionDict[constants.CONTROL] = {};
 				sectionDict[constants.CONTROL].intent = sectionDict.intent;
-				delete sectionDict.intent;
+				sectionDict.intent = undefined;
 			}
 
 			// Check entity save_to on begin group/repeat (error)
 			if (row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS] && name) {
-				processEntityReferencesForQuestion(newPath, row, rowNum, name, entityDeclarations, entityVariableReferences, entityReferencesByQuestion, true, false);
+				processEntityReferencesForQuestion(
+					newPath,
+					row,
+					rowNum,
+					name,
+					entityDeclarations,
+					entityVariableReferences,
+					entityReferencesByQuestion,
+					true,
+					false,
+				);
 			}
 
 			if (stack.length > 1) {
@@ -1629,7 +1820,7 @@ function processSurveyRows(
 				children: [],
 				rowNum,
 				namesInScope: new Set<string>(),
-			namesLowerInScope: new Set<string>(),
+				namesLowerInScope: new Set<string>(),
 			});
 			const sectionDict: Record<string, any> = {
 				...row,
@@ -1638,7 +1829,7 @@ function processSurveyRows(
 				[constants.CHILDREN]: stack[stack.length - 1].children,
 				columns: choices[loopListName] ?? [],
 			};
-			delete sectionDict.type;
+			sectionDict.type = undefined;
 			sectionDict[constants.TYPE] = constants.LOOP;
 
 			if (stack.length > 1) {
@@ -1660,9 +1851,12 @@ function processSurveyRows(
 			}
 			const top = stack[stack.length - 1];
 			const endType = endMatch[1].toLowerCase();
-			const expectedType = endType === "group" ? constants.GROUP
-				: endType === "repeat" ? constants.REPEAT
-				: constants.LOOP;
+			const expectedType =
+				endType === "group"
+					? constants.GROUP
+					: endType === "repeat"
+						? constants.REPEAT
+						: constants.LOOP;
 			if (top.type !== expectedType) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] Unmatched 'end_${endMatch[1]}'. No matching 'begin_${endMatch[1]}' was found for the name '${endName}'.`,
@@ -1670,8 +1864,22 @@ function processSurveyRows(
 			}
 			// Check entity save_to on end group/repeat (error)
 			if (row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS]) {
-				const endCPath = stack.length > 0 ? stack[stack.length - 1].container_path ?? ContainerPath.default() : ContainerPath.default();
-				processEntityReferencesForQuestion(endCPath, row, rowNum, endName, entityDeclarations, entityVariableReferences, entityReferencesByQuestion, false, true);
+				const endCPath =
+					stack.length > 0
+						? (stack[stack.length - 1].container_path ??
+							ContainerPath.default())
+						: ContainerPath.default();
+				processEntityReferencesForQuestion(
+					endCPath,
+					row,
+					rowNum,
+					endName,
+					entityDeclarations,
+					entityVariableReferences,
+					entityReferencesByQuestion,
+					false,
+					true,
+				);
 			}
 			stack.pop();
 			continue;
@@ -1711,7 +1919,7 @@ function processSurveyRows(
 			}
 			// Check that calculation is not set
 			const calc = row.calculation ?? row.bind?.calculate;
-			if (calc && calc.toString().trim()) {
+			if (calc?.toString().trim()) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] For 'background-geopoint' questions, the 'calculation' column must be empty.`,
 				);
@@ -1720,7 +1928,19 @@ function processSurveyRows(
 
 		// Validate survey label/hint/constraint_message references
 		// We check BOTH the raw row (for original column names) and dealiased row
-		const surveyRefColumns = new Set(["label", "hint", "constraint_message", "guidance_hint", "calculation", "constraint", "relevant", "required", "default", "choice_filter", "repeat_count"]);
+		const surveyRefColumns = new Set([
+			"label",
+			"hint",
+			"constraint_message",
+			"guidance_hint",
+			"calculation",
+			"constraint",
+			"relevant",
+			"required",
+			"default",
+			"choice_filter",
+			"repeat_count",
+		]);
 		// Build a map from dealiased key -> original key for reference error reporting
 		const checkedRawCols = new Set<string>();
 		for (const [rawColKey, rawColVal] of Object.entries(rawRow)) {
@@ -1729,20 +1949,39 @@ function processSurveyRows(
 			// Resolve the column name through aliases to check if it's a ref column
 			const baseRawCol = rawColKey.split("::")[0].trim();
 			const aliased = aliases.surveyHeader[baseRawCol];
-			const resolvedCol = typeof aliased === "string" ? aliased : (Array.isArray(aliased) ? aliased[0] : baseRawCol);
+			const resolvedCol =
+				typeof aliased === "string"
+					? aliased
+					: Array.isArray(aliased)
+						? aliased[0]
+						: baseRawCol;
 			const resolvedBase = resolvedCol.split("::")[0].trim().toLowerCase();
 			const baseRawColLower = baseRawCol.toLowerCase();
 			// Only validate label-type columns
-			if (!surveyRefColumns.has(resolvedBase) && !surveyRefColumns.has(baseRawColLower)) continue;
+			if (
+				!surveyRefColumns.has(resolvedBase) &&
+				!surveyRefColumns.has(baseRawColLower)
+			)
+				continue;
 			checkedRawCols.add(rawColKey);
 			// Validate reference syntax first
-			const syntaxErr = validatePyxformReferenceSyntax(rawColVal, rowNum, "survey", rawColKey);
+			const syntaxErr = validatePyxformReferenceSyntax(
+				rawColVal,
+				rowNum,
+				"survey",
+				rawColKey,
+			);
 			if (syntaxErr) {
 				throw new PyXFormError(syntaxErr);
 			}
 			const refs = extractPyxformReferences(rawColVal);
 			for (const ref of refs) {
-				surveyColumnReferences.push({ target: ref, rowNum, sheet: "survey", column: rawColKey });
+				surveyColumnReferences.push({
+					target: ref,
+					rowNum,
+					sheet: "survey",
+					column: rawColKey,
+				});
 			}
 		}
 		// Also check dealiased row for any label-type columns that came from dealiasing
@@ -1765,16 +2004,22 @@ function processSurveyRows(
 			}
 			const refs = extractPyxformReferences(colVal);
 			for (const ref of refs) {
-				surveyColumnReferences.push({ target: ref, rowNum, sheet: "survey", column: colKey });
+				surveyColumnReferences.push({
+					target: ref,
+					rowNum,
+					sheet: "survey",
+					column: colKey,
+				});
 			}
 		}
 
 		// Process entity references for this question
 		const hasSaveTo = row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS];
 		if ((entityDeclarations || hasSaveTo) && name) {
-			const currentContainerPath = stack.length > 0
-				? stack[stack.length - 1].container_path ?? ContainerPath.default()
-				: ContainerPath.default();
+			const currentContainerPath =
+				stack.length > 0
+					? (stack[stack.length - 1].container_path ?? ContainerPath.default())
+					: ContainerPath.default();
 			const isContainerBegin = isBeginGroupOrRepeat;
 			processEntityReferencesForQuestion(
 				currentContainerPath,
@@ -1790,36 +2035,70 @@ function processSurveyRows(
 		}
 
 		// Process question type
-		const questionDict = processQuestionRow(row, type, name, choices, rowNum, warnings, settings, hasChoicesSheet, hasExternalChoicesSheet, sheetNames, externalChoicesListNames, osmTags);
+		const questionDict = processQuestionRow(
+			row,
+			type,
+			name,
+			choices,
+			rowNum,
+			warnings,
+			settings,
+			hasChoicesSheet,
+			hasExternalChoicesSheet,
+			sheetNames,
+			externalChoicesListNames,
+			osmTags,
+		);
 		if (!questionDict) continue;
 
 		// Handle or_other
 		let specifyOtherQuestion: Record<string, any> | null = null;
 		if (questionDict.or_other) {
 			orOtherSeen = true;
-			if (questionDict[constants.CHOICE_FILTER] || row[constants.CHOICE_FILTER] || row.choice_filter) {
-				throw new PyXFormError(`[row : ${rowNum}] Choice filter not supported with or_other.`);
+			if (
+				questionDict[constants.CHOICE_FILTER] ||
+				row[constants.CHOICE_FILTER] ||
+				row.choice_filter
+			) {
+				throw new PyXFormError(
+					`[row : ${rowNum}] Choice filter not supported with or_other.`,
+				);
 			}
-			const listName = questionDict[constants.LIST_NAME_U] ?? questionDict[constants.ITEMSET];
+			const listName =
+				questionDict[constants.LIST_NAME_U] ?? questionDict[constants.ITEMSET];
 			const itemsetChoices = listName ? choices[listName] : null;
 			if (itemsetChoices && Array.isArray(itemsetChoices)) {
-				const hasOther = itemsetChoices.some(c => c[constants.NAME] === "other");
+				const hasOther = itemsetChoices.some(
+					(c) => c[constants.NAME] === "other",
+				);
 				if (!hasOther) {
 					const hasTranslatedLabels = itemsetChoices.some(
-						c => typeof c[constants.LABEL] === "object" && c[constants.LABEL] !== null,
+						(c) =>
+							typeof c[constants.LABEL] === "object" &&
+							c[constants.LABEL] !== null,
 					);
 					if (hasTranslatedLabels) {
 						const allLangs = new Set<string>();
 						for (const c of itemsetChoices) {
-							if (typeof c[constants.LABEL] === "object" && c[constants.LABEL] !== null) {
-								for (const lang of Object.keys(c[constants.LABEL])) allLangs.add(lang);
+							if (
+								typeof c[constants.LABEL] === "object" &&
+								c[constants.LABEL] !== null
+							) {
+								for (const lang of Object.keys(c[constants.LABEL]))
+									allLangs.add(lang);
 							}
 						}
 						const otherLabel: Record<string, string> = {};
 						for (const lang of allLangs) otherLabel[lang] = "Other";
-						itemsetChoices.push({ [constants.NAME]: "other", [constants.LABEL]: otherLabel });
+						itemsetChoices.push({
+							[constants.NAME]: "other",
+							[constants.LABEL]: otherLabel,
+						});
 					} else {
-						itemsetChoices.push({ [constants.NAME]: "other", [constants.LABEL]: "Other" });
+						itemsetChoices.push({
+							[constants.NAME]: "other",
+							[constants.LABEL]: "Other",
+						});
 					}
 				}
 			}
@@ -1832,18 +2111,27 @@ function processSurveyRows(
 		}
 
 		// Handle table-list select appearance
-		const currentTableList = stack.length > 0 ? (stack[stack.length - 1] as any).table_list : undefined;
+		const currentTableList =
+			stack.length > 0
+				? (stack[stack.length - 1] as any).table_list
+				: undefined;
 		if (currentTableList !== undefined && questionDict[constants.ITEMSET]) {
 			const selectListName = questionDict[constants.ITEMSET];
 			if (currentTableList === true) {
 				// First select in the table-list group
 				(stack[stack.length - 1] as any).table_list = selectListName;
-				if (questionDict[constants.CHOICE_FILTER] || row[constants.CHOICE_FILTER] || row.choice_filter) {
-					throw new PyXFormError(`[row : ${rowNum}] Choice filter not supported for table-list appearance.`);
+				if (
+					questionDict[constants.CHOICE_FILTER] ||
+					row[constants.CHOICE_FILTER] ||
+					row.choice_filter
+				) {
+					throw new PyXFormError(
+						`[row : ${rowNum}] Choice filter not supported for table-list appearance.`,
+					);
 				}
 				const tableListHeader: Record<string, any> = {
 					[constants.TYPE]: questionDict[constants.TYPE],
-					[constants.NAME]: "reserved_name_for_field_list_labels_" + String(rowNum),
+					[constants.NAME]: `reserved_name_for_field_list_labels_${String(rowNum)}`,
 					[constants.CONTROL]: { appearance: "label" },
 					[constants.ITEMSET]: selectListName,
 					[constants.LABEL]: " ",
@@ -1857,13 +2145,15 @@ function processSurveyRows(
 					`[row : ${rowNum}] Badly formatted table list, list names don't match: ${currentTableList} vs. ${selectListName}`,
 				);
 			}
-			if (!questionDict[constants.CONTROL]) questionDict[constants.CONTROL] = {};
+			if (!questionDict[constants.CONTROL])
+				questionDict[constants.CONTROL] = {};
 			questionDict[constants.CONTROL].appearance = "list-nolabel";
 		}
 
 		if (stack.length > 0) {
 			stack[stack.length - 1].children.push(questionDict);
-			if (specifyOtherQuestion) stack[stack.length - 1].children.push(specifyOtherQuestion);
+			if (specifyOtherQuestion)
+				stack[stack.length - 1].children.push(specifyOtherQuestion);
 		} else {
 			result.push(questionDict);
 			if (specifyOtherQuestion) result.push(specifyOtherQuestion);
@@ -1872,7 +2162,10 @@ function processSurveyRows(
 
 	// Add or_other warning if translations are present
 	if (orOtherSeen && surveyTranslations && choicesTranslations) {
-		if (!surveyTranslations.seenDefaultOnly() || !choicesTranslations.seenDefaultOnly()) {
+		if (
+			!surveyTranslations.seenDefaultOnly() ||
+			!choicesTranslations.seenDefaultOnly()
+		) {
 			warnings.push(OR_OTHER_WARNING);
 		}
 	}
@@ -1885,11 +2178,20 @@ function processSurveyRows(
 	}
 
 	// Add well-known meta names to the question name set for reference validation
-	const omitInstanceIDForRefs = settings.omit_instanceID === "yes" || settings.omit_instanceID === "true";
+	const omitInstanceIDForRefs =
+		settings.omit_instanceID === "yes" || settings.omit_instanceID === "true";
 	const metaRefNames: string[] = [
-		"instanceName", "meta",
-		"audit", "start", "end", "today", "deviceid",
-		"phonenumber", "username", "simserial", "subscriberid",
+		"instanceName",
+		"meta",
+		"audit",
+		"start",
+		"end",
+		"today",
+		"deviceid",
+		"phonenumber",
+		"username",
+		"simserial",
+		"subscriberid",
 	];
 	// Only allow ${instanceID} reference when instanceID is not omitted
 	if (!omitInstanceIDForRefs) {
@@ -1915,9 +2217,16 @@ function processSurveyRows(
 	}
 
 	// Validate survey column references: each target must exist uniquely in the survey
-	for (const { target: rawTarget, rowNum: refRow, sheet, column } of surveyColumnReferences) {
+	for (const {
+		target: rawTarget,
+		rowNum: refRow,
+		sheet,
+		column,
+	} of surveyColumnReferences) {
 		// Strip last-saved# prefix for validation
-		const target = rawTarget.startsWith("last-saved#") ? rawTarget.substring("last-saved#".length) : rawTarget;
+		const target = rawTarget.startsWith("last-saved#")
+			? rawTarget.substring("last-saved#".length)
+			: rawTarget;
 		if (!allQuestionNames.has(target)) {
 			throw new PyXFormError(
 				`[row : ${refRow}] On the '${sheet}' sheet, the '${column}' value is invalid. Reference variables must contain a name from the 'survey' sheet. Could not find the name '${target}'.`,
@@ -1942,8 +2251,15 @@ function processSurveyRows(
 
 	// Collect metadata-type children that belong in the <meta> group
 	const metaTypes = new Set([
-		"audit", "start", "end", "today", "deviceid",
-		"phonenumber", "username", "simserial", "subscriberid",
+		"audit",
+		"start",
+		"end",
+		"today",
+		"deviceid",
+		"phonenumber",
+		"username",
+		"simserial",
+		"subscriberid",
 	]);
 	const metaChildren: Record<string, any>[] = [];
 	const filteredResult: Record<string, any>[] = [];
@@ -1958,7 +2274,8 @@ function processSurveyRows(
 	result.push(...filteredResult);
 
 	// Add meta group with collected metadata children
-	const omitInstanceID = settings.omit_instanceID === "yes" || settings.omit_instanceID === "true";
+	const omitInstanceID =
+		settings.omit_instanceID === "yes" || settings.omit_instanceID === "true";
 
 	// Handle instance_name setting
 	if (settings.instance_name) {
@@ -1994,11 +2311,16 @@ function parseParameters(rawParams: string): Record<string, string> {
 	const result: Record<string, string> = {};
 	if (!rawParams || typeof rawParams !== "string") return result;
 	// Parameters are separated by spaces, commas, or semicolons
-	const pairs = rawParams.trim().split(/[\s,;]+/).filter(Boolean);
+	const pairs = rawParams
+		.trim()
+		.split(/[\s,;]+/)
+		.filter(Boolean);
 	for (const pair of pairs) {
 		const eqIdx = pair.indexOf("=");
 		if (eqIdx > 0) {
-			result[pair.substring(0, eqIdx).trim()] = pair.substring(eqIdx + 1).trim();
+			result[pair.substring(0, eqIdx).trim()] = pair
+				.substring(eqIdx + 1)
+				.trim();
 		}
 	}
 	return result;
@@ -2067,22 +2389,25 @@ function processQuestionRow(
 	const selectFromFileMatch = type.match(
 		/^(select[_ ]one[_ ]from[_ ]file|select[_ ]multiple[_ ]from[_ ]file)\s+(.+)$/i,
 	);
-	const selectExternalMatch = !selectFromFileMatch && type.match(
-		/^(select[_ ]one[_ ]external)\s+(.+)$/i,
-	);
-	const osmMatch = !selectFromFileMatch && !selectExternalMatch && type.match(
-		/^(osm)\s+(.+)$/i,
-	);
-	const selectMatch = !selectFromFileMatch && !selectExternalMatch && !osmMatch && type.match(
-		/^(add select one prompt using|add select multiple prompt using|select all that apply from|select[_ ]one[_ ]from|select[_ ]one|select[_ ]multiple|select[_ ]all[_ ]that[_ ]apply|select1|rank)\s+(.+)$/i,
-	);
+	const selectExternalMatch =
+		!selectFromFileMatch && type.match(/^(select[_ ]one[_ ]external)\s+(.+)$/i);
+	const osmMatch =
+		!selectFromFileMatch &&
+		!selectExternalMatch &&
+		type.match(/^(osm)\s+(.+)$/i);
+	const selectMatch =
+		!selectFromFileMatch &&
+		!selectExternalMatch &&
+		!osmMatch &&
+		type.match(
+			/^(add select one prompt using|add select multiple prompt using|select all that apply from|select[_ ]one[_ ]from|select[_ ]one|select[_ ]multiple|select[_ ]all[_ ]that[_ ]apply|select1|rank)\s+(.+)$/i,
+		);
 
 	if (selectFromFileMatch) {
 		selectCommand = selectFromFileMatch[1].toLowerCase();
-		const selectType = selectFromFileMatch[1]
-			.toLowerCase()
-			.replace(/_/g, " ");
-		type = aliases.selectFromFile[selectType] ??
+		const selectType = selectFromFileMatch[1].toLowerCase().replace(/_/g, " ");
+		type =
+			aliases.selectFromFile[selectType] ??
 			aliases.selectFromFile[selectFromFileMatch[1].toLowerCase()] ??
 			constants.SELECT_ONE;
 		listName = selectFromFileMatch[2].trim();
@@ -2097,7 +2422,10 @@ function processQuestionRow(
 		let rawListName = selectMatch[2].trim();
 
 		// Handle "or_other" suffix
-		if (rawListName.endsWith(" or_other") || rawListName.endsWith(" or other")) {
+		if (
+			rawListName.endsWith(" or_other") ||
+			rawListName.endsWith(" or other")
+		) {
 			rawListName = rawListName.replace(/\s+or[_ ]other$/i, "");
 			orOther = true;
 		}
@@ -2108,7 +2436,10 @@ function processQuestionRow(
 			.replace("select multiple", "select all that apply");
 
 		// Map to canonical type
-		type = aliases.select[selectType] ?? aliases.select[selectMatch[1].toLowerCase()] ?? selectType;
+		type =
+			aliases.select[selectType] ??
+			aliases.select[selectMatch[1].toLowerCase()] ??
+			selectType;
 		listName = rawListName;
 	} else {
 		// Check type aliases
@@ -2119,9 +2450,15 @@ function processQuestionRow(
 	}
 
 	// Validate choices sheet presence for select types
-	if (selectMatch && listName && !selectFromFileMatch && !selectExternalMatch && !listName.includes("${")) {
+	if (
+		selectMatch &&
+		listName &&
+		!selectFromFileMatch &&
+		!selectExternalMatch &&
+		!listName.includes("${")
+	) {
 		if (!hasChoicesSheet && Object.keys(choices).length === 0) {
-			let msg = `There should be a choices sheet in this xlsform.`;
+			let msg = "There should be a choices sheet in this xlsform.";
 			const similar = findSheetMisspellings(constants.CHOICES, sheetNames);
 			if (similar) {
 				msg += ` ${similar}`;
@@ -2132,8 +2469,11 @@ function processQuestionRow(
 	}
 	if (selectExternalMatch && listName) {
 		if (!hasExternalChoicesSheet) {
-			let msg = `There should be an external_choices sheet in this xlsform.`;
-			const similar = findSheetMisspellings(constants.EXTERNAL_CHOICES, sheetNames);
+			let msg = "There should be an external_choices sheet in this xlsform.";
+			const similar = findSheetMisspellings(
+				constants.EXTERNAL_CHOICES,
+				sheetNames,
+			);
 			if (similar) {
 				msg += ` ${similar}`;
 			}
@@ -2152,7 +2492,9 @@ function processQuestionRow(
 		const dotIdx = listName.lastIndexOf(".");
 		const fileExt = dotIdx >= 0 ? listName.substring(dotIdx) : "";
 		if (dotIdx < 0 || !constants.EXTERNAL_INSTANCE_EXTENSIONS.has(fileExt)) {
-			const exts = [...constants.EXTERNAL_INSTANCE_EXTENSIONS].map((e) => `'${e}'`).join(", ");
+			const exts = [...constants.EXTERNAL_INSTANCE_EXTENSIONS]
+				.map((e) => `'${e}'`)
+				.join(", ");
 			throw new PyXFormError(
 				`[row : ${rowNum}] File name for '${selectCommand} ${listName}' should end with one of the supported file extensions: ${exts}`,
 			);
@@ -2172,9 +2514,7 @@ function processQuestionRow(
 		const defaultVal = row.default;
 		const hasDynamic = defaultVal && defaultIsDynamic(String(defaultVal), type);
 		if (!calculation && !hasDynamic) {
-			throw new PyXFormError(
-				`[row : ${rowNum}] Missing calculation.`,
-			);
+			throw new PyXFormError(`[row : ${rowNum}] Missing calculation.`);
 		}
 	}
 
@@ -2184,7 +2524,10 @@ function processQuestionRow(
 	questionDict[constants.NAME] = name;
 
 	// Parse parameters column
-	if (questionDict[constants.PARAMETERS] && typeof questionDict[constants.PARAMETERS] === "string") {
+	if (
+		questionDict[constants.PARAMETERS] &&
+		typeof questionDict[constants.PARAMETERS] === "string"
+	) {
 		const rawParamsStr = questionDict[constants.PARAMETERS] as string;
 
 		// Check for malformed parameters (range-specific)
@@ -2216,7 +2559,9 @@ function processQuestionRow(
 	}
 
 	// Type-specific parameter validation
-	const params = questionDict[constants.PARAMETERS] as Record<string, string> | undefined;
+	const params = questionDict[constants.PARAMETERS] as
+		| Record<string, string>
+		| undefined;
 
 	// Audit validation
 	if (type === "audit") {
@@ -2230,9 +2575,7 @@ function processQuestionRow(
 			const INCREMENTAL_ALIASES = new Set(["true", "yes", "true()"]);
 			if (!INCREMENTAL_ALIASES.has(incVal)) {
 				throw new PyXFormError(
-					`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. ` +
-					"For geoshape and geotrace questions, the 'incremental' parameter may either " +
-					"be 'true' or not included.",
+					`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. For geoshape and geotrace questions, the 'incremental' parameter may either be 'true' or not included.`,
 				);
 			}
 			// Normalize to "true"
@@ -2260,7 +2603,7 @@ function processQuestionRow(
 			name: "odk:recordaudio",
 			event: "odk-instance-load",
 		};
-		if (params && params.quality) {
+		if (params?.quality) {
 			recordAudioAction["odk:quality"] = params.quality;
 		}
 		if (!questionDict.actions) questionDict.actions = [];
@@ -2270,7 +2613,9 @@ function processQuestionRow(
 	// Photo/image parameter validation
 	if ((type === "photo" || type === "image") && params) {
 		const allowedImageParams = new Set(["app", "max-pixels"]);
-		const invalidParams = Object.keys(params).filter(k => !allowedImageParams.has(k));
+		const invalidParams = Object.keys(params).filter(
+			(k) => !allowedImageParams.has(k),
+		);
 		if (invalidParams.length > 0) {
 			throw new PyXFormError(
 				`Accepted parameters are '${[...allowedImageParams].sort().join(", ")}'. The following are invalid parameter(s): '${invalidParams.join(", ")}'.`,
@@ -2279,10 +2624,12 @@ function processQuestionRow(
 	}
 	// Photo/image max-pixels parameter
 	if (type === "photo" || type === "image") {
-		if (params && params["max-pixels"]) {
+		if (params?.["max-pixels"]) {
 			const mp = params["max-pixels"];
 			if (!/^\d+$/.test(mp)) {
-				throw new PyXFormError("Parameter max-pixels must have an integer value.");
+				throw new PyXFormError(
+					"Parameter max-pixels must have an integer value.",
+				);
 			}
 			if (!questionDict[constants.BIND]) questionDict[constants.BIND] = {};
 			questionDict[constants.BIND]["orx:max-pixels"] = mp;
@@ -2294,12 +2641,15 @@ function processQuestionRow(
 
 		// App parameter → intent attribute on control
 		if (params && "app" in params) {
-			const appearance = (questionDict[constants.CONTROL]?.appearance ?? "").toString().trim();
+			const appearance = (questionDict[constants.CONTROL]?.appearance ?? "")
+				.toString()
+				.trim();
 			if (!appearance || appearance === "annotate") {
 				const appPackageName = String(params.app);
 				const validationResult = validateAndroidPackageName(appPackageName);
 				if (validationResult === null) {
-					if (!questionDict[constants.CONTROL]) questionDict[constants.CONTROL] = {};
+					if (!questionDict[constants.CONTROL])
+						questionDict[constants.CONTROL] = {};
 					questionDict[constants.CONTROL].intent = appPackageName;
 				} else {
 					throw new PyXFormError(`[row : ${rowNum}] ${validationResult}`);
@@ -2323,7 +2673,9 @@ function processQuestionRow(
 			selectParamsAllowed.push("value", "label");
 		}
 		if (params) {
-			const extras = Object.keys(params).filter((k) => !selectParamsAllowed.includes(k));
+			const extras = Object.keys(params).filter(
+				(k) => !selectParamsAllowed.includes(k),
+			);
 			if (extras.length > 0) {
 				throw new PyXFormError(
 					`Accepted parameters are '${selectParamsAllowed.sort().join(", ")}'. The following are invalid parameter(s): '${extras.sort().join(", ")}'.`,
@@ -2344,7 +2696,12 @@ function processQuestionRow(
 		}
 		// Randomize parameter validation
 		if (params) {
-			if (params.randomize && params.randomize !== "true" && params.randomize !== "True" && params.randomize !== "false") {
+			if (
+				params.randomize &&
+				params.randomize !== "true" &&
+				params.randomize !== "True" &&
+				params.randomize !== "false"
+			) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] randomize must be set to true or false: '${params.randomize}' is an invalid value`,
 				);
@@ -2383,7 +2740,11 @@ function processQuestionRow(
 		questionDict[constants.LIST_NAME_U] = listName;
 
 		// For select_one_external with choice_filter, set query to list_name
-		const choiceFilter = questionDict[constants.CHOICE_FILTER] || row[constants.CHOICE_FILTER] || row.choice_filter || "";
+		const choiceFilter =
+			questionDict[constants.CHOICE_FILTER] ||
+			row[constants.CHOICE_FILTER] ||
+			row.choice_filter ||
+			"";
 		if (type === constants.SELECT_ONE_EXTERNAL && choiceFilter) {
 			questionDict.query = listName;
 		}
@@ -2400,7 +2761,7 @@ function processQuestionRow(
 
 	// Attach OSM tags for osm question types
 	if (type === "osm" && listName && osmTags[listName]) {
-		const tags = osmTags[listName].map(tag => ({ ...tag }));
+		const tags = osmTags[listName].map((tag) => ({ ...tag }));
 		for (const tag of tags) {
 			if (tag.name && osmTags[tag.name]) {
 				tag.choices = osmTags[tag.name];
@@ -2412,11 +2773,10 @@ function processQuestionRow(
 	return questionDict;
 }
 
-
 // --- SurveyReader and parseFileToJson ---
 
-import { getXlsform } from "./xls2json-backends.js";
 import * as path from "node:path";
+import { getXlsform } from "./xls2json-backends.js";
 
 /**
  * A wrapper for workbookToJson. Reads a file and converts to JSON dict.
@@ -2430,7 +2790,8 @@ export function parseFileToJson(
 	},
 ): Record<string, any> {
 	const defaultName = opts?.defaultName ?? constants.DEFAULT_FORM_NAME;
-	const defaultLanguage = opts?.defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE;
+	const defaultLanguage =
+		opts?.defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE;
 	const warnings = opts?.warnings ?? [];
 
 	const workbookDict = getXlsform(filePath);
@@ -2456,7 +2817,8 @@ export class SurveyReader {
 	constructor(pathOrFile: string, defaultName?: string) {
 		this._path = pathOrFile;
 		this._warnings = [];
-		const name = defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
+		const name =
+			defaultName ?? path.basename(pathOrFile, path.extname(pathOrFile));
 		this._name = name;
 		this._dict = parseFileToJson(pathOrFile, {
 			defaultName: name,

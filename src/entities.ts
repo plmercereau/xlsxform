@@ -16,7 +16,12 @@ import { getMetaGroup } from "./question-type-dictionary.js";
 // --- Constants ---
 
 const ENTITY_COLUMNS = new Set([
-	"dataset", "list_name", "entity_id", "create_if", "update_if", "label",
+	"dataset",
+	"list_name",
+	"entity_id",
+	"create_if",
+	"update_if",
+	"label",
 ]);
 
 // --- Container Path ---
@@ -34,12 +39,15 @@ export class ContainerPath {
 	}
 
 	static default(): ContainerPath {
-		return new ContainerPath([{ name: constants.SURVEY, type: constants.SURVEY }]);
+		return new ContainerPath([
+			{ name: constants.SURVEY, type: constants.SURVEY },
+		]);
 	}
 
 	static fromStack(stack: any[]): ContainerPath {
 		if (stack.length > 1) {
-			const parentPath = stack[stack.length - 2].container_path as ContainerPath;
+			const parentPath = stack[stack.length - 2]
+				.container_path as ContainerPath;
 			return new ContainerPath([
 				...parentPath.nodes,
 				{
@@ -52,12 +60,15 @@ export class ContainerPath {
 	}
 
 	pathAsStr(): string {
-		return "/" + this.nodes.map((n) => n.name).join("/");
+		return `/${this.nodes.map((n) => n.name).join("/")}`;
 	}
 
 	getScopeBoundary(): ContainerPath {
 		for (let i = this.nodes.length - 1; i >= 0; i--) {
-			if (this.nodes[i].type === constants.REPEAT || this.nodes[i].type === constants.SURVEY) {
+			if (
+				this.nodes[i].type === constants.REPEAT ||
+				this.nodes[i].type === constants.SURVEY
+			) {
 				return new ContainerPath(this.nodes.slice(0, i + 1));
 			}
 		}
@@ -77,7 +88,10 @@ export class ContainerPath {
 	getScopeBoundarySubpathNodeCount(): number {
 		let count = 0;
 		for (let i = this.nodes.length - 1; i >= 0; i--) {
-			if (this.nodes[i].type === constants.REPEAT || this.nodes[i].type === constants.SURVEY) {
+			if (
+				this.nodes[i].type === constants.REPEAT ||
+				this.nodes[i].type === constants.SURVEY
+			) {
 				break;
 			}
 			count++;
@@ -88,7 +102,10 @@ export class ContainerPath {
 	equals(other: ContainerPath): boolean {
 		if (this.nodes.length !== other.nodes.length) return false;
 		for (let i = 0; i < this.nodes.length; i++) {
-			if (this.nodes[i].name !== other.nodes[i].name || this.nodes[i].type !== other.nodes[i].type) {
+			if (
+				this.nodes[i].name !== other.nodes[i].name ||
+				this.nodes[i].type !== other.nodes[i].type
+			) {
 				return false;
 			}
 		}
@@ -136,16 +153,20 @@ const PYXFORM_REF_RE = /\$\{([^}]*)\}/g;
 function extractPyxformReferences(value: string): string[] {
 	const refs: string[] = [];
 	PYXFORM_REF_RE.lastIndex = 0;
-	let match: RegExpExecArray | null;
-	while ((match = PYXFORM_REF_RE.exec(value)) !== null) {
+	let match: RegExpExecArray | null = PYXFORM_REF_RE.exec(value);
+	while (match !== null) {
 		refs.push(match[1]);
+		match = PYXFORM_REF_RE.exec(value);
 	}
 	return refs;
 }
 
 // --- Entity declaration parsing ---
 
-function validateDatasetName(datasetName: string | null | undefined, rowNumber: number): void {
+function validateDatasetName(
+	datasetName: string | null | undefined,
+	rowNumber: number,
+): void {
 	if (!datasetName) {
 		throw new PyXFormError(
 			`[row : ${rowNumber}] On the 'entities' sheet, the 'list_name' value is invalid. Entity lists must have a name.`,
@@ -168,7 +189,10 @@ function validateDatasetName(datasetName: string | null | undefined, rowNumber: 
 	}
 }
 
-export function getEntityDeclaration(row: Record<string, any>, rowNumber: number): Record<string, any> {
+export function getEntityDeclaration(
+	row: Record<string, any>,
+	rowNumber: number,
+): Record<string, any> {
 	// Check for unexpected columns
 	const extra = Object.keys(row).filter((k) => !ENTITY_COLUMNS.has(k));
 	if (extra.length > 0) {
@@ -372,8 +396,10 @@ export function getEntityVariableReferences(
 ): Record<string, string[]> {
 	const variableReferences: Record<string, string[]> = {};
 	for (const [datasetName, declaration] of Object.entries(entityDeclarations)) {
-		const references = declaration.__variable_references as Set<string> | undefined;
-		delete declaration.__variable_references;
+		const references = declaration.__variable_references as
+			| Set<string>
+			| undefined;
+		declaration.__variable_references = undefined;
 		if (references) {
 			for (const questionName of references) {
 				if (!variableReferences[questionName]) {
@@ -547,7 +573,9 @@ export function validateEntityLabelReferences(
 
 // --- Get allocation request ---
 
-function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationRequest {
+function getEntityAllocationRequest(
+	entityRefs: EntityReferences,
+): AllocationRequest {
 	let deepestScopeBoundary: ContainerPath | null = null;
 	let deepestScopeBoundaryNodeCount: number | null = null;
 	let deepestScopeRef: ReferenceSource | null = null;
@@ -564,7 +592,10 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 		const boundary = ref.path.getScopeBoundary();
 		const boundaryLength = boundary.getScopeBoundaryNodeCount();
 
-		if (deepestScopeBoundary === null || boundaryLength > deepestScopeBoundaryNodeCount!) {
+		if (
+			deepestScopeBoundary === null ||
+			boundaryLength > deepestScopeBoundaryNodeCount!
+		) {
 			if (!deepestScopeBoundary || !boundary.equals(deepestScopeBoundary)) {
 				deepestContainerRef = ref;
 				deepestContainerRefSubpathNodeCount = refSubpathLength;
@@ -582,7 +613,8 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 
 		if (
 			deepestContainerRef === null ||
-			(boundary.equals(deepestScopeBoundary!) && refSubpathLength > deepestContainerRefSubpathNodeCount!)
+			(boundary.equals(deepestScopeBoundary!) &&
+				refSubpathLength > deepestContainerRefSubpathNodeCount!)
 		) {
 			deepestContainerRef = ref;
 			deepestContainerRefSubpathNodeCount = refSubpathLength;
@@ -596,7 +628,8 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 			}
 			if (
 				deepestSaveto === null ||
-				(boundary.equals(deepestScopeBoundary!) && refSubpathLength > deepestSavetoSubpathNodeCount!)
+				(boundary.equals(deepestScopeBoundary!) &&
+					refSubpathLength > deepestSavetoSubpathNodeCount!)
 			) {
 				deepestSaveto = ref;
 				deepestSavetoSubpathNodeCount = refSubpathLength;
@@ -622,7 +655,10 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 				const target = anyRef.nodes[i];
 				let mismatch = false;
 				for (const p of pathArrays) {
-					if (p.nodes[i].name !== target.name || p.nodes[i].type !== target.type) {
+					if (
+						p.nodes[i].name !== target.name ||
+						p.nodes[i].type !== target.type
+					) {
 						commonPath = new ContainerPath(anyRef.nodes.slice(0, i));
 						mismatch = true;
 						break;
@@ -636,7 +672,8 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 			requestedPath =
 				a.getScopeBoundaryNodeCount() > b.getScopeBoundaryNodeCount() ||
 				(a.getScopeBoundaryNodeCount() === b.getScopeBoundaryNodeCount() &&
-					a.getScopeBoundarySubpathNodeCount() >= b.getScopeBoundarySubpathNodeCount())
+					a.getScopeBoundarySubpathNodeCount() >=
+						b.getScopeBoundarySubpathNodeCount())
 					? a
 					: b;
 		} else {
@@ -648,7 +685,10 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 
 	// Validate each reference against the request constraints
 	for (const [refSource, scopeBoundary, scopeBoundaryLength] of boundaries) {
-		const deepestPrefix = deepestScopeBoundary!.nodes.slice(0, scopeBoundaryLength);
+		const deepestPrefix = deepestScopeBoundary!.nodes.slice(
+			0,
+			scopeBoundaryLength,
+		);
 		let prefixMatch = scopeBoundary.nodes.length <= deepestPrefix.length;
 		if (prefixMatch) {
 			for (let i = 0; i < scopeBoundary.nodes.length; i++) {
@@ -669,11 +709,10 @@ function getEntityAllocationRequest(entityRefs: EntityReferences): AllocationReq
 				throw new PyXFormError(
 					`[row : ${refSource.row}] On the 'survey' sheet, the 'save_to' value is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${deepestScopeRef!.path.pathAsStr()}' which is not compatible with this 'save_to' reference in scope '${refSource.path.pathAsStr()}'.`,
 				);
-			} else {
-				throw new PyXFormError(
-					`[row : ${entityRefs.row_number}] On the 'entities' sheet, the entity declaration is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${deepestScopeRef!.path.pathAsStr()}' which is not compatible with the variable reference to '${refSource.question_name}' in scope '${refSource.path.pathAsStr()}'.`,
-				);
 			}
+			throw new PyXFormError(
+				`[row : ${entityRefs.row_number}] On the 'entities' sheet, the entity declaration is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${deepestScopeRef!.path.pathAsStr()}' which is not compatible with the variable reference to '${refSource.question_name}' in scope '${refSource.path.pathAsStr()}'.`,
+			);
 		}
 
 		if (
@@ -751,14 +790,23 @@ export function allocateEntitiesToContainers(
 		const scopePath = requests[0].scope_path;
 		const scopePathDepthLimit = scopePath.nodes.length - 1;
 
-		for (const req of requests.sort((a, b) => a.entity_row_number - b.entity_row_number)) {
+		for (const req of requests.sort(
+			(a, b) => a.entity_row_number - b.entity_row_number,
+		)) {
 			let conflictDataset: string | null = null;
 
-			for (let depth = req.requested_path_length; depth > scopePathDepthLimit; depth--) {
-				const currentPath = new ContainerPath(req.requested_path.nodes.slice(0, depth));
+			for (
+				let depth = req.requested_path_length;
+				depth > scopePathDepthLimit;
+				depth--
+			) {
+				const currentPath = new ContainerPath(
+					req.requested_path.nodes.slice(0, depth),
+				);
 				const currentKey = currentPath.key();
 
-				conflictDataset = allocations.get(currentKey) ?? reservedPaths.get(currentKey) ?? null;
+				conflictDataset =
+					allocations.get(currentKey) ?? reservedPaths.get(currentKey) ?? null;
 				if (conflictDataset !== null) {
 					// Check if any saveto lineage is already reserved by another
 					let conflictDatasetSaveto: string | null = null;
@@ -773,13 +821,16 @@ export function allocateEntitiesToContainers(
 						conflictDataset = conflictDatasetSaveto;
 						break;
 					}
-					continue;
 				} else {
 					allocations.set(currentKey, req.dataset_name);
 					reservedPaths.set(currentKey, req.dataset_name);
 					// Reserve all nodes between each lineage leaf and the assigned node
 					for (const lineagePath of req.saveto_lineage_paths) {
-						for (let i = lineagePath.nodes.length; i > currentPath.nodes.length - 1; i--) {
+						for (
+							let i = lineagePath.nodes.length;
+							i > currentPath.nodes.length - 1;
+							i--
+						) {
 							const subPath = new ContainerPath(lineagePath.nodes.slice(0, i));
 							reservedPaths.set(subPath.key(), req.dataset_name);
 						}
@@ -803,14 +854,18 @@ export function allocateEntitiesToContainers(
 // --- Inject entities into JSON ---
 
 // Build a lookup from ContainerPath keys to ContainerPath objects
-function buildPathLookup(allocations: Map<string, string>): Map<string, ContainerPath> {
+function buildPathLookup(
+	allocations: Map<string, string>,
+): Map<string, ContainerPath> {
 	const lookup = new Map<string, ContainerPath>();
 	// We need to reconstruct ContainerPaths from their keys
 	// Since we can't directly reconstruct, we'll pass the actual paths
 	return lookup;
 }
 
-export function getSearchPrefixes(allocations: Map<string, string>): Set<string> {
+export function getSearchPrefixes(
+	allocations: Map<string, string>,
+): Set<string> {
 	const active = new Set<string>();
 	for (const pathKey of allocations.keys()) {
 		// Add every prefix of the path
@@ -858,7 +913,10 @@ export function injectEntitiesIntoJson(
 	for (const child of jsonNode[constants.CHILDREN] ?? []) {
 		const childName = child[constants.NAME];
 		const childType = child[constants.TYPE];
-		if (childName && (childType === constants.GROUP || childType === constants.REPEAT)) {
+		if (
+			childName &&
+			(childType === constants.GROUP || childType === constants.REPEAT)
+		) {
 			const childPath = new ContainerPath([
 				...currentPath.nodes,
 				{ name: childName, type: childType },

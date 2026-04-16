@@ -3,12 +3,18 @@
  */
 
 import * as path from "node:path";
-import { describe, it, expect } from "vitest";
-import { Survey } from "../src/survey.js";
-import { MultipleChoiceQuestion } from "../src/question.js";
+import { describe, expect, it } from "vitest";
 import { createSurveyFromXls } from "../src/builder.js";
+import { MultipleChoiceQuestion } from "../src/question.js";
+import { Survey } from "../src/survey.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 
 function pathToTextFixture(filename: string): string {
 	return path.join(EXAMPLE_XLS_PATH, filename);

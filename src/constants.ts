@@ -122,7 +122,11 @@ export const AUDIO_QUALITY_LOW = "low";
 export const AUDIO_QUALITY_NORMAL = "normal";
 export const AUDIO_QUALITY_EXTERNAL = "external";
 
-export const EXTERNAL_INSTANCE_EXTENSIONS = new Set([".xml", ".csv", ".geojson"]);
+export const EXTERNAL_INSTANCE_EXTENSIONS = new Set([
+	".xml",
+	".csv",
+	".geojson",
+]);
 
 export const DEFAULT_ITEMSET_LABEL_REF = "label";
 export const DEFAULT_ITEMSET_VALUE_REF = "name";

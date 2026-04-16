@@ -28,7 +28,7 @@ describe("LastSavedTest", () => {
 			`,
 			xml__contains: [
 				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
-				"calculate=\" instance('__last-saved')/last-saved/foo  + 1\" nodeset=\"/last-saved/foo\"",
+				'calculate=" instance(\'__last-saved\')/last-saved/foo  + 1" nodeset="/last-saved/foo"',
 			],
 		});
 	});
@@ -134,7 +134,7 @@ describe("LastSavedTest", () => {
 			`,
 			xml__contains: [
 				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
-				"<setvalue event=\"odk-instance-first-load\" ref=\"/last-saved/foo\" value=\" instance('__last-saved')/last-saved/foo \"/>",
+				'<setvalue event="odk-instance-first-load" ref="/last-saved/foo" value=" instance(\'__last-saved\')/last-saved/foo "/>',
 			],
 		});
 	});
@@ -153,8 +153,8 @@ describe("LastSavedTest", () => {
 			`,
 			xml__contains: [
 				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
-				"calculate=\" ../foo  +  instance('__last-saved')/last-saved/my-repeat/foo \" nodeset=\"/last-saved/my-repeat/bar\"",
-				"calculate=\" /last-saved/my-repeat/foo  +  instance('__last-saved')/last-saved/my-repeat/foo \" nodeset=\"/last-saved/baz\"",
+				'calculate=" ../foo  +  instance(\'__last-saved\')/last-saved/my-repeat/foo " nodeset="/last-saved/my-repeat/bar"',
+				'calculate=" /last-saved/my-repeat/foo  +  instance(\'__last-saved\')/last-saved/my-repeat/foo " nodeset="/last-saved/baz"',
 			],
 		});
 	});

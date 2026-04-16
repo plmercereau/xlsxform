@@ -3,7 +3,7 @@
  */
 
 import * as constants from "./constants.js";
-import { defaultIsDynamic, type Question } from "./question.js";
+import { type Question, defaultIsDynamic } from "./question.js";
 import { SurveyElement, type SurveyElementData } from "./survey-element.js";
 import { node } from "./utils.js";
 
@@ -57,7 +57,8 @@ export class Section extends SurveyElement {
 		}
 	}
 
-	xmlInstance(survey: any, appendTemplate = false): Element {
+	xmlInstance(survey: any, _appendTemplate = false): Element {
+		let appendTemplate = _appendTemplate;
 		const attrs: Record<string, string> = {};
 		if (this.instance) {
 			for (const [k, v] of Object.entries(this.instance)) {
@@ -146,27 +147,38 @@ export class RepeatingSection extends Section {
 			if (element === this) continue;
 			// Skip elements that are inside a deeper nested repeat
 			if (this._closestRepeatAncestor(element) !== this) continue;
-			if (element.default && typeof element.default === "string" && defaultIsDynamic(element.default, element.type)) {
+			if (
+				element.default &&
+				typeof element.default === "string" &&
+				defaultIsDynamic(element.default, element.type)
+			) {
 				const value = survey.insertXpaths(element.default, element);
-				repeatChildren.push(node("setvalue", {
-					attrs: {
-						event: "odk-new-repeat",
-						ref: element.getXpath(),
-						value,
-					},
-				}));
+				repeatChildren.push(
+					node("setvalue", {
+						attrs: {
+							event: "odk-new-repeat",
+							ref: element.getXpath(),
+							value,
+						},
+					}),
+				);
 			}
 			// Add entity setvalue elements for odk-new-repeat inside repeats
-			if (element.type === "entity" && typeof element.getEntitySetvalues === "function") {
+			if (
+				element.type === "entity" &&
+				typeof element.getEntitySetvalues === "function"
+			) {
 				for (const sv of element.getEntitySetvalues()) {
 					if (sv.event === "odk-new-repeat") {
-						repeatChildren.push(node("setvalue", {
-							attrs: {
-								event: sv.event,
-								ref: sv.ref,
-								value: sv.value,
-							},
-						}));
+						repeatChildren.push(
+							node("setvalue", {
+								attrs: {
+									event: sv.event,
+									ref: sv.ref,
+									value: sv.value,
+								},
+							}),
+						);
 					}
 				}
 			}
@@ -199,7 +211,8 @@ export class RepeatingSection extends Section {
 		return this;
 	}
 
-	xmlInstance(survey: any, appendTemplate = false): Element {
+	xmlInstance(survey: any, _appendTemplate = false): Element {
+		let appendTemplate = _appendTemplate;
 		const elem = node(this.name);
 		for (const child of this.children) {
 			if (child instanceof ExternalInstance) continue;
@@ -295,8 +308,4 @@ export class GroupedSection extends Section {
 }
 
 // Placeholder for ExternalInstance
-class ExternalInstance extends SurveyElement {
-	constructor(data: SurveyElementData) {
-		super(data);
-	}
-}
+class ExternalInstance extends SurveyElement {}

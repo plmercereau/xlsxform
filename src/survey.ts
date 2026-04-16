@@ -8,7 +8,12 @@ import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
 import { SurveyInstance } from "./instance.js";
 import { RE_PYXFORM_REF, hasPyxformReference } from "./parsing/expression.js";
-import { Itemset, MultipleChoiceQuestion, type Question, defaultIsDynamic } from "./question.js";
+import {
+	Itemset,
+	MultipleChoiceQuestion,
+	type Question,
+	defaultIsDynamic,
+} from "./question.js";
 import { RepeatingSection, type Section } from "./section.js";
 import { SurveyElement, type SurveyElementData } from "./survey-element.js";
 import { node, registerNamespace, serializeXml } from "./utils.js";
@@ -71,9 +76,9 @@ function findInstanceBoundaries(text: string): [number, number][] {
 	const boundaries: [number, number][] = [];
 	// Match instance( with optional quotes
 	const instancePattern = /instance\s*\(/g;
-	let instMatch: RegExpExecArray | null;
+	let instMatch: RegExpExecArray | null = instancePattern.exec(text);
 
-	while ((instMatch = instancePattern.exec(text)) !== null) {
+	while (instMatch !== null) {
 		const start = instMatch.index;
 		let pos = instMatch.index + instMatch[0].length;
 
@@ -133,6 +138,7 @@ function findInstanceBoundaries(text: string): [number, number][] {
 		boundaries.push([start, pos]);
 		// Continue searching from where we left off
 		instancePattern.lastIndex = pos;
+		instMatch = instancePattern.exec(text);
 	}
 
 	return boundaries;
@@ -335,7 +341,10 @@ export class Survey extends SurveyElement {
 	*iterDescendants(): Generator<SurveyElement> {
 		yield this;
 		for (const child of this.children) {
-			if ("iterDescendants" in child && typeof child.iterDescendants === "function") {
+			if (
+				"iterDescendants" in child &&
+				typeof child.iterDescendants === "function"
+			) {
 				yield* child.iterDescendants();
 			} else {
 				yield child;
@@ -368,14 +377,19 @@ export class Survey extends SurveyElement {
 		return new SurveyInstance(this);
 	}
 
-	getElementByName(name: string, errorPrefix?: string): SurveyElement | undefined {
+	getElementByName(
+		name: string,
+		errorPrefix?: string,
+	): SurveyElement | undefined {
 		if (!(name in this._xpath_dictionary)) {
 			return undefined;
 		}
 		const element = this._xpath_dictionary[name];
 		if (element === null) {
 			const prefix = errorPrefix ? `${errorPrefix} ` : "";
-			throw new PyXFormError(`${prefix}There are multiple survey elements named '${name}'.`);
+			throw new PyXFormError(
+				`${prefix}There are multiple survey elements named '${name}'.`,
+			);
 		}
 		return element;
 	}
@@ -391,11 +405,12 @@ export class Survey extends SurveyElement {
 			const nsString = this.namespaces;
 			// Parse format: prefix="uri" prefix2="uri2"
 			const nsRegex = /(\w+)\s*=\s*"([^"]+)"/g;
-			let match: RegExpExecArray | null;
-			while ((match = nsRegex.exec(nsString)) !== null) {
+			let match: RegExpExecArray | null = nsRegex.exec(nsString);
+			while (match !== null) {
 				nsmap[`xmlns:${match[1]}`] = match[2];
 				// Register for dynamic element/attribute creation
 				registerNamespace(match[1], match[2]);
+				match = nsRegex.exec(nsString);
 			}
 		}
 		return nsmap;
@@ -421,7 +436,8 @@ export class Survey extends SurveyElement {
 		let irMatch: RegExpExecArray | null;
 		indexedRepeatRegex.lastIndex = 0;
 		const irMatches: { start: number; end: number; argsStart: number }[] = [];
-		while ((irMatch = indexedRepeatRegex.exec(text)) !== null) {
+		irMatch = indexedRepeatRegex.exec(text);
+		while (irMatch !== null) {
 			const startPos = irMatch.index;
 			const argsStart = startPos + irMatch[0].length;
 			let depth = 1;
@@ -432,6 +448,7 @@ export class Survey extends SurveyElement {
 				pos++;
 			}
 			irMatches.push({ start: startPos, end: pos, argsStart });
+			irMatch = indexedRepeatRegex.exec(text);
 		}
 		// Process from end to start to preserve positions
 		for (let i = irMatches.length - 1; i >= 0; i--) {
@@ -457,7 +474,8 @@ export class Survey extends SurveyElement {
 			// Process each arg based on position
 			const processedArgs = args.map((arg, idx) => {
 				// Positions 0 (target), 1 (repeat1), 3 (repeat2), 5 (repeat3)... → absolute
-				const useAbsolute = idx === 0 || idx === 1 || (idx >= 3 && idx % 2 === 1);
+				const useAbsolute =
+					idx === 0 || idx === 1 || (idx >= 3 && idx % 2 === 1);
 				RE_PYXFORM_REF.lastIndex = 0;
 				return arg.replace(RE_PYXFORM_REF, (_match, refName: string) => {
 					let name = refName;
@@ -469,7 +487,9 @@ export class Survey extends SurveyElement {
 					const intro = `There has been a problem trying to replace \${${name}} with the XPath to the survey element named '${name}'.`;
 					const element = this.getElementByName(name, intro);
 					if (!element) {
-						throw new PyXFormError(`Reference variable '${refName}' not found.`);
+						throw new PyXFormError(
+							`Reference variable '${refName}' not found.`,
+						);
 					}
 					if (lastSaved) {
 						this._hasLastSavedReference = true;
@@ -486,7 +506,8 @@ export class Survey extends SurveyElement {
 			});
 
 			const replaced = prefix + processedArgs.join(",") + suffix;
-			processed = processed.substring(0, start) + replaced + processed.substring(end);
+			processed =
+				processed.substring(0, start) + replaced + processed.substring(end);
 		}
 
 		// Check if context is inside a repeat (for predicate current() wrapping)
@@ -494,53 +515,54 @@ export class Survey extends SurveyElement {
 		const contextInRepeat = contextRepeats.length > 0;
 
 		RE_PYXFORM_REF.lastIndex = 0;
-		return processed.replace(RE_PYXFORM_REF, (_match, refName: string, offset: number) => {
-			let lastSaved = false;
-			let name = refName;
-			if (name.startsWith("last-saved#")) {
-				lastSaved = true;
-				name = name.substring("last-saved#".length);
-			}
-
-			const intro = `There has been a problem trying to replace \${${name}} with the XPath to the survey element named '${name}'.`;
-			const element = this.getElementByName(name, intro);
-			if (!element) {
-				throw new PyXFormError(
-					`Reference variable '${refName}' not found.`,
-				);
-			}
-
-			if (lastSaved) {
-				this._hasLastSavedReference = true;
-				return ` instance('__last-saved')${element.getXpath()} `;
-			}
-
-			const xpath = element.getXpath();
-
-			// Check if this ref needs current() wrapping:
-			// - useCurrent is explicitly set (choice filters), OR
-			// - the ref is inside a predicate [...] in an instance() expression,
-			//   AND the context is in a repeat, AND the target shares the repeat
-			let shouldUseCurrent = useCurrent;
-			if (!shouldUseCurrent && contextInRepeat && !referenceParent) {
-				shouldUseCurrent = this.isRefInPredicate(processed, offset);
-			}
-
-			if (shouldUseCurrent) {
-				// Use relative path with current() prefix if target shares a repeat with context
-				const resolved = this.getPathRelativeToLcar(context, element, xpath);
-				if (resolved !== xpath) {
-					// It's relative within a repeat - use current() prefix
-					return ` current()/${resolved} `;
+		return processed.replace(
+			RE_PYXFORM_REF,
+			(_match, refName: string, offset: number) => {
+				let lastSaved = false;
+				let name = refName;
+				if (name.startsWith("last-saved#")) {
+					lastSaved = true;
+					name = name.substring("last-saved#".length);
 				}
-				// Target is not in the same repeat - use absolute path
-				return ` ${xpath} `;
-			}
 
-			// Check for relative path in repeats
-			const resolved = this.getPathRelativeToLcar(context, element, xpath);
-			return ` ${resolved} `;
-		});
+				const intro = `There has been a problem trying to replace \${${name}} with the XPath to the survey element named '${name}'.`;
+				const element = this.getElementByName(name, intro);
+				if (!element) {
+					throw new PyXFormError(`Reference variable '${refName}' not found.`);
+				}
+
+				if (lastSaved) {
+					this._hasLastSavedReference = true;
+					return ` instance('__last-saved')${element.getXpath()} `;
+				}
+
+				const xpath = element.getXpath();
+
+				// Check if this ref needs current() wrapping:
+				// - useCurrent is explicitly set (choice filters), OR
+				// - the ref is inside a predicate [...] in an instance() expression,
+				//   AND the context is in a repeat, AND the target shares the repeat
+				let shouldUseCurrent = useCurrent;
+				if (!shouldUseCurrent && contextInRepeat && !referenceParent) {
+					shouldUseCurrent = this.isRefInPredicate(processed, offset);
+				}
+
+				if (shouldUseCurrent) {
+					// Use relative path with current() prefix if target shares a repeat with context
+					const resolved = this.getPathRelativeToLcar(context, element, xpath);
+					if (resolved !== xpath) {
+						// It's relative within a repeat - use current() prefix
+						return ` current()/${resolved} `;
+					}
+					// Target is not in the same repeat - use absolute path
+					return ` ${xpath} `;
+				}
+
+				// Check for relative path in repeats
+				const resolved = this.getPathRelativeToLcar(context, element, xpath);
+				return ` ${resolved} `;
+			},
+		);
 	}
 
 	/**
@@ -580,7 +602,11 @@ export class Survey extends SurveyElement {
 
 			// Find the actual lowest common ancestor (longest common prefix)
 			let commonLen = 0;
-			for (let i = 0; i < Math.min(contextParts.length, targetParts.length); i++) {
+			for (
+				let i = 0;
+				i < Math.min(contextParts.length, targetParts.length);
+				i++
+			) {
 				if (contextParts[i] === targetParts[i]) {
 					commonLen = i + 1;
 				} else {
@@ -708,10 +734,7 @@ export class Survey extends SurveyElement {
 	/**
 	 * Resolve a single ${ref} to its xpath string (without <output> wrapping).
 	 */
-	private _resolveRef(
-		refName: string,
-		context: SurveyElement,
-	): string | null {
+	private _resolveRef(refName: string, context: SurveyElement): string | null {
 		let name = refName;
 		let lastSaved = false;
 		if (name.startsWith("last-saved#")) {
@@ -719,9 +742,14 @@ export class Survey extends SurveyElement {
 			name = name.substring("last-saved#".length);
 		}
 
-		if (name in this._xpath_dictionary && this._xpath_dictionary[name] === null) {
+		if (
+			name in this._xpath_dictionary &&
+			this._xpath_dictionary[name] === null
+		) {
 			const intro = `There has been a problem trying to replace \${${name}} with the XPath to the survey element named '${name}'.`;
-			throw new PyXFormError(`${intro} There are multiple survey elements named '${name}'.`);
+			throw new PyXFormError(
+				`${intro} There are multiple survey elements named '${name}'.`,
+			);
 		}
 
 		const element = this._xpath_dictionary[name];
@@ -745,7 +773,8 @@ export class Survey extends SurveyElement {
 		text: string,
 		context: SurveyElement,
 	): { text: string; hasOutput: boolean } {
-		if (!text || typeof text !== "string") return { text: text ?? "", hasOutput: false };
+		if (!text || typeof text !== "string")
+			return { text: text ?? "", hasOutput: false };
 		const hasPyxform = hasPyxformReference(text);
 		const hasInstance = /instance\s*\(/.test(text);
 		if (!hasPyxform && !hasInstance) return { text, hasOutput: false };
@@ -783,16 +812,22 @@ export class Survey extends SurveyElement {
 			const oldStr = text.substring(start, end);
 			// Replace ${ref} inside the instance expression with just the xpath.
 			RE_PYXFORM_REF.lastIndex = 0;
-			const resolvedStr = oldStr.replace(RE_PYXFORM_REF, (_match, refName: string) => {
-				const xpath = this._resolveRef(refName, context);
-				if (xpath === null) return _match;
-				return ` ${xpath} `;
-			});
+			const resolvedStr = oldStr.replace(
+				RE_PYXFORM_REF,
+				(_match, refName: string) => {
+					const xpath = this._resolveRef(refName, context);
+					if (xpath === null) return _match;
+					return ` ${xpath} `;
+				},
+			);
 			// Escape XML special chars inside the expression for the attribute value,
 			// but preserve quotes (single and double) as-is since they're part of XPath.
 			const escapedStr = escapeInstanceExprForXml(resolvedStr);
 			const newStr = `<output value="${escapedStr}"/>`;
-			result = result.substring(0, start + offset) + newStr + result.substring(end + offset);
+			result =
+				result.substring(0, start + offset) +
+				newStr +
+				result.substring(end + offset);
 			offset += newStr.length - oldStr.length;
 		}
 
@@ -805,7 +840,10 @@ export class Survey extends SurveyElement {
 	private _translationContexts: Record<string, SurveyElement> = {};
 
 	private setupTranslations(): void {
-		const translations: Record<string, Record<string, Record<string, any>>> = {};
+		const translations: Record<
+			string,
+			Record<string, Record<string, any>>
+		> = {};
 		this._translationContexts = {};
 
 		for (const element of this.iterDescendants()) {
@@ -842,7 +880,8 @@ export class Survey extends SurveyElement {
 					if (typeof option.label === "object" && option.label !== null) {
 						for (const [lang, text] of Object.entries(option.label)) {
 							if (!translations[lang]) translations[lang] = {};
-							if (!translations[lang][itextId]) translations[lang][itextId] = {};
+							if (!translations[lang][itextId])
+								translations[lang][itextId] = {};
 							translations[lang][itextId].label = text;
 						}
 					} else if (option.label) {
@@ -853,7 +892,9 @@ export class Survey extends SurveyElement {
 					}
 
 					if (option.media) {
-						for (const [mediaType, mediaValue] of Object.entries(option.media)) {
+						for (const [mediaType, mediaValue] of Object.entries(
+							option.media,
+						)) {
 							if (typeof mediaValue === "object" && mediaValue !== null) {
 								for (const [lang, text] of Object.entries(mediaValue)) {
 									if (!translations[lang]) translations[lang] = {};
@@ -901,12 +942,7 @@ export class Survey extends SurveyElement {
 			if (conflicting.length > 0) {
 				const refsStr = conflicting.join(", ");
 				throw new PyXFormError(
-					`Question '${qName}' uses 'search()', and its select type references` +
-					` the choice list name '${listName}'. This choice list name is ` +
-					`referenced by at least one other question that is not using ` +
-					`'search()', which will not work: ${refsStr}. Either 1) use ` +
-					`'search()' for all questions using this choice list name, or 2) ` +
-					`use a different choice list name for the question using 'search()'.`
+					`Question '${qName}' uses 'search()', and its select type references the choice list name '${listName}'. This choice list name is referenced by at least one other question that is not using 'search()', which will not work: ${refsStr}. Either 1) use 'search()' for all questions using this choice list name, or 2) use a different choice list name for the question using 'search()'.`,
 				);
 			}
 		}
@@ -938,9 +974,7 @@ export class Survey extends SurveyElement {
 				const ext = itemsetStr.substring(dotIdx);
 				if (ext && constants.EXTERNAL_INSTANCE_EXTENSIONS.has(ext)) {
 					throw new PyXFormError(
-						`Question '${element.name}' is a select from file type, ` +
-						`using 'search()'. This combination is not supported. ` +
-						`Remove the 'search()' usage, or change the select type.`
+						`Question '${element.name}' is a select from file type, using 'search()'. This combination is not supported. Remove the 'search()' usage, or change the select type.`,
 					);
 				}
 			}
@@ -956,7 +990,8 @@ export class Survey extends SurveyElement {
 			if (choices && !choices.used_by_search) {
 				choices.used_by_search = true;
 				for (let i = 0; i < choices.options.length; i++) {
-					choices.options[i]._choice_itext_ref = `jr:itext('${choices.name}-${i}')`;
+					choices.options[i]._choice_itext_ref =
+						`jr:itext('${choices.name}-${i}')`;
 				}
 			}
 		}
@@ -1011,11 +1046,20 @@ export class Survey extends SurveyElement {
 			const items = this._translations[lang];
 			const textElements: Element[] = [];
 
-			for (const [path, forms] of Object.entries(items as Record<string, any>)) {
+			for (const [path, forms] of Object.entries(
+				items as Record<string, any>,
+			)) {
 				const valueElements: Element[] = [];
 
-				for (const [form, text] of Object.entries(forms as Record<string, string>)) {
-					if (form === "label" || form === "hint" || form === "guidance_hint" || form === "text") {
+				for (const [form, text] of Object.entries(
+					forms as Record<string, string>,
+				)) {
+					if (
+						form === "label" ||
+						form === "hint" ||
+						form === "guidance_hint" ||
+						form === "text"
+					) {
 						// Map form names to itext form attributes:
 						// - label, text, hint → no form attribute (just <value>text</value>)
 						// - guidance_hint → form="guidance"
@@ -1028,7 +1072,11 @@ export class Survey extends SurveyElement {
 						);
 						if (formAttr) {
 							valueElements.push(
-								node("value", { text: processedText, attrs: { form: formAttr }, toParseString: hasOutput }),
+								node("value", {
+									text: processedText,
+									attrs: { form: formAttr },
+									toParseString: hasOutput,
+								}),
 							);
 						} else {
 							valueElements.push(
@@ -1038,16 +1086,15 @@ export class Survey extends SurveyElement {
 								}),
 							);
 						}
-					} else if (
-						["image", "big-image", "audio", "video"].includes(form)
-					) {
+					} else if (["image", "big-image", "audio", "video"].includes(form)) {
 						// Skip media entries with placeholder value "-"
 						if (String(text) === "-") continue;
-						const jrPrefix = form === "audio"
-							? "jr://audio/"
-							: form === "video"
-								? "jr://video/"
-								: "jr://images/";
+						const jrPrefix =
+							form === "audio"
+								? "jr://audio/"
+								: form === "video"
+									? "jr://video/"
+									: "jr://images/";
 						let mediaRef = `${jrPrefix}${text}`;
 						if (String(text).startsWith("jr://")) mediaRef = String(text);
 						// Resolve ${ref} output values in media references
@@ -1129,7 +1176,9 @@ export class Survey extends SurveyElement {
 			dataAttrs["odk:delimiter"] = this.delimiter;
 		}
 		// Add attribute::* settings to the data node
-		for (const [attrName, attrValue] of Object.entries(this._settingsAttributes)) {
+		for (const [attrName, attrValue] of Object.entries(
+			this._settingsAttributes,
+		)) {
 			dataAttrs[attrName] = attrValue;
 		}
 
@@ -1159,9 +1208,7 @@ export class Survey extends SurveyElement {
 
 				if (itemset.requires_itext) {
 					const itextId = `${listName}-${optIdx}`;
-					children.push(
-						node("itextId", { text: itextId }),
-					);
+					children.push(node("itextId", { text: itextId }));
 				} else if (typeof option.label === "string") {
 					children.push(
 						node(constants.DEFAULT_ITEMSET_LABEL_REF, { text: option.label }),
@@ -1238,8 +1285,8 @@ export class Survey extends SurveyElement {
 	): ExternalInstanceInfo[] {
 		const results: ExternalInstanceInfo[] = [];
 		RE_PULLDATA.lastIndex = 0;
-		let match: RegExpExecArray | null;
-		while ((match = RE_PULLDATA.exec(expression)) !== null) {
+		let match: RegExpExecArray | null = RE_PULLDATA.exec(expression);
+		while (match !== null) {
 			const instanceName = match[2];
 			results.push({
 				id: instanceName,
@@ -1247,6 +1294,7 @@ export class Survey extends SurveyElement {
 				type: "pulldata",
 				context,
 			});
+			match = RE_PULLDATA.exec(expression);
 		}
 		return results;
 	}
@@ -1302,7 +1350,13 @@ export class Survey extends SurveyElement {
 
 			// 3. pulldata() calls in bind expressions
 			if (element.bind) {
-				for (const bindAttr of ["calculate", "constraint", "readonly", "required", "relevant"]) {
+				for (const bindAttr of [
+					"calculate",
+					"constraint",
+					"readonly",
+					"required",
+					"relevant",
+				]) {
 					const value = element.bind[bindAttr];
 					if (typeof value === "string" && value.includes("pulldata")) {
 						instances.push(...this.extractPulldataInstances(value, context));
@@ -1319,18 +1373,29 @@ export class Survey extends SurveyElement {
 			}
 
 			// 5. pulldata() in default
-			if (element.default && typeof element.default === "string" && element.default.includes("pulldata")) {
-				instances.push(...this.extractPulldataInstances(element.default, context));
+			if (
+				element.default &&
+				typeof element.default === "string" &&
+				element.default.includes("pulldata")
+			) {
+				instances.push(
+					...this.extractPulldataInstances(element.default, context),
+				);
 			}
 
 			// 6. Entity update mode - needs CSV instance for the dataset
 			if (element.type === "entity" && element.extra_data?._entity_children) {
 				const entityChildren = element.extra_data._entity_children as any[];
 				for (const child of entityChildren) {
-					if (child[constants.NAME] === "baseVersion" && child[constants.BIND]?.calculate) {
+					if (
+						child[constants.NAME] === "baseVersion" &&
+						child[constants.BIND]?.calculate
+					) {
 						// Extract dataset name from the calculate expression
 						const calcExpr = child[constants.BIND].calculate;
-						const instanceMatch = calcExpr.match(/instance\s*\(\s*'([^']+)'\s*\)/);
+						const instanceMatch = calcExpr.match(
+							/instance\s*\(\s*'([^']+)'\s*\)/,
+						);
 						if (instanceMatch) {
 							const datasetName = instanceMatch[1];
 							instances.push({
@@ -1371,8 +1436,7 @@ export class Survey extends SurveyElement {
 		for (const [id, count] of externalDeclCounts) {
 			if (count > 1) {
 				throw new PyXFormError(
-					`Instance names must be unique. ` +
-					`The name '${id}' was found ${count} time(s) in the 'survey' sheet.`,
+					`Instance names must be unique. The name '${id}' was found ${count} time(s) in the 'survey' sheet.`,
 				);
 			}
 		}
@@ -1388,9 +1452,9 @@ export class Survey extends SurveyElement {
 					// Different source for same id - error
 					throw new PyXFormError(
 						`Instance name: '${inst.id}', ` +
-						`Existing type: '${existing.type}', Existing URI: '${existing.src}', ` +
-						`Duplicate type: '${inst.type}', Duplicate URI: '${inst.src}', ` +
-						`Duplicate context: '${inst.context}'.`,
+							`Existing type: '${existing.type}', Existing URI: '${existing.src}', ` +
+							`Duplicate type: '${inst.type}', Duplicate URI: '${inst.src}', ` +
+							`Duplicate context: '${inst.context}'.`,
 					);
 				}
 				// Same src - skip (already added)
@@ -1407,10 +1471,7 @@ export class Survey extends SurveyElement {
 				const ext = seen.get(listName);
 				if (ext) {
 					throw new PyXFormError(
-						`Instance name: '${listName}', ` +
-						`Existing type: '${ext.type}', Existing URI: '${ext.src}', ` +
-						`Duplicate type: 'choice', Duplicate URI: 'None', ` +
-						`Duplicate context: 'survey'.`,
+						`Instance name: '${listName}', Existing type: '${ext.type}', Existing URI: '${ext.src}', Duplicate type: 'choice', Duplicate URI: 'None', Duplicate context: 'survey'.`,
 					);
 				}
 			}
@@ -1430,12 +1491,14 @@ export class Survey extends SurveyElement {
 	/**
 	 * Convert to XML string.
 	 */
-	toXml(opts: {
-		validate?: boolean;
-		prettyPrint?: boolean;
-		warnings?: string[];
-		enketo?: boolean;
-	} = {}): string {
+	toXml(
+		opts: {
+			validate?: boolean;
+			prettyPrint?: boolean;
+			warnings?: string[];
+			enketo?: boolean;
+		} = {},
+	): string {
 		this.setupXpathDictionary();
 		this._hasLastSavedReference = false;
 		this.setupTranslations();
@@ -1496,7 +1559,11 @@ export class Survey extends SurveyElement {
 		// Setvalue elements for dynamic defaults, setgeopoint, actions, and entity setvalues
 		for (const element of this.iterDescendants()) {
 			if (element === this) continue;
-			if (element.default && typeof element.default === "string" && defaultIsDynamic(element.default, element.type)) {
+			if (
+				element.default &&
+				typeof element.default === "string" &&
+				defaultIsDynamic(element.default, element.type)
+			) {
 				const value = this.insertXpaths(element.default, element);
 				const setvalueNode = node("setvalue", {
 					attrs: {
@@ -1509,12 +1576,14 @@ export class Survey extends SurveyElement {
 			}
 			// Add odk:setgeopoint for start-geopoint type questions
 			if (element.type === "start-geopoint") {
-				modelChildren.push(node("odk:setgeopoint", {
-					attrs: {
-						event: "odk-instance-first-load",
-						ref: element.getXpath(),
-					},
-				}));
+				modelChildren.push(
+					node("odk:setgeopoint", {
+						attrs: {
+							event: "odk-instance-first-load",
+							ref: element.getXpath(),
+						},
+					}),
+				);
 			}
 			// Generate model-level action elements (e.g. odk:recordaudio for background-audio)
 			if ("actions" in element && (element as any).actions) {
@@ -1545,13 +1614,15 @@ export class Survey extends SurveyElement {
 			if (element.type === "entity") {
 				for (const sv of element.getEntitySetvalues()) {
 					if (sv.event === "odk-instance-first-load") {
-						modelChildren.push(node("setvalue", {
-							attrs: {
-								event: sv.event,
-								ref: sv.ref,
-								value: sv.value,
-							},
-						}));
+						modelChildren.push(
+							node("setvalue", {
+								attrs: {
+									event: sv.event,
+									ref: sv.ref,
+									value: sv.value,
+								},
+							}),
+						);
 					}
 				}
 			}
@@ -1564,15 +1635,14 @@ export class Survey extends SurveyElement {
 		if (this._hasLastSavedReference) {
 			// Check for conflict with an explicit xml-external __last-saved instance
 			const existingLastSaved = modelChildren.find(
-				(el) => el.tagName === "instance" && el.getAttribute("id") === "__last-saved",
+				(el) =>
+					el.tagName === "instance" && el.getAttribute("id") === "__last-saved",
 			);
 			if (existingLastSaved) {
 				const existingSrc = existingLastSaved.getAttribute("src") ?? "";
 				if (existingSrc !== "jr://instance/last-saved") {
 					throw new PyXFormError(
-						`The same instance id will be generated for different external instance source URIs. Please check the form. ` +
-						`Instance name: '__last-saved', Existing type: 'external', Existing URI: '${existingSrc}', ` +
-						`Duplicate type: 'instance', Duplicate URI: 'jr://instance/last-saved', Duplicate context: 'None'.`,
+						`The same instance id will be generated for different external instance source URIs. Please check the form. Instance name: '__last-saved', Existing type: 'external', Existing URI: '${existingSrc}', Duplicate type: 'instance', Duplicate URI: 'jr://instance/last-saved', Duplicate context: 'None'.`,
 					);
 				}
 			} else {
@@ -1590,7 +1660,10 @@ export class Survey extends SurveyElement {
 		if (this.entity_version) {
 			modelAttrs["entities:entities-version"] = this.entity_version;
 		}
-		const modelNode = node("model", { children: modelChildren, attrs: modelAttrs });
+		const modelNode = node("model", {
+			children: modelChildren,
+			attrs: modelAttrs,
+		});
 
 		// Head
 		const titleNode = node("h:title", { text: this.title || this.name });
@@ -1609,7 +1682,7 @@ export class Survey extends SurveyElement {
 
 		// Serialize
 		const xmlDecl = '<?xml version="1.0"?>\n';
-		let xml = xmlDecl + serializeXml(htmlNode, opts.prettyPrint ?? false);
+		const xml = xmlDecl + serializeXml(htmlNode, opts.prettyPrint ?? false);
 
 		// Warn if one or more translation is missing a valid IANA subtag
 		const warnings = opts.warnings;
@@ -1618,11 +1691,7 @@ export class Survey extends SurveyElement {
 			const badLanguages = getLanguagesWithBadTags(translations);
 			if (badLanguages.length > 0) {
 				warnings.push(
-					"The following language declarations do not contain " +
-					"valid machine-readable codes: " +
-					badLanguages.join(", ") +
-					". " +
-					"Learn more: http://xlsform.org#multiple-language-support",
+					`The following language declarations do not contain valid machine-readable codes: ${badLanguages.join(", ")}. Learn more: http://xlsform.org#multiple-language-support`,
 				);
 			}
 		}

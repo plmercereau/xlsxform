@@ -2,15 +2,15 @@
  * Port of test_sheet_columns.py - XLSForm sheet column tests.
  */
 
-import { describe, it, expect } from "vitest";
-import { assertPyxformXform } from "./helpers/test-case.js";
-import { convert } from "../src/xls2xform.js";
+import { describe, expect, it } from "vitest";
 import {
-	toSnakeCase,
+	dealiasAndGroupSheet,
 	processHeaderFull,
 	processRow,
-	dealiasAndGroupSheet,
+	toSnakeCase,
 } from "../src/parsing/sheet-headers.js";
+import { convert } from "../src/xls2xform.js";
+import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestSettingsColumns", () => {
 	it("should find that settings column headers are case insensitive", () => {
@@ -175,9 +175,7 @@ describe("TestSurveyColumns", () => {
 				|        | select_one list | S1 |
 			`,
 			errored: true,
-			error__contains: [
-				"'type'",
-			],
+			error__contains: ["'type'"],
 		});
 	});
 });
@@ -214,9 +212,7 @@ describe("TestChoicesColumns", () => {
 				{ list_name: "l1", label: "choice 2" },
 			]),
 			errored: true,
-			error__contains: [
-				"'name'",
-			],
+			error__contains: ["'name'"],
 		});
 	});
 
@@ -243,9 +239,7 @@ describe("TestChoicesColumns", () => {
 				|         | list            | option b | b    |
 			`,
 			errored: true,
-			error__contains: [
-				"'name'",
-			],
+			error__contains: ["'name'"],
 		});
 	});
 });
@@ -292,10 +286,7 @@ describe("TestColumnAliases", () => {
 				|        | text | q_name | q_value | Question 1 |
 			`,
 			errored: true,
-			error__contains: [
-				"name",
-				"value",
-			],
+			error__contains: ["name", "value"],
 		});
 	});
 
@@ -308,9 +299,7 @@ describe("TestColumnAliases", () => {
 				|        | text | q_name | q_value | Question 1 |
 			`,
 			errored: true,
-			error__contains: [
-				"name",
-			],
+			error__contains: ["name"],
 		});
 	});
 
@@ -364,96 +353,359 @@ describe("TestHeaderProcessing", () => {
 		}
 
 		// key is [expected_new_header, expected_tokens], values are inputs
-		const caseGroups: [
-			[string | string[], string[]],
-			Case[],
-		][] = [
+		const caseGroups: [[string | string[], string[]], Case[]][] = [
 			// No delimiter.
 			[
 				["my_col", ["my_col"]],
 				[
-					{ header: "my_col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_Col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "MY Col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_col", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my col", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my_Col", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "MY Col", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
+					{
+						header: "my_col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_Col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "MY Col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_col",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my col",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
 					// has jr: prefix is an alias.
-					{ header: "jr:my_col", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my_Col", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my col", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:MY Col", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
+					{
+						header: "jr:my_col",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my_Col",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my col",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:MY Col",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
 				],
 			],
 			// header_aliases is a tuple.
 			[
-				[["bind", "my_col"], ["bind", "my_col"]],
 				[
-					{ header: "my_col", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my_Col", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my col", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "MY Col", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
+					["bind", "my_col"],
+					["bind", "my_col"],
+				],
+				[
+					{
+						header: "my_col",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my col",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
 				],
 			],
 			// jr: prefix is an expected column.
 			[
 				["jr:my_col", ["jr:my_col"]],
 				[
-					{ header: "jr:my_col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my_Col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:MY Col", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
+					{
+						header: "jr:my_col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my_Col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:MY Col",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
 				],
 			],
 			// Has delimiter - :: delimiter
 			[
 				["my_col", ["my_col", "English (en)"]],
 				[
-					{ header: "my_col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_Col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "MY Col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_col::English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my col::English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my_Col::English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "MY Col::English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
+					{
+						header: "my_col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "MY Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
 					// + has jr: prefix is an alias.
-					{ header: "jr:my_col::English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my_Col::English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my col::English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:MY Col::English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
+					{
+						header: "jr:my_col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my_Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:MY Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
 					// Has : delimiter
-					{ header: "my_col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_Col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "MY Col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["my_col"]) },
-					{ header: "my_col:English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my col:English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "my_Col:English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
-					{ header: "MY Col:English (en)", useDoubleColon: false, headerAliases: { my_col: "my_col" }, headerColumns: [] },
+					{
+						header: "my_col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "MY Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["my_col"]),
+					},
+					{
+						header: "my_col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: "my_col" },
+						headerColumns: [],
+					},
 					// + has jr: prefix is an alias.
-					{ header: "jr:my_col:English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my_Col:English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:my col:English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
-					{ header: "jr:MY Col:English (en)", useDoubleColon: false, headerAliases: { "jr:my_col": "my_col" }, headerColumns: [] },
+					{
+						header: "jr:my_col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my_Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:my col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
+					{
+						header: "jr:MY Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { "jr:my_col": "my_col" },
+						headerColumns: [],
+					},
 				],
 			],
 			// header_aliases is a tuple, with delimiter.
 			[
-				[["bind", "my_col"], ["bind", "my_col", "English (en)"]],
+				[
+					["bind", "my_col"],
+					["bind", "my_col", "English (en)"],
+				],
 				[
 					// Has :: delimiter
-					{ header: "my_col::English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my_Col::English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my col::English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "MY Col::English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
+					{
+						header: "my_col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
 					// Has : delimiter
-					{ header: "my_col:English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my_Col:English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "my col:English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
-					{ header: "MY Col:English (en)", useDoubleColon: false, headerAliases: { my_col: ["bind", "my_col"] }, headerColumns: [] },
+					{
+						header: "my_col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my_Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "my col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
+					{
+						header: "MY Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: { my_col: ["bind", "my_col"] },
+						headerColumns: [],
+					},
 				],
 			],
 			// jr: prefix is an expected column, with delimiter.
@@ -461,51 +713,193 @@ describe("TestHeaderProcessing", () => {
 				["jr:my_col", ["jr:my_col", "English (en)"]],
 				[
 					// Has :: delimiter
-					{ header: "jr:my_col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my_Col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:MY Col::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
+					{
+						header: "jr:my_col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my_Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:MY Col::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
 					// Has : delimiter
-					{ header: "jr:my_col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my_Col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:my col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
-					{ header: "jr:MY Col:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: new Set(["jr:my_col"]) },
+					{
+						header: "jr:my_col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my_Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:my col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
+					{
+						header: "jr:MY Col:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: new Set(["jr:my_col"]),
+					},
 				],
 			],
 			// Unknown columns - no delimiter.
-			[["NAME", ["NAME"]], [{ header: "NAME", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
-			[["NA_ME", ["NA_ME"]], [{ header: "NA_ME", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
-			[["NA Me", ["NA Me"]], [{ header: "NA Me", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
+			[
+				["NAME", ["NAME"]],
+				[
+					{
+						header: "NAME",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
+			[
+				["NA_ME", ["NA_ME"]],
+				[
+					{
+						header: "NA_ME",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
+			[
+				["NA Me", ["NA Me"]],
+				[
+					{
+						header: "NA Me",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
 			// Unknown columns - has :: delimiter.
 			[
 				["name::English (en)", ["name", "English (en)"]],
-				[{ header: "name::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "name::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			[
 				["NA_ME::English (en)", ["NA_ME", "English (en)"]],
-				[{ header: "NA_ME::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "NA_ME::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			[
 				["NA Me::English (en)", ["NA Me", "English (en)"]],
-				[{ header: "NA Me::English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "NA Me::English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			// Unknown columns - has : delimiter.
 			[
 				["name:English (en)", ["name", "English (en)"]],
-				[{ header: "name:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "name:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			[
 				["NA_ME:English (en)", ["NA_ME", "English (en)"]],
-				[{ header: "NA_ME:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "NA_ME:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			[
 				["NA Me:English (en)", ["NA Me", "English (en)"]],
-				[{ header: "NA Me:English (en)", useDoubleColon: false, headerAliases: {}, headerColumns: [] }],
+				[
+					{
+						header: "NA Me:English (en)",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
 			],
 			// Unknown columns - has jr: prefix.
-			[["jr:NAME", ["jr:NAME"]], [{ header: "jr:NAME", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
-			[["jr:NA_ME", ["jr:NA_ME"]], [{ header: "jr:NA_ME", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
-			[["jr:NA Me", ["jr:NA Me"]], [{ header: "jr:NA Me", useDoubleColon: false, headerAliases: {}, headerColumns: [] }]],
+			[
+				["jr:NAME", ["jr:NAME"]],
+				[
+					{
+						header: "jr:NAME",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
+			[
+				["jr:NA_ME", ["jr:NA_ME"]],
+				[
+					{
+						header: "jr:NA_ME",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
+			[
+				["jr:NA Me", ["jr:NA Me"]],
+				[
+					{
+						header: "jr:NA Me",
+						useDoubleColon: false,
+						headerAliases: {},
+						headerColumns: [],
+					},
+				],
+			],
 		];
 
 		for (const [expected, cases] of caseGroups) {
@@ -524,9 +918,9 @@ describe("TestHeaderProcessing", () => {
 
 	it("should find headers are split based on whether a double colon is found", () => {
 		const cases: [
-			Record<string, string>[],  // sheet data
-			string[][],                // expected headers
-			Record<string, any>[],     // expected data
+			Record<string, string>[], // sheet data
+			string[][], // expected headers
+			Record<string, any>[], // expected data
 		][] = [
 			// No delimiter
 			[
@@ -591,12 +985,18 @@ describe("TestHeaderProcessing", () => {
 			// Single colon, jr: prefix with single/double colon
 			[
 				[{ "col1:sep1": "val1", "jr:col2:sep2": "val2" }],
-				[["col1", "sep1"], ["jr:col2", "sep2"]],
+				[
+					["col1", "sep1"],
+					["jr:col2", "sep2"],
+				],
 				[{ col1: { sep1: "val1" }, "jr:col2": { sep2: "val2" } }],
 			],
 			[
 				[{ "jr:col2:sep2": "val2", "col1:sep1": "val1" }],
-				[["jr:col2", "sep2"], ["col1", "sep1"]],
+				[
+					["jr:col2", "sep2"],
+					["col1", "sep1"],
+				],
 				[{ "jr:col2": { sep2: "val2" }, col1: { sep1: "val1" } }],
 			],
 			[
@@ -622,19 +1022,27 @@ describe("TestHeaderProcessing", () => {
 			],
 			[
 				[{ "col1::sep1": "val1", "jr:col2::sep2": "val2" }],
-				[["col1", "sep1"], ["jr:col2", "sep2"]],
+				[
+					["col1", "sep1"],
+					["jr:col2", "sep2"],
+				],
 				[{ col1: { sep1: "val1" }, "jr:col2": { sep2: "val2" } }],
 			],
 			[
 				[{ "jr:col2::sep2": "val2", "col1::sep1": "val1" }],
-				[["jr:col2", "sep2"], ["col1", "sep1"]],
+				[
+					["jr:col2", "sep2"],
+					["col1", "sep1"],
+				],
 				[{ "jr:col2": { sep2: "val2" }, col1: { sep1: "val1" } }],
 			],
 		];
 
 		for (let i = 0; i < cases.length; i++) {
 			const [sheetData, expectedHeaders, expectedData] = cases[i];
-			const sheetHeader = [Object.fromEntries(Object.keys(sheetData[0]).map(k => [k, null]))];
+			const sheetHeader = [
+				Object.fromEntries(Object.keys(sheetData[0]).map((k) => [k, null])),
+			];
 			const observed = dealiasAndGroupSheet(
 				"test",
 				sheetData,
@@ -657,10 +1065,10 @@ describe("TestHeaderProcessing", () => {
 			);
 		}).toThrow(
 			"Invalid headers provided for sheet: 'survey'. For XLSForms, this may be due " +
-			"a missing header row, in which case add a header row as per the reference template " +
-			"https://xlsform.org/en/ref-table/. For internal API usage, may be due to a missing " +
-			"mapping for 'e', in which case ensure that the full set of headers appear " +
-			"within the first 100 rows, or specify the header row in 'survey_header'.",
+				"a missing header row, in which case add a header row as per the reference template " +
+				"https://xlsform.org/en/ref-table/. For internal API usage, may be due to a missing " +
+				"mapping for 'e', in which case ensure that the full set of headers appear " +
+				"within the first 100 rows, or specify the header row in 'survey_header'.",
 		);
 	});
 
@@ -692,9 +1100,7 @@ describe("TestHeaderProcessing", () => {
 				]
 				`,
 			],
-			warnings__contains: [
-				"e f",
-			],
+			warnings__contains: ["e f"],
 		});
 	});
 
@@ -707,13 +1113,11 @@ describe("TestHeaderProcessing", () => {
 		const questions = Array.from({ length: 100 }, (_, i) =>
 			question(i, ""),
 		).join("\n");
-		const md = header + "\n" + questions + "\n" + question(101, "?");
+		const md = `${header}\n${questions}\n${question(101, "?")}`;
 		assertPyxformXform({
 			md,
 			errored: true,
-			error__contains: [
-				"unknown",
-			],
+			error__contains: ["unknown"],
 		});
 	});
 
@@ -727,7 +1131,7 @@ describe("TestHeaderProcessing", () => {
 		const questions = Array.from({ length: 100 }, (_, i) =>
 			question(i, ""),
 		).join("\n");
-		const md = header + "\n" + questions + "\n" + question(101, "?");
+		const md = `${header}\n${questions}\n${question(101, "?")}`;
 		assertPyxformXform({ md });
 	});
 
@@ -746,8 +1150,6 @@ describe("TestHeaderProcessing", () => {
 			label: "Q101",
 			e: "?",
 		});
-		expect(() => convert({ xlsform: { survey: surveyData } })).toThrow(
-			"e",
-		);
+		expect(() => convert({ xlsform: { survey: surveyData } })).toThrow("e");
 	});
 });

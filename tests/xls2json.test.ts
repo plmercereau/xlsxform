@@ -64,7 +64,11 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 	});
 
 	it("should not warn/error if optional external_choices sheet is not lowercase", () => {
-		const testNames = ["external_choices", "External_Choices", "EXTERNAL_CHOICES"];
+		const testNames = [
+			"external_choices",
+			"External_Choices",
+			"EXTERNAL_CHOICES",
+		];
 		for (const n of testNames) {
 			assertPyxformXform({
 				md: EXTERNAL_CHOICES(n),
@@ -106,7 +110,11 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 	});
 
 	it("should ignore prefixed sheet name for spelling - external_choices", () => {
-		const testNames = ["_external_choice", "_extrenal_choices", "_externa_choics"];
+		const testNames = [
+			"_external_choice",
+			"_extrenal_choices",
+			"_externa_choics",
+		];
 		for (const n of testNames) {
 			assertPyxformXform({
 				md: EXTERNAL_CHOICES(n),
@@ -145,11 +153,7 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 			assertPyxformXform({
 				md: CHOICES(n),
 				errored: true,
-				error__contains: [
-					errChoicesRequired,
-					errSimilarFound,
-					`'${n}'`,
-				],
+				error__contains: [errChoicesRequired, errSimilarFound, `'${n}'`],
 			});
 		}
 	});
@@ -200,11 +204,7 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 			assertPyxformXform({
 				md: EXTERNAL_CHOICES(n),
 				errored: true,
-				error__contains: [
-					errExtChoicesRequired,
-					errSimilarFound,
-					`'${n}'`,
-				],
+				error__contains: [errExtChoicesRequired, errSimilarFound, `'${n}'`],
 			});
 		}
 	});
@@ -305,11 +305,7 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 			assertPyxformXform({
 				md: SURVEY(n),
 				errored: true,
-				error__contains: [
-					errSurveyRequired,
-					errSimilarFound,
-					`'${n}'`,
-				],
+				error__contains: [errSurveyRequired, errSimilarFound, `'${n}'`],
 			});
 		}
 	});
@@ -432,15 +428,8 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 |          | my_id         | My Survey |
 `,
 			errored: true,
-			warnings__not_contains: [
-				errSimilarFound,
-				"'settyngs'",
-			],
-			error__contains: [
-				errSurveyRequired,
-				errSimilarFound,
-				"'surveys'",
-			],
+			warnings__not_contains: [errSimilarFound, "'settyngs'"],
+			error__contains: [errSurveyRequired, errSimilarFound, "'surveys'"],
 			error__not_contains: [
 				errChoicesRequired,
 				"'chooses'",
@@ -469,14 +458,8 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 |          | my_id         | My Survey |
 `,
 			errored: true,
-			warnings__not_contains: [
-				errSimilarFound,
-				"'settyngs'",
-			],
-			error__contains: [
-				errChoicesRequired,
-				"'chooses'",
-			],
+			warnings__not_contains: [errSimilarFound, "'settyngs'"],
+			error__contains: [errChoicesRequired, "'chooses'"],
 			error__not_contains: [
 				errSurveyRequired,
 				"'survey'",
@@ -506,14 +489,8 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 |          | my_id         | My Survey |
 `,
 			errored: true,
-			warnings__not_contains: [
-				errSimilarFound,
-				"'settyngs'",
-			],
-			error__contains: [
-				errExtChoicesRequired,
-				"'external_choyces'",
-			],
+			warnings__not_contains: [errSimilarFound, "'settyngs'"],
+			error__contains: [errExtChoicesRequired, "'external_choyces'"],
 			error__not_contains: [
 				errSurveyRequired,
 				"'survey'",
@@ -542,14 +519,8 @@ describe("TestXLS2JSONSheetNameHeuristics", () => {
 |          | my_id         | My Survey |
 `,
 			errored: true,
-			warnings__contains: [
-				errSimilarFound,
-				"'settyngs'",
-			],
-			error__contains: [
-				errChoicesRequired,
-				"'chooses'",
-			],
+			warnings__contains: [errSimilarFound, "'settyngs'"],
+			error__contains: [errChoicesRequired, "'chooses'"],
 			error__not_contains: [
 				errSurveyRequired,
 				"'survey'",

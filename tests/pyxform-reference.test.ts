@@ -10,21 +10,17 @@
 import { describe, it } from "vitest";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
-const ok_tokens = [
-	"\${a}",
-	"\${abc123}",
-	"\${last-saved#abc123}",
-];
+const ok_tokens = ["${a}", "${abc123}", "${last-saved#abc123}"];
 
 const error_tokens = [
-	"\${a }",
-	"\${a\n}",
-	"\${a",
-	"\${a\${b}}",
-	"\${last-saved#a }",
-	"\${last-saved#a \n}",
-	"\${last-saved#a",
-	"\${last-saved#a\${b}}",
+	"${a }",
+	"${a\n}",
+	"${a",
+	"${a${b}}",
+	"${last-saved#a }",
+	"${last-saved#a \n}",
+	"${last-saved#a",
+	"${last-saved#a${b}}",
 ];
 
 describe("TestPyxformReference", () => {

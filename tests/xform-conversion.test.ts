@@ -4,11 +4,17 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { describe, it, expect } from "vitest";
-import { convert } from "../src/xls2xform.js";
 import { DOMParser } from "@xmldom/xmldom";
+import { describe, expect, it } from "vitest";
+import { convert } from "../src/xls2xform.js";
 
-const EXAMPLE_XLS_PATH = path.join(__dirname, "..", "pyxform", "tests", "example_xls");
+const EXAMPLE_XLS_PATH = path.join(
+	__dirname,
+	"..",
+	"pyxform",
+	"tests",
+	"example_xls",
+);
 const TEST_EXPECTED_OUTPUT_PATH = path.join(
 	__dirname,
 	"..",
@@ -86,10 +92,7 @@ function sortModel(doc: Document): void {
 function xmlsAreEquivalent(xml1: string, xml2: string): boolean {
 	// Normalize whitespace and compare
 	const normalize = (s: string) =>
-		s
-			.replace(/\s+/g, " ")
-			.replace(/> </g, "><")
-			.trim();
+		s.replace(/\s+/g, " ").replace(/> </g, "><").trim();
 	return normalize(xml1) === normalize(xml2);
 }
 
@@ -113,7 +116,7 @@ describe("TestXFormConversion", () => {
 			const rootFilename = path.basename(caseFile, path.extname(caseFile));
 			const expectedOutputPath = path.join(
 				TEST_EXPECTED_OUTPUT_PATH,
-				rootFilename + ".xml",
+				`${rootFilename}.xml`,
 			);
 
 			// Skip if expected output doesn't exist
@@ -121,7 +124,7 @@ describe("TestXFormConversion", () => {
 				continue;
 			}
 
-			let result;
+			let result: string | undefined;
 			try {
 				if (setName) {
 					result = convert({

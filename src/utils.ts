@@ -29,7 +29,11 @@ export function registerNamespace(prefix: string, uri: string): void {
 	dynamicNS[prefix] = uri;
 }
 
-export function setAttributeWithNS(elem: Element, name: string, value: string): void {
+export function setAttributeWithNS(
+	elem: Element,
+	name: string,
+	value: string,
+): void {
 	const colonIdx = name.indexOf(":");
 	if (colonIdx > 0) {
 		const prefix = name.substring(0, colonIdx);
@@ -68,30 +72,29 @@ const XML_TEXT_SUBS: [string, string][] = [
 	[">", "&gt;"],
 ];
 
-export function escapeTextForXml(
-	text: string,
-	attribute = false,
-): string {
+export function escapeTextForXml(text: string, attribute = false): string {
+	let result = text;
 	for (const [from, to] of XML_TEXT_SUBS) {
-		if (text.includes(from)) {
-			text = text.split(from).join(to);
+		if (result.includes(from)) {
+			result = result.split(from).join(to);
 		}
 	}
-	if (attribute && text.includes('"')) {
-		text = text.split('"').join("&quot;");
+	if (attribute && result.includes('"')) {
+		result = result.split('"').join("&quot;");
 	}
-	return text;
+	return result;
 }
 
 /**
  * Create an XML element with children and attributes.
  * String args become text nodes. Element args become child elements.
  */
-export function xmlNode(
-	tag: string,
-	...args: any[]
-): Element {
-	const doc: any = domImpl.createDocument(null as any, null as any, null as any);
+export function xmlNode(tag: string, ...args: any[]): Element {
+	const doc: any = domImpl.createDocument(
+		null as any,
+		null as any,
+		null as any,
+	);
 	const elem = createElementWithNS(doc, tag);
 
 	const stringArgs: string[] = [];
@@ -113,7 +116,7 @@ export function xmlNode(
 		typeof otherArgs[otherArgs.length - 1] === "object" &&
 		!otherArgs[otherArgs.length - 1].tagName &&
 		!Array.isArray(otherArgs[otherArgs.length - 1]) &&
-		!(otherArgs[otherArgs.length - 1] instanceof Array)
+		!Array.isArray(otherArgs[otherArgs.length - 1])
 	) {
 		const last = otherArgs[otherArgs.length - 1];
 		// Check if it looks like attributes (not an Element)
@@ -146,7 +149,7 @@ export function xmlNode(
 			elem.appendChild(imported);
 		} else if (Array.isArray(child)) {
 			for (const c of child) {
-				if (c != null && c.nodeType) {
+				if (c?.nodeType) {
 					elem.appendChild(doc.importNode(c, true));
 				}
 			}
@@ -169,7 +172,11 @@ export function node(
 		attrs?: Record<string, string>;
 	} = {},
 ): Element {
-	const doc: any = domImpl.createDocument(null as any, null as any, null as any);
+	const doc: any = domImpl.createDocument(
+		null as any,
+		null as any,
+		null as any,
+	);
 	const elem = createElementWithNS(doc, tag);
 
 	if (opts.text != null) {
@@ -267,7 +274,11 @@ export function nodeToXml(
 			const childCount = elem.childNodes.length;
 			for (let i = 0; i < childCount; i++) {
 				const cnode = elem.childNodes[i];
-				if (childCount > 1 && i === 0 && (cnode.nodeType === 3 || cnode.nodeType === 4)) {
+				if (
+					childCount > 1 &&
+					i === 0 &&
+					(cnode.nodeType === 3 || cnode.nodeType === 4)
+				) {
 					result += " ";
 				}
 				if (cnode.nodeType === 3 || cnode.nodeType === 4) {
@@ -284,7 +295,12 @@ export function nodeToXml(
 			for (let i = 0; i < elem.childNodes.length; i++) {
 				const cnode = elem.childNodes[i];
 				if (cnode.nodeType === 1) {
-					result += nodeToXml(cnode as Element, `${indent}${addindent}`, addindent, newl);
+					result += nodeToXml(
+						cnode as Element,
+						`${indent}${addindent}`,
+						addindent,
+						newl,
+					);
 				}
 			}
 			result += indent;
@@ -332,12 +348,12 @@ function formatXml(xml: string, indent = "  "): string {
 		if (!trimmedToken) continue;
 
 		if (token.startsWith("<?")) {
-			formatted += token + "\n";
+			formatted += `${token}\n`;
 		} else if (token.startsWith("</")) {
 			depth--;
-			formatted += indent.repeat(depth) + token + "\n";
+			formatted += `${indent.repeat(depth) + token}\n`;
 		} else if (token.startsWith("<") && token.endsWith("/>")) {
-			formatted += indent.repeat(depth) + token + "\n";
+			formatted += `${indent.repeat(depth) + token}\n`;
 		} else if (token.startsWith("<")) {
 			// Opening tag - look ahead for inline/mixed content
 			const tagMatch = token.match(/^<([^\s>/]+)/);
@@ -356,7 +372,11 @@ function formatXml(xml: string, indent = "  "): string {
 					break;
 				}
 				// Another opening tag (not self-closing) means we need block formatting
-				if (next.startsWith("<") && !next.startsWith("</") && !next.endsWith("/>")) {
+				if (
+					next.startsWith("<") &&
+					!next.startsWith("</") &&
+					!next.endsWith("/>")
+				) {
 					canInline = false;
 					break;
 				}
@@ -367,18 +387,18 @@ function formatXml(xml: string, indent = "  "): string {
 			if (canInline && ahead < tokens.length && inlineContent.length < 500) {
 				if (inlineContent.length === 0) {
 					// Empty element: <tag></tag> → <tag/>
-					formatted += indent.repeat(depth) + token.replace(/>$/, "/>") + "\n";
+					formatted += `${indent.repeat(depth) + token.replace(/>$/, "/>")}\n`;
 				} else {
-					formatted += indent.repeat(depth) + token + inlineContent + closingTag + "\n";
+					formatted += `${indent.repeat(depth) + token + inlineContent + closingTag}\n`;
 				}
 				t = ahead; // skip past closing tag
 			} else {
-				formatted += indent.repeat(depth) + token + "\n";
+				formatted += `${indent.repeat(depth) + token}\n`;
 				depth++;
 			}
 		} else {
 			// Pure text node (shouldn't normally happen at top level after tokenizing)
-			formatted += indent.repeat(depth) + trimmedToken + "\n";
+			formatted += `${indent.repeat(depth) + trimmedToken}\n`;
 		}
 	}
 	return formatted;

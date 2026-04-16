@@ -2,10 +2,10 @@
  * Port of xform_test_case/test_xml.py - Test XForm XML syntax.
  */
 
-import { describe, it, expect } from "vitest";
 import { DOMImplementation, XMLSerializer } from "@xmldom/xmldom";
+import { describe, expect, it } from "vitest";
+import { nodeToXml, xmlNode } from "../src/utils.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
-import { xmlNode, nodeToXml } from "../src/utils.js";
 
 describe("XMLTests", () => {
 	it("test_to_xml", () => {
@@ -25,9 +25,7 @@ describe("XMLTests", () => {
 			xml__contains: [
 				'<bind nodeset="/yes_or_no_question/good_day" type="string"/>',
 			],
-			instance__contains: [
-				"<good_day/>",
-			],
+			instance__contains: ["<good_day/>"],
 		});
 	});
 });

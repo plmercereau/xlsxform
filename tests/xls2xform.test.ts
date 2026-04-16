@@ -2,9 +2,9 @@
  * Port of test_xls2xform.py - Tests for xls2xform module.
  */
 
-import { describe, it, expect } from "vitest";
-import { assertPyxformXform } from "./helpers/test-case.js";
+import { describe, expect, it } from "vitest";
 import { convert } from "../src/xls2xform.js";
+import { assertPyxformXform } from "./helpers/test-case.js";
 
 // The Python tests heavily test CLI argument parsing (_create_parser, _validator_args_logic)
 // and file I/O (xls2xform_convert). The TS port only has the `convert` API, so CLI/parser
@@ -216,11 +216,7 @@ describe("TestXLS2XFormConvertAPI", () => {
 					},
 				],
 			},
-			xml__contains: [
-				"<family_name/>",
-				"<phone_number/>",
-				"<age/>",
-			],
+			xml__contains: ["<family_name/>", "<phone_number/>", "<age/>"],
 		});
 		expect(result).not.toBeNull();
 		expect(result!.xform.length).toBeGreaterThan(0);

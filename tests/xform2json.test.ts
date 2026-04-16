@@ -5,10 +5,15 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it, expect, afterEach } from "vitest";
-import { _tryParse, IOError, XMLParseError, createSurveyElementFromXml } from "../src/xform2json.js";
-import { convert } from "../src/xls2xform.js";
+import { afterEach, describe, expect, it } from "vitest";
 import { createSurveyElementFromDict } from "../src/builder.js";
+import {
+	IOError,
+	XMLParseError,
+	_tryParse,
+	createSurveyElementFromXml,
+} from "../src/xform2json.js";
+import { convert } from "../src/xls2xform.js";
 
 describe("TestXMLParse", () => {
 	const xml = `<?xml version="1.0"?>\n<a><b>1</b></a>`;
@@ -82,7 +87,9 @@ describe("TestXForm2JSON", () => {
 		const expected = result.xform;
 		const survey = result._survey!;
 		const generatedJson = JSON.stringify(survey.toJsonDict());
-		const surveyFromBuilder = createSurveyElementFromDict(JSON.parse(generatedJson));
+		const surveyFromBuilder = createSurveyElementFromDict(
+			JSON.parse(generatedJson),
+		);
 		const observed = (surveyFromBuilder as any).toXml({ prettyPrint: false });
 		expect(observed).toBe(expected);
 	});
@@ -103,7 +110,10 @@ describe("DumpAndLoadXForm2JsonTests", () => {
 		const result = convert({ xlsform: md, prettyPrint: false });
 		const expected = result.xform;
 		const surveyFromDump = createSurveyElementFromXml(expected);
-		const observed = surveyFromDump.toXml({ validate: false, prettyPrint: false });
+		const observed = surveyFromDump.toXml({
+			validate: false,
+			prettyPrint: false,
+		});
 		expect(observed).toBe(expected);
 	});
 });

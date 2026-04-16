@@ -47,7 +47,9 @@ describe("SettingsAutoSendDelete", () => {
 				|          | auto_delete  | auto_send |           |
 				|          | false        | false     |           |
 			`,
-			xml__contains: ['<submission orx:auto-delete="false" orx:auto-send="false"/>'],
+			xml__contains: [
+				'<submission orx:auto-delete="false" orx:auto-send="false"/>',
+			],
 		});
 	});
 

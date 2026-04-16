@@ -2,10 +2,10 @@
  * Port of test_dynamic_default.py - Dynamic default value tests.
  */
 
-import { describe, it, expect } from "vitest";
-import { assertPyxformXform } from "./helpers/test-case.js";
+import { describe, expect, it } from "vitest";
 import { defaultIsDynamic } from "../src/question.js";
 import { coalesce } from "../src/utils.js";
+import { assertPyxformXform } from "./helpers/test-case.js";
 
 // ---------------------------------------------------------------------------
 // XPath helper: xpq (questions)
@@ -83,9 +83,9 @@ interface Case {
 function makeCase(
 	isDynamic: boolean,
 	qType: string,
-	qDefault: string = "",
+	qDefault = "",
 	qValue: string | null = null,
-	qLabelFr: string = "",
+	qLabelFr = "",
 ): Case {
 	return { isDynamic, qType, qDefault, qValue, qLabelFr };
 }
@@ -113,10 +113,9 @@ const xp = {
 		}
 
 		if (c.isDynamic) {
-			const valueCmp =
-				qDefaultFinal.includes("'")
-					? ""
-					: `and @value="${qDefaultFinal}" `;
+			const valueCmp = qDefaultFinal.includes("'")
+				? ""
+				: `and @value="${qDefaultFinal}" `;
 			return `
 			/h:html/h:head/x:model
 			  /x:instance/x:test_name[@id="data"]/x:q${qNum}[
@@ -132,16 +131,16 @@ const xp = {
 			    ]
 			  ]
 			`;
+		}
+		let qDefaultCmp: string;
+		if (qDefaultFinal.length === 0) {
+			qDefaultCmp = "and not(text()) ";
+		} else if (qDefaultFinal.includes("'")) {
+			qDefaultCmp = "";
 		} else {
-			let qDefaultCmp: string;
-			if (qDefaultFinal.length === 0) {
-				qDefaultCmp = "and not(text()) ";
-			} else if (qDefaultFinal.includes("'")) {
-				qDefaultCmp = "";
-			} else {
-				qDefaultCmp = `and text()='${qDefaultFinal}' `;
-			}
-			return `
+			qDefaultCmp = `and text()='${qDefaultFinal}' `;
+		}
+		return `
 			/h:html/h:head/x:model
 			  /x:instance/x:test_name[@id="data"]/x:q${qNum}[
 			    ancestor::x:model/x:bind[
@@ -152,7 +151,6 @@ const xp = {
 			    ${qDefaultCmp}
 			  ]
 			`;
-		}
 	},
 
 	body_input(qNum: number, c: Case): string {
@@ -601,11 +599,7 @@ describe("TestDynamicDefault", () => {
 				xp.model(1, makeCase(true, "calculate", "random() + 0.5")),
 				xp.model(
 					2,
-					makeCase(
-						true,
-						"calculate",
-						"if( /test_name/q1  < 1,'A','B')",
-					),
+					makeCase(true, "calculate", "if( /test_name/q1  < 1,'A','B')"),
 				),
 				// Nothing in body since both questions are calculations.
 				"/h:html/h:body[not(text) and count(./*) = 0]",
@@ -894,7 +888,7 @@ describe("TestDynamicDefaultSimpleInput", () => {
 					`|        | ${c.qType} | q${qNum} | Q${qNum} | ${c.qDefault} | ${c.qLabelFr ?? ""} |`,
 			)
 			.join("\n");
-		const md = mdHead + "\n" + mdRows;
+		const md = `${mdHead}\n${mdRows}`;
 
 		// Build xpath_match: exclude if single quote in qValue.
 		const xpathMatch: string[] = [];
@@ -909,10 +903,7 @@ describe("TestDynamicDefaultSimpleInput", () => {
 		const xpathExact: [string, Set<string>][] = [];
 		for (const [qNum, c] of casesEnum) {
 			if (coalesce(c.qValue, "")?.includes("'")) {
-				xpathExact.push([
-					xp.model_setvalue(qNum),
-					new Set([c.qValue!]),
-				]);
+				xpathExact.push([xp.model_setvalue(qNum), new Set([c.qValue!])]);
 			}
 		}
 
@@ -936,9 +927,10 @@ describe("TestDynamicDefaultSimpleInput", () => {
 		`;
 		const questions = Array.from(
 			{ length: 2000 },
-			(_, i) => `|        | text       | q${i}     | Q${i}     | if(../t2 = 'test', 1, 2) + 15 - int(1.2) |`,
+			(_, i) =>
+				`|        | text       | q${i}     | Q${i}     | if(../t2 = 'test', 1, 2) + 15 - int(1.2) |`,
 		).join("\n");
-		const md = surveyHeader + "\n" + questions;
+		const md = `${surveyHeader}\n${questions}`;
 		if (typeof globalThis.gc === "function") globalThis.gc();
 		const preMem = process.memoryUsage().rss;
 		assertPyxformXform({ md });
