@@ -16,7 +16,7 @@ describe("Survey - toPrettyXml", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const prettyXml = survey.toPrettyXml();
 		// Pretty XML should contain newlines and indentation
 		expect(prettyXml).toContain("\n");
@@ -35,7 +35,7 @@ describe("Survey - xmlInstance_forSurvey and xmlBindings", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const instance = survey.xmlInstance_forSurvey(survey);
 		expect(instance).toBeDefined();
 		expect(instance).toBeDefined();
@@ -50,7 +50,7 @@ describe("Survey - xmlInstance_forSurvey and xmlBindings", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const bindings = [...survey.xmlBindings(survey)];
 		expect(bindings.length).toBe(0);
 	});

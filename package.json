@@ -1,20 +1,20 @@
 {
-	"name": "jsxform-monorepo",
+	"name": "xlsxform-monorepo",
 	"private": true,
 	"description": "TypeScript port of pyxform - converts XLSForms to ODK XForms",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/plmercereau/jsxform.git"
+		"url": "https://github.com/plmercereau/xlsxform.git"
 	},
 	"scripts": {
-		"dev": "pnpm --filter jsxform run build && pnpm -r --parallel run dev",
+		"dev": "pnpm --filter xlsxform run build && pnpm -r --parallel run dev",
 		"build": "pnpm -r run build",
 		"test": "pnpm -r run test",
-		"coverage": "pnpm --filter jsxform run coverage",
-		"lint": "biome check jsxform demo",
-		"format": "biome format --write jsxform demo",
-		"typecheck": "pnpm --filter jsxform run build && pnpm -r run typecheck",
+		"coverage": "pnpm --filter xlsxform run coverage",
+		"lint": "biome check xlsxform demo",
+		"format": "biome format --write xlsxform demo",
+		"typecheck": "pnpm --filter xlsxform run build && pnpm -r run typecheck",
 		"prepare": "lefthook install"
 	},
 	"devDependencies": {

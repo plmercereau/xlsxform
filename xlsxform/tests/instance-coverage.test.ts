@@ -17,7 +17,7 @@ function createTestInstance() {
 		`,
 		prettyPrint: false,
 	});
-	const survey = result._survey!;
+	const survey = result._survey ?? expect.unreachable("_survey is null");
 	return new SurveyInstance(survey);
 }
 

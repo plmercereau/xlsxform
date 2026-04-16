@@ -1,3 +1,10 @@
+pre-commit:
+  commands:
+    lint:
+      run: pnpm run lint
+    typecheck:
+      run: pnpm run typecheck
+
 commit-msg:
   commands:
     commitlint:

@@ -26,5 +26,5 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run test
-      - run: pnpm --filter jsxform run build
-      - run: pnpm --filter jsxform publish --no-git-checks --provenance
+      - run: pnpm --filter xlsxform run build
+      - run: pnpm --filter xlsxform publish --no-git-checks --provenance

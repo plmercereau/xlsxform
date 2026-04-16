@@ -47,7 +47,13 @@ describe("nodeToXml", () => {
 		const elem = {
 			tagName: "parent",
 			attributes: { length: 0, item: () => null },
-			childNodes: { length: 1, 0: child, [Symbol.iterator]: function* () { yield child; } },
+			childNodes: {
+				length: 1,
+				0: child,
+				[Symbol.iterator]: function* () {
+					yield child;
+				},
+			},
 		};
 		const result = nodeToXml(elem as never, "", "  ", "\n");
 		expect(result).toContain("<parent>");

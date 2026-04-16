@@ -149,10 +149,6 @@ export class SurveyElement {
 		return xpath;
 	}
 
-	clearXpathCache(): void {
-		this._xpath = null;
-	}
-
 	setParent(parent: SurveyElement): void {
 		this.parent = parent;
 		this._xpath = null;

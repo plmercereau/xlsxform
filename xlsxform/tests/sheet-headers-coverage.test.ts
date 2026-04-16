@@ -45,12 +45,7 @@ describe("processHeaderFull", () => {
 	};
 
 	it("should return recognized column as-is", () => {
-		const [header, tokens] = processHeaderFull(
-			"label",
-			true,
-			aliases,
-			columns,
-		);
+		const [header, tokens] = processHeaderFull("label", true, aliases, columns);
 		expect(header).toBe("label");
 		expect(tokens).toEqual(["label"]);
 	});
@@ -200,7 +195,12 @@ describe("processRow", () => {
 			type: ["type"],
 			name: ["name"],
 		};
-		const result = processRow("survey", { type: "text", name: "q1" }, headerKey, 2);
+		const result = processRow(
+			"survey",
+			{ type: "text", name: "q1" },
+			headerKey,
+			2,
+		);
 		expect(result.type).toBe("text");
 		expect(result.name).toBe("q1");
 	});
@@ -235,9 +235,9 @@ describe("processRow", () => {
 	});
 
 	it("should throw for unknown header", () => {
-		expect(() =>
-			processRow("survey", { unknown: "val" }, {}, 2),
-		).toThrow("Invalid headers");
+		expect(() => processRow("survey", { unknown: "val" }, {}, 2)).toThrow(
+			"Invalid headers",
+		);
 	});
 });
 

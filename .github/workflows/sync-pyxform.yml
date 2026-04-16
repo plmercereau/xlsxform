@@ -112,16 +112,16 @@ jobs:
 
             2. Understand what changed: new features, bug fixes, test additions, etc.
 
-            3. Translate those changes into the TypeScript codebase under `jsxform/src/` and `jsxform/tests/`:
+            3. Translate those changes into the TypeScript codebase under `xlsxform/src/` and `xlsxform/tests/`:
                - Maintain the existing code style and patterns already used in this project
                - Ensure type safety with TypeScript strict mode
                - Adapt Python idioms to idiomatic TypeScript
 
             4. Iterate until ALL of the following pass (run from the repo root):
-               - `pnpm --filter jsxform run test` (all tests must pass — 100% compliance)
-               - `pnpm --filter jsxform run lint` (linting must pass)
-               - `pnpm --filter jsxform run typecheck` (type checking must pass)
-               - `pnpm --filter jsxform run knip` (no unused exports, dependencies, or files)
+               - `pnpm --filter xlsxform run test` (all tests must pass — 100% compliance)
+               - `pnpm --filter xlsxform run lint` (linting must pass)
+               - `pnpm --filter xlsxform run typecheck` (type checking must pass)
+               - `pnpm --filter xlsxform run knip` (no unused exports, dependencies, or files)
 
             5. If knip reports unused exports or files introduced by the translation, remove them.
                If it reports pre-existing issues unrelated to your changes, leave them alone.
