@@ -48,7 +48,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter xlsxform run coverage -- --coverage.reporter=json-summary --coverage.reporter=json --coverage.reporter=text
+      - run: pnpm --filter xlsxform run coverage
       - name: Coverage report
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
