@@ -1,0 +1,232 @@
+import { describe, it } from "vitest";
+import { assertPyxformXform } from "./helpers/test-case.js";
+
+describe("LastSavedTest", () => {
+	it("test_last_saved_in_calculate", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                                    |
+			|        | type       | name     | label | calculation                        |
+			|        | text       | foo      | Foo   |                                    |
+			|        | calculate  | last-foo |       | concat("Foo: ", \${last-saved#foo}) |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"calculate=\"concat(&quot;Foo: &quot;,  instance('__last-saved')/last-saved/foo )\"",
+			],
+		});
+	});
+
+	it("test_last_saved_calculate_self", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                       |
+			|        | type       | name     | label | calculation           |
+			|        | integer    | foo      | Foo   | \${last-saved#foo} + 1 |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"calculate=\" instance('__last-saved')/last-saved/foo  + 1\" nodeset=\"/last-saved/foo\"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_label", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |                                      |
+			|        | type       | name     | label                                |
+			|        | text       | foo      | Foo was previously \${last-saved#foo} |
+			`,
+			xml__contains: [
+				"<label> Foo was previously <output value=\" instance('__last-saved')/last-saved/foo \"/> </label>",
+			],
+		});
+	});
+
+	it("test_multiple_last_saved_in_calculate", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                                       |
+			|        | type       | name     | label | calculation                           |
+			|        | integer    | foo      | Foo   |                                       |
+			|        | integer    | bar      | Bar   |                                       |
+			|        | calculate  | last-sum |       | \${last-saved#foo} + \${last-saved#bar} |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"calculate=\" instance('__last-saved')/last-saved/foo  +  instance('__last-saved')/last-saved/bar \"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_relevant", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                        |
+			|        | type       | name     | label | relevant               |
+			|        | integer    | foo      | Foo   | \${last-saved#foo} < 12 |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"relevant=\" instance('__last-saved')/last-saved/foo  &lt; 12\"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_readonly", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                        |
+			|        | type       | name     | label | readonly               |
+			|        | integer    | foo      | Foo   | \${last-saved#foo} < 12 |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"readonly=\" instance('__last-saved')/last-saved/foo  &lt; 12\"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_constraint", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                        |
+			|        | type       | name     | label | constraint             |
+			|        | integer    | foo      | Foo   | . > \${last-saved#foo}  |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"constraint=\". &gt;  instance('__last-saved')/last-saved/foo \"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_required", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                        |
+			|        | type       | name     | label | required               |
+			|        | integer    | foo      | Foo   | \${last-saved#foo} < 12 |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"required=\" instance('__last-saved')/last-saved/foo  &lt; 12\"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_default", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                   |
+			|        | type       | name     | label | default           |
+			|        | integer    | foo      | Foo   | \${last-saved#foo} |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"<setvalue event=\"odk-instance-first-load\" ref=\"/last-saved/foo\" value=\" instance('__last-saved')/last-saved/foo \"/>",
+			],
+		});
+	});
+
+	it("test_last_saved_in_repeat", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |              |           |       |                            |
+			|        | type         | name      | label | calculation                |
+			|        | begin repeat | my-repeat |       |                            |
+			|        | integer      | foo       | Foo   |                            |
+			|        | calculate    | bar       |       | \${foo} + \${last-saved#foo} |
+			|        | end repeat   | my-repeat |       |                            |
+			|        | calculate    | baz       |       | \${foo} + \${last-saved#foo} |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"calculate=\" ../foo  +  instance('__last-saved')/last-saved/my-repeat/foo \" nodeset=\"/last-saved/my-repeat/bar\"",
+				"calculate=\" /last-saved/my-repeat/foo  +  instance('__last-saved')/last-saved/my-repeat/foo \" nodeset=\"/last-saved/baz\"",
+			],
+		});
+	});
+
+	it("test_last_saved_in_choice_filter_does_not_use_current_or_relative_ref", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |                |          |       |                                        |
+			|        | type           | name     | label | choice_filter                          |
+			|        | begin repeat   | repeat   |       |                                        |
+			|        | select_one foo | foo      | Foo   | not(selected(\${last-saved#foo}, name)) |
+			|        | select_one foo | bar      | Bar   | not(selected(\${foo}, name))            |
+			|        | end repeat     | repeat   |       |                                        |
+			| choices|                |          |       |                                        |
+			|        | list_name      | name     | label |                                        |
+			|        | foo            | a        | A     |                                        |
+			`,
+			xml__contains: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+				"<itemset nodeset=\"instance('foo')/root/item[not(selected( instance('__last-saved')/last-saved/repeat/foo , name))]\">",
+				"<itemset nodeset=\"instance('foo')/root/item[not(selected( current()/../foo , name))]\">",
+			],
+		});
+	});
+
+	it("test_last_saved_errors_when_field_does_not_exist", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |                                   |
+			|        | type       | name     | label | calculation                       |
+			|        | calculate  | last-foo |       | concat("Foo: ", \${last-saved#foo} |
+			`,
+			errored: true,
+			error__contains: [
+				"[row : 2] On the 'survey' sheet, the 'calculation' value is invalid. Reference variables must contain a name from the 'survey' sheet. Could not find the name 'foo'.",
+			],
+		});
+	});
+
+	it("test_last_saved_not_generated_without_last_save_call", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |            |          |       |             |
+			|        | type       | name     | label | calculation |
+			|        | integer    | foo      | Foo   |             |
+			|        | calculate  | bar      | Bar   | \${foo} + 4  |
+			`,
+			xml__excludes: [
+				'<instance id="__last-saved" src="jr://instance/last-saved"/>',
+			],
+		});
+	});
+
+	it("test_last_saved_call_and___last_saved_instance_conflict", () => {
+		assertPyxformXform({
+			name: "last-saved",
+			md: `
+			| survey |              |              |       |                       |
+			|        | type         | name         | label | calculation           |
+			|        | xml-external | __last-saved |       |                       |
+			|        | integer      | foo          | Foo   |                       |
+			|        | calculate    | bar          | Bar   | \${last-saved#foo} + 4 |
+			`,
+			errored: true,
+			error__contains: [
+				"The same instance id will be generated for different external instance source URIs. Please check the form.",
+				"Instance name: '__last-saved', Existing type: 'external', Existing URI: 'jr://file/__last-saved.xml'",
+				"Duplicate type: 'instance', Duplicate URI: 'jr://instance/last-saved', Duplicate context: 'None'.",
+			],
+		});
+	});
+});

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+  "organizeImports": { "enabled": true },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "tab"
+  }
+}

@@ -1,0 +1,28 @@
+/**
+ * Port of test_area.py - Area (enclosed-area) calculation tests.
+ */
+
+import { describe, it } from "vitest";
+import { assertPyxformXform } from "./helpers/test-case.js";
+
+describe("AreaTest", () => {
+	it("test_area", () => {
+		const d =
+			"38.253094215699576 21.756382658677467;38.25021274773806 21.756382658677467;" +
+			"38.25007793942195 21.763892843919166;38.25290886154963 21.763935759263404;" +
+			"38.25146813817506 21.758421137528785";
+		assertPyxformXform({
+			md: `
+				| survey |           |           |               |                               |         |
+				|        | type      | name      | label         | calculation                   | default |
+				|        | geoshape  | geoshape1 | Draw shape... |                               | ${d}    |
+				|        | calculate | result    |               | enclosed-area(\${geoshape1})   |         |
+			`,
+			xml__xpath_match: [
+				"/h:html/h:head/x:model/x:bind[@calculate='enclosed-area( /test_name/geoshape1 )'" +
+					"  and @nodeset='/test_name/result' and @type='string']",
+				"/h:html/h:head/x:model/x:instance/x:test_name[x:geoshape1]",
+			],
+		});
+	});
+});
