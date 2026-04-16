@@ -8,12 +8,12 @@ import { PyXFormError } from "./errors.js";
 
 export const XFORM_ID_STRING = "_xform_id_string";
 
-function xmlNodeToDict(node: any): Record<string, any> {
+function xmlNodeToDict(node: Node): Record<string, unknown> {
 	if (!node || !node.nodeName) {
 		throw new PyXFormError("Invalid value for `node`.");
 	}
 	const childNodes = node.childNodes
-		? (Array.from(node.childNodes) as any[])
+		? (Array.from(node.childNodes) as Node[])
 		: [];
 
 	if (childNodes.length === 0) {
@@ -24,7 +24,7 @@ function xmlNodeToDict(node: any): Record<string, any> {
 	}
 
 	// Internal node
-	const value: Record<string, any> = {};
+	const value: Record<string, unknown> = {};
 	for (const child of childNodes) {
 		if (child.nodeType === 3 /* TEXT_NODE */) continue; // skip whitespace text nodes
 		const d = xmlNodeToDict(child);
@@ -44,13 +44,13 @@ function xmlNodeToDict(node: any): Record<string, any> {
 }
 
 function* flattenDict(
-	d: Record<string, any>,
+	d: Record<string, unknown>,
 	prefix: string[],
-): Generator<[string[], any]> {
+): Generator<[string[], unknown]> {
 	for (const [key, value] of Object.entries(d)) {
 		const newPrefix = [...prefix, key];
 		if (value && typeof value === "object" && !Array.isArray(value)) {
-			yield* flattenDict(value, newPrefix);
+			yield* flattenDict(value as Record<string, unknown>, newPrefix);
 		} else if (Array.isArray(value)) {
 			for (let i = 0; i < value.length; i++) {
 				const itemPrefix = [...newPrefix];
@@ -60,7 +60,7 @@ function* flattenDict(
 					typeof value[i] === "object" &&
 					!Array.isArray(value[i])
 				) {
-					yield* flattenDict(value[i], itemPrefix);
+					yield* flattenDict(value[i] as Record<string, unknown>, itemPrefix);
 				} else {
 					yield [itemPrefix, value[i]];
 				}
@@ -71,18 +71,19 @@ function* flattenDict(
 	}
 }
 
-function getAllAttributes(node: any): [string, string][] {
+function getAllAttributes(node: Node): [string, string][] {
 	const result: [string, string][] = [];
-	if (node.attributes) {
-		for (let i = 0; i < node.attributes.length; i++) {
-			const attr = node.attributes.item(i);
+	if ((node as Element).attributes) {
+		const attrs = (node as Element).attributes;
+		for (let i = 0; i < attrs.length; i++) {
+			const attr = attrs.item(i);
 			if (attr) {
 				result.push([attr.name, attr.value]);
 			}
 		}
 	}
 	const childNodes = node.childNodes
-		? (Array.from(node.childNodes) as any[])
+		? (Array.from(node.childNodes) as Node[])
 		: [];
 	for (const child of childNodes) {
 		result.push(...getAllAttributes(child));
@@ -91,10 +92,10 @@ function getAllAttributes(node: any): [string, string][] {
 }
 
 export class XFormInstanceParser {
-	private _dict: Record<string, any>;
-	private _flatDict: Record<string, any>;
+	private _dict: Record<string, unknown>;
+	private _flatDict: Record<string, unknown>;
 	private _attributes: Record<string, string>;
-	private _rootNode: any;
+	private _rootNode: Element;
 
 	constructor(xmlStr: string) {
 		this.parse(xmlStr);
@@ -118,15 +119,15 @@ export class XFormInstanceParser {
 		return this._rootNode.nodeName;
 	}
 
-	get(abbreviatedXpath: string): any {
+	get(abbreviatedXpath: string): unknown {
 		return this._flatDict[abbreviatedXpath];
 	}
 
-	toJsonDict(): Record<string, any> {
+	toJsonDict(): Record<string, unknown> {
 		return this._dict;
 	}
 
-	toFlatDict(): Record<string, any> {
+	toFlatDict(): Record<string, unknown> {
 		return this._flatDict;
 	}
 
@@ -149,24 +150,26 @@ export class XFormInstanceParser {
 		return this._attributes.id;
 	}
 
-	getFlatDictWithAttributes(): Record<string, any> {
+	getFlatDictWithAttributes(): Record<string, unknown> {
 		const result = { ...this._flatDict };
 		result[XFORM_ID_STRING] = this.getXformIdString.bind(this);
 		return result;
 	}
 }
 
-export function xformInstanceToDict(xmlStr: string): Record<string, any> {
+export function xformInstanceToDict(xmlStr: string): Record<string, unknown> {
 	const parser = new XFormInstanceParser(xmlStr);
 	return parser.toJsonDict();
 }
 
-export function xformInstanceToFlatDict(xmlStr: string): Record<string, any> {
+export function xformInstanceToFlatDict(
+	xmlStr: string,
+): Record<string, unknown> {
 	const parser = new XFormInstanceParser(xmlStr);
 	return parser.toFlatDict();
 }
 
-export function parseXformInstance(xmlStr: string): Record<string, any> {
+export function parseXformInstance(xmlStr: string): Record<string, unknown> {
 	const parser = new XFormInstanceParser(xmlStr);
 	return parser.getFlatDictWithAttributes();
 }

@@ -59,7 +59,7 @@ export class SurveyInstance {
 		return this._answers;
 	}
 
-	toJsonDict(): Record<string, any> {
+	toJsonDict(): Record<string, unknown> {
 		const children = Object.entries(this._answers).map(([k, v]) => ({
 			node_name: k,
 			value: v,

@@ -903,7 +903,10 @@ describe("TestDynamicDefaultSimpleInput", () => {
 		const xpathExact: [string, Set<string>][] = [];
 		for (const [qNum, c] of casesEnum) {
 			if (coalesce(c.qValue, "")?.includes("'")) {
-				xpathExact.push([xp.model_setvalue(qNum), new Set([c.qValue!])]);
+				xpathExact.push([
+					xp.model_setvalue(qNum),
+					new Set([c.qValue as string]),
+				]);
 			}
 		}
 

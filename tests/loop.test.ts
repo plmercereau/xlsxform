@@ -645,7 +645,7 @@ describe("TestLoopInternalRepresentation", () => {
 			prettyPrint: true,
 			fileType: "md",
 		});
-		const observed = (result as any)._survey!.toJsonDict();
+		const observed = result._survey?.toJsonDict();
 		const expected = {
 			name: "data",
 			id_string: "another_loop",

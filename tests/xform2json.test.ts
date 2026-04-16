@@ -85,12 +85,16 @@ describe("TestXForm2JSON", () => {
         `;
 		const result = convert({ xlsform: md, prettyPrint: false });
 		const expected = result.xform;
-		const survey = result._survey!;
+		const survey = result._survey as NonNullable<typeof result._survey>;
 		const generatedJson = JSON.stringify(survey.toJsonDict());
 		const surveyFromBuilder = createSurveyElementFromDict(
 			JSON.parse(generatedJson),
 		);
-		const observed = (surveyFromBuilder as any).toXml({ prettyPrint: false });
+		const observed = (
+			surveyFromBuilder as unknown as {
+				toXml: (opts: { prettyPrint: boolean }) => string;
+			}
+		).toXml({ prettyPrint: false });
 		expect(observed).toBe(expected);
 	});
 });

@@ -484,17 +484,18 @@ describe("TestUpdateHandler", () => {
 			const entries = zip.getEntries();
 			const zipItem = entries.find((e) => e.entryName.endsWith("validate"));
 			expect(zipItem).toBeDefined();
+			const item = zipItem as NonNullable<typeof zipItem>;
 			// Corrupt the CRC
-			zipItem!.header.crc = 12345;
+			item.header.crc = 12345;
 			const fileOutPath = path.join(tmpDir.path, "validate");
 			// adm-zip doesn't check CRC on readFile by default,
 			// so we check it manually
 			expect(() => {
-				const data = zip.readFile(zipItem!);
+				const data = zip.readFile(item);
 				// Manually verify CRC
-				const crc32 = zipItem!.header.crc;
+				const crc32 = item.header.crc;
 				if (crc32 === 12345) {
-					throw new Error(`Bad CRC-32 for file '${zipItem!.entryName}'`);
+					throw new Error(`Bad CRC-32 for file '${item.entryName}'`);
 				}
 				if (data) {
 					fs.writeFileSync(fileOutPath, data);

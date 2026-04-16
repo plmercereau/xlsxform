@@ -134,8 +134,10 @@ describe("TestXFormConversion", () => {
 				} else {
 					result = convert({ xlsform: xlsformPath });
 				}
-			} catch (e: any) {
-				throw new Error(`Failed converting ${caseFile}: ${e.message}`);
+			} catch (e: unknown) {
+				throw new Error(
+					`Failed converting ${caseFile}: ${e instanceof Error ? e.message : String(e)}`,
+				);
 			}
 
 			const expectedXml = fs.readFileSync(expectedOutputPath, "utf-8");

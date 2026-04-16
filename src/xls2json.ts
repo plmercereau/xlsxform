@@ -5,6 +5,20 @@
 
 import * as aliases from "./aliases.js";
 import * as constants from "./constants.js";
+
+/**
+ * A permissive value type for XLSForm row data and question dictionaries.
+ *
+ * XLSForm data is inherently dynamic: rows from spreadsheet sheets are
+ * transformed into nested structures (translated labels, bind objects,
+ * control attributes, children arrays, etc.). This type uses an interface
+ * with a self-referencing index signature to allow arbitrary nested
+ * property access without explicit casts.
+ */
+interface FormRecord {
+	[key: string]: unknown;
+}
+
 import {
 	ContainerPath,
 	applyEntitiesDeclarations,
@@ -161,7 +175,7 @@ const OR_OTHER_WARNING =
 /**
  * Extract all unique header names from an array of row objects.
  */
-function extractHeaders(rows: Record<string, any>[]): string[] {
+function extractHeaders(rows: FormRecord[]): string[] {
 	const headers = new Set<string>();
 	for (const row of rows) {
 		for (const key of Object.keys(row)) {
@@ -296,7 +310,7 @@ const LOCATION_PRIORITY_VALUES = new Set([
 function validateAuditParams(
 	params: Record<string, string>,
 	name: string,
-	questionDict: Record<string, any>,
+	questionDict: FormRecord,
 ): void {
 	// Check name
 	if (name !== "audit") {
@@ -374,8 +388,9 @@ function validateAuditParams(
 	if (!questionDict[constants.BIND]) {
 		questionDict[constants.BIND] = {};
 	}
+	const bindDict = questionDict[constants.BIND] as FormRecord;
 	for (const [k, v] of Object.entries(params)) {
-		questionDict[constants.BIND][`odk:${k}`] = v;
+		bindDict[`odk:${k}`] = v;
 	}
 }
 
@@ -386,7 +401,7 @@ const GEO_TYPES = new Set(["geopoint", "geoshape", "geotrace"]);
 function validateGeoParams(
 	params: Record<string, string>,
 	type: string,
-	questionDict: Record<string, any>,
+	questionDict: FormRecord,
 	rowNum?: number,
 ): void {
 	if (!params || Object.keys(params).length === 0) return;
@@ -400,7 +415,7 @@ function validateGeoParams(
 			if (!questionDict[constants.BIND]) {
 				questionDict[constants.BIND] = {};
 			}
-			questionDict[constants.BIND][`odk:${k}`] = v;
+			(questionDict[constants.BIND] as FormRecord)[`odk:${k}`] = v;
 		} else if (k === "capture-accuracy") {
 			// Only valid for geopoint
 			if (type !== "geopoint") {
@@ -417,7 +432,7 @@ function validateGeoParams(
 			if (!questionDict[constants.CONTROL]) {
 				questionDict[constants.CONTROL] = {};
 			}
-			questionDict[constants.CONTROL].accuracyThreshold = v;
+			(questionDict[constants.CONTROL] as FormRecord).accuracyThreshold = v;
 		} else if (k === "warning-accuracy") {
 			// Only valid for geopoint
 			if (type !== "geopoint") {
@@ -434,7 +449,9 @@ function validateGeoParams(
 			if (!questionDict[constants.CONTROL]) {
 				questionDict[constants.CONTROL] = {};
 			}
-			questionDict[constants.CONTROL].unacceptableAccuracyThreshold = v;
+			(
+				questionDict[constants.CONTROL] as FormRecord
+			).unacceptableAccuracyThreshold = v;
 		} else if (k === "incremental") {
 			// Handled elsewhere for geoshape/geotrace; invalid for other geo types
 			if (type !== "geoshape" && type !== "geotrace") {
@@ -465,7 +482,7 @@ const VALID_BACKGROUND_AUDIO_QUALITIES = new Set([
 
 function validateAudioParams(
 	params: Record<string, string>,
-	questionDict: Record<string, any>,
+	questionDict: FormRecord,
 	isBackground = false,
 ): void {
 	if (!params || Object.keys(params).length === 0) return;
@@ -492,7 +509,7 @@ function validateAudioParams(
 		if (!questionDict[constants.BIND]) {
 			questionDict[constants.BIND] = {};
 		}
-		questionDict[constants.BIND]["odk:quality"] = val;
+		(questionDict[constants.BIND] as FormRecord)["odk:quality"] = val;
 	}
 }
 
@@ -542,10 +559,10 @@ function validateAndroidPackageName(name: string): string | null {
 
 function validateRangeParams(
 	params: Record<string, string>,
-	questionDict: Record<string, any>,
+	questionDict: FormRecord,
 	rowNum: number,
-	choices: Record<string, Record<string, any>[]>,
-	settings: Record<string, any>,
+	choices: Record<string, FormRecord[]>,
+	settings: FormRecord,
 ): void {
 	if (!params) return;
 
@@ -595,7 +612,10 @@ function validateRangeParams(
 	const rangeSize = Math.abs(endNum - startNum);
 
 	// Appearance-restricted parameters (check early, before detailed validation)
-	const appearance = (questionDict[constants.CONTROL]?.appearance ?? "")
+	const appearance = (
+		(questionDict[constants.CONTROL] as FormRecord | undefined)?.appearance ??
+		""
+	)
 		.toString()
 		.trim();
 	const hasTicksParams =
@@ -800,7 +820,7 @@ function validateRangeParams(
 		if (!questionDict[constants.BIND]) {
 			questionDict[constants.BIND] = {};
 		}
-		questionDict[constants.BIND].type = "decimal";
+		(questionDict[constants.BIND] as FormRecord).type = "decimal";
 	}
 }
 
@@ -814,10 +834,10 @@ function isMultiple(value: number, divisor: number): boolean {
 // --- Choices sheet validation ---
 
 function validateChoices(
-	choicesByListName: Record<string, Record<string, any>[]>,
-	settings: Record<string, any>,
+	choicesByListName: Record<string, FormRecord[]>,
+	settings: FormRecord,
 	warnings: string[],
-	choicesData: Record<string, any>[],
+	choicesData: FormRecord[],
 ): void {
 	const allowDuplicates = settings[constants.ALLOW_CHOICE_DUPLICATES];
 	const isDuplicatesAllowed =
@@ -886,15 +906,16 @@ function validateChoices(
 
 		// Track choice name uniqueness per list
 		if (!isDuplicatesAllowed) {
-			if (!listNameRowMap[listName]) {
-				listNameRowMap[listName] = new Map();
+			const listNameStr = String(listName);
+			if (!listNameRowMap[listNameStr]) {
+				listNameRowMap[listNameStr] = new Map();
 			}
-			if (listNameRowMap[listName].has(choiceName)) {
+			if (listNameRowMap[listNameStr].has(choiceName)) {
 				duplicateErrors.push(
 					`[row : ${rowNum}] On the 'choices' sheet, the 'name' value is invalid. Choice names must be unique for each choice list. If this is intentional, use the setting 'allow_choice_duplicates'. Learn more: https://xlsform.org/#choice-names.`,
 				);
 			}
-			listNameRowMap[listName].set(choiceName, rowNum);
+			listNameRowMap[listNameStr].set(choiceName, rowNum);
 		}
 	}
 
@@ -912,7 +933,7 @@ export function workbookToJson(opts: {
 	fallbackFormName?: string | null;
 	defaultLanguage?: string | null;
 	warnings?: string[];
-}): Record<string, any> {
+}): FormRecord {
 	const { workbookDict, defaultLanguage, warnings = [] } = opts;
 
 	let formName =
@@ -942,7 +963,7 @@ export function workbookToJson(opts: {
 
 	// Process settings
 	const settingsRows = workbookDict.settings ?? [];
-	const settings: Record<string, any> = {};
+	const settings: FormRecord = {};
 	if (settingsRows.length > 0) {
 		const row = settingsRows[0];
 		for (const [k, rawVal] of Object.entries(row)) {
@@ -997,7 +1018,9 @@ export function workbookToJson(opts: {
 
 	// Validate Android package name if 'app' setting is present
 	if ("app" in settings) {
-		const appValidationResult = validateAndroidPackageName(settings.app ?? "");
+		const appValidationResult = validateAndroidPackageName(
+			(settings.app as string) ?? "",
+		);
 		if (appValidationResult) {
 			throw new PyXFormError(appValidationResult);
 		}
@@ -1005,7 +1028,7 @@ export function workbookToJson(opts: {
 
 	// Determine clean_text_values setting (defaults to yes/true)
 	const cleanTextValuesEnabled =
-		aliases.yesNo[settings.clean_text_values ?? "yes"] ?? true;
+		aliases.yesNo[(settings.clean_text_values as string) ?? "yes"] ?? true;
 
 	// Process choices
 	const choicesData = workbookDict.choices ?? [];
@@ -1043,12 +1066,12 @@ export function workbookToJson(opts: {
 		}
 	}
 
-	const choicesByListName: Record<string, Record<string, any>[]> = {};
+	const choicesByListName: Record<string, FormRecord[]> = {};
 	const choicesDefaultLang =
-		settings[constants.DEFAULT_LANGUAGE_KEY] ??
+		(settings[constants.DEFAULT_LANGUAGE_KEY] as string | undefined) ??
 		constants.DEFAULT_LANGUAGE_VALUE;
 	// Detect delimiter for choices: if any header uses "::", use that; otherwise use ":"
-	const choicesUseDoubleColon = choicesData.some((r: Record<string, any>) =>
+	const choicesUseDoubleColon = choicesData.some((r: FormRecord) =>
 		Object.keys(r).some((k: string) => k.includes("::")),
 	);
 	const choicesDelimiter = choicesUseDoubleColon ? "::" : ":";
@@ -1060,7 +1083,7 @@ export function workbookToJson(opts: {
 			choicesByListName[listName] = [];
 		}
 
-		const choice: Record<string, any> = {};
+		const choice: FormRecord = {};
 		for (const [k, rawV] of Object.entries(row)) {
 			if (k === constants.LIST_NAME_S || k === constants.LIST_NAME_U) continue;
 			const v = cleanTextValues(rawV);
@@ -1075,16 +1098,17 @@ export function workbookToJson(opts: {
 					// media::audio::English → translated media
 					const lang = parts[2];
 					if (!choice.media) choice.media = {};
-					if (!choice.media[mediaType]) choice.media[mediaType] = {};
-					if (typeof choice.media[mediaType] === "string") {
+					const choiceMedia1 = choice.media as FormRecord;
+					if (!choiceMedia1[mediaType]) choiceMedia1[mediaType] = {};
+					if (typeof choiceMedia1[mediaType] === "string") {
 						// Convert to object for translations
-						choice.media[mediaType] = {};
+						choiceMedia1[mediaType] = {};
 					}
-					choice.media[mediaType][lang] = v;
+					(choiceMedia1[mediaType] as FormRecord)[lang] = v;
 				} else {
 					// media::audio → untranslated media
 					if (!choice.media) choice.media = {};
-					choice.media[mediaType] = v;
+					(choice.media as FormRecord)[mediaType] = v;
 				}
 				continue;
 			}
@@ -1099,20 +1123,22 @@ export function workbookToJson(opts: {
 				if (Array.isArray(alias) && alias[0] === "media") {
 					const mediaType = alias[1]; // e.g., "audio", "image"
 					if (!choice.media) choice.media = {};
+					const choiceMedia2 = choice.media as FormRecord;
 					if (
-						!choice.media[mediaType] ||
-						typeof choice.media[mediaType] === "string"
+						!choiceMedia2[mediaType] ||
+						typeof choiceMedia2[mediaType] === "string"
 					) {
 						const existing =
-							typeof choice.media[mediaType] === "string"
-								? choice.media[mediaType]
+							typeof choiceMedia2[mediaType] === "string"
+								? (choiceMedia2[mediaType] as string)
 								: undefined;
-						choice.media[mediaType] = {};
+						choiceMedia2[mediaType] = {};
 						if (existing) {
-							choice.media[mediaType][choicesDefaultLang] = existing;
+							(choiceMedia2[mediaType] as FormRecord)[choicesDefaultLang] =
+								existing;
 						}
 					}
-					choice.media[mediaType][lang] = v;
+					(choiceMedia2[mediaType] as FormRecord)[lang] = v;
 					continue;
 				}
 				const targetKey = alias && typeof alias === "string" ? alias : baseCol;
@@ -1123,7 +1149,7 @@ export function workbookToJson(opts: {
 					choice[targetKey] = { [choicesDefaultLang]: choice[targetKey] };
 				}
 				if (typeof choice[targetKey] === "object") {
-					choice[targetKey][lang] = v;
+					(choice[targetKey] as FormRecord)[lang] = v;
 				}
 				continue;
 			}
@@ -1137,13 +1163,13 @@ export function workbookToJson(opts: {
 					choice[alias] !== null &&
 					!Array.isArray(choice[alias])
 				) {
-					choice[alias][constants.DEFAULT_LANGUAGE_VALUE] = v;
+					(choice[alias] as FormRecord)[constants.DEFAULT_LANGUAGE_VALUE] = v;
 				} else {
 					choice[alias] = v;
 				}
 			} else if (Array.isArray(alias)) {
 				if (!choice[alias[0]]) choice[alias[0]] = {};
-				choice[alias[0]][alias[1]] = v;
+				(choice[alias[0]] as FormRecord)[alias[1]] = v;
 			} else {
 				choice[k] = v;
 			}
@@ -1184,7 +1210,7 @@ export function workbookToJson(opts: {
 	validateChoices(choicesByListName, settings, warnings, choicesData);
 
 	// Process entities sheet
-	let entityDeclarations: Record<string, Record<string, any>> | null = null;
+	let entityDeclarations: Record<string, FormRecord> | null = null;
 	let entityVariableReferences: Record<string, string[]> | null = null;
 	const entitiesData = workbookDict.entities ?? [];
 
@@ -1198,8 +1224,8 @@ export function workbookToJson(opts: {
 
 	if (entitiesData.length > 0) {
 		// Lowercase entity header keys for case-insensitive processing
-		const normalizedEntities = entitiesData.map((row: Record<string, any>) => {
-			const normalized: Record<string, any> = {};
+		const normalizedEntities = entitiesData.map((row: FormRecord) => {
+			const normalized: FormRecord = {};
 			for (const [k, v] of Object.entries(row)) {
 				normalized[k.toLowerCase()] = v;
 			}
@@ -1214,7 +1240,7 @@ export function workbookToJson(opts: {
 	const hasChoicesSheet = choicesData.length > 0;
 	const hasExternalChoicesSheet =
 		(workbookDict.external_choices ?? []).length > 0;
-	const entityReferencesByQuestion: Record<string, any> = {};
+	const entityReferencesByQuestion: FormRecord = {};
 
 	// Check for missing translations across survey and choices sheets
 	const surveyHeaders = extractHeaders(surveyRows);
@@ -1254,7 +1280,7 @@ export function workbookToJson(opts: {
 	}
 
 	// Process OSM sheet - group tags by list_name
-	const osmTags: Record<string, Record<string, any>[]> = {};
+	const osmTags: Record<string, FormRecord[]> = {};
 	const osmData = workbookDict.osm ?? [];
 	for (const row of osmData) {
 		const ln = (row[constants.LIST_NAME_S] ?? row[constants.LIST_NAME_U] ?? "")
@@ -1289,7 +1315,7 @@ export function workbookToJson(opts: {
 
 	// Build the final JSON structure
 	const smsKeyword = settings[constants.SMS_KEYWORD] ?? idString;
-	const result: Record<string, any> = {
+	const result: FormRecord = {
 		[constants.NAME]: formName,
 		[constants.TYPE]: constants.SURVEY,
 		[constants.TITLE]: settings[constants.TITLE] ?? idString,
@@ -1304,14 +1330,16 @@ export function workbookToJson(opts: {
 	if (entityDeclarations) {
 		applyEntitiesDeclarations(
 			entityDeclarations,
-			entityReferencesByQuestion,
+			entityReferencesByQuestion as Parameters<
+				typeof applyEntitiesDeclarations
+			>[1],
 			result,
 		);
 
 		// Merge all meta groups into one (entity injection may add separate meta groups)
-		const allChildren = result[constants.CHILDREN] as Record<string, any>[];
-		const metaGroups: Record<string, any>[] = [];
-		const nonMetaChildren: Record<string, any>[] = [];
+		const allChildren = result[constants.CHILDREN] as FormRecord[];
+		const metaGroups: FormRecord[] = [];
+		const nonMetaChildren: FormRecord[] = [];
 		for (const child of allChildren) {
 			if (
 				child[constants.NAME] === "meta" &&
@@ -1326,8 +1354,9 @@ export function workbookToJson(opts: {
 			// Merge all meta group children into the first one
 			const primary = metaGroups[0];
 			for (let i = 1; i < metaGroups.length; i++) {
-				const otherChildren = metaGroups[i][constants.CHILDREN] ?? [];
-				primary[constants.CHILDREN].push(...otherChildren);
+				const otherChildren =
+					(metaGroups[i][constants.CHILDREN] as FormRecord[]) ?? [];
+				(primary[constants.CHILDREN] as FormRecord[]).push(...otherChildren);
 			}
 			result[constants.CHILDREN] = [...nonMetaChildren, primary];
 		}
@@ -1388,31 +1417,31 @@ export function workbookToJson(opts: {
 }
 
 function processSurveyRows(
-	rows: Record<string, any>[],
-	choices: Record<string, Record<string, any>[]>,
+	rows: FormRecord[],
+	choices: Record<string, FormRecord[]>,
 	warnings: string[],
-	settings: Record<string, any>,
+	settings: FormRecord,
 	hasChoicesSheet: boolean,
 	hasExternalChoicesSheet: boolean,
 	sheetNames: string[],
-	choicesData: Record<string, any>[],
-	entityDeclarations: Record<string, Record<string, any>> | null = null,
+	choicesData: FormRecord[],
+	entityDeclarations: Record<string, FormRecord> | null = null,
 	entityVariableReferences: Record<string, string[]> | null = null,
-	entityReferencesByQuestion: Record<string, any> = {},
+	entityReferencesByQuestion: FormRecord = {},
 	surveyTranslations?: TranslationChecker,
 	choicesTranslations?: TranslationChecker,
 	externalChoicesListNames: Set<string> = new Set(),
 	formName = "data",
 	stripWhitespace = false,
 	workbookDict?: DefinitionData,
-	osmTags: Record<string, Record<string, any>[]> = {},
-): Record<string, any>[] {
-	const result: Record<string, any>[] = [];
+	osmTags: Record<string, FormRecord[]> = {},
+): FormRecord[] {
+	const result: FormRecord[] = [];
 	let orOtherSeen = false;
 	const stack: {
 		type: string;
 		name: string;
-		children: Record<string, any>[];
+		children: FormRecord[];
 		rowNum: number;
 		namesInScope: Set<string>;
 		namesLowerInScope: Set<string>;
@@ -1448,7 +1477,7 @@ function processSurveyRows(
 	let rowNum = 1; // 1-based, after header
 
 	const settingsDefaultLang =
-		settings[constants.DEFAULT_LANGUAGE_KEY] ??
+		(settings[constants.DEFAULT_LANGUAGE_KEY] as string | undefined) ??
 		constants.DEFAULT_LANGUAGE_VALUE;
 
 	// Validate survey headers
@@ -1538,7 +1567,7 @@ function processSurveyRows(
 		rowNum++;
 		const row = dealiasAndGroupHeaders(
 			rawRow,
-			aliases.surveyHeader as any,
+			aliases.surveyHeader,
 			false,
 			settingsDefaultLang,
 			stripWhitespace,
@@ -1649,7 +1678,8 @@ function processSurveyRows(
 				(typeof row.label === "string"
 					? row.label.trim() !== ""
 					: Object.keys(row.label).length > 0);
-			const hasCalculation = row.bind?.calculate || row.calculation;
+			const rowBind = row.bind as FormRecord | undefined;
+			const hasCalculation = rowBind?.calculate || row.calculation;
 			if (type === "calculate" || (hasCalculation && !hasLabel)) {
 				hiddenQuestionNames.add(name);
 			}
@@ -1705,7 +1735,7 @@ function processSurveyRows(
 				container_path: newPath,
 			});
 			// Build the section dict
-			const sectionDict: Record<string, any> = {
+			const sectionDict: FormRecord = {
 				...row,
 				[constants.TYPE]: sectionType,
 				[constants.NAME]: name,
@@ -1722,9 +1752,11 @@ function processSurveyRows(
 			}
 
 			// Handle repeat_count: generate a calculated node for non-simple references
-			const repeatCountExpr = sectionDict[constants.CONTROL]?.["jr:count"];
+			const repeatCountExpr = (
+				sectionDict[constants.CONTROL] as FormRecord | undefined
+			)?.["jr:count"];
 			if (repeatCountExpr) {
-				if (!isPyxformReference(repeatCountExpr)) {
+				if (!isPyxformReference(repeatCountExpr as string)) {
 					const generatedNodeName = `${name}_count`;
 					if (allQuestionNames.has(generatedNodeName)) {
 						throw new PyXFormError(
@@ -1741,14 +1773,16 @@ function processSurveyRows(
 						},
 						[constants.TYPE]: "calculate",
 					});
-					sectionDict[constants.CONTROL]["jr:count"] =
+					(sectionDict[constants.CONTROL] as FormRecord)["jr:count"] =
 						`\${${generatedNodeName}}`;
 					allQuestionNames.add(generatedNodeName);
 				}
 			}
 
 			// Handle table-list appearance
-			const tableListAppearance = sectionDict[constants.CONTROL]?.appearance;
+			const tableListAppearance = (
+				sectionDict[constants.CONTROL] as FormRecord | undefined
+			)?.appearance;
 			if (tableListAppearance) {
 				const appearanceMods = tableListAppearance.toString().split(/\s+/);
 				if (appearanceMods.includes(constants.TABLE_LIST)) {
@@ -1758,9 +1792,10 @@ function processSurveyRows(
 							appearanceString += ` ${w}`;
 						}
 					}
-					sectionDict[constants.CONTROL].appearance = appearanceString;
+					(sectionDict[constants.CONTROL] as FormRecord).appearance =
+						appearanceString;
 					if (sectionDict[constants.LABEL] || sectionDict.hint) {
-						const generatedLabelElement: Record<string, any> = {
+						const generatedLabelElement: FormRecord = {
 							[constants.TYPE]: "note",
 							[constants.NAME]: `generated_table_list_label_${String(rowNum)}`,
 						};
@@ -1775,7 +1810,7 @@ function processSurveyRows(
 						}
 						stack[stack.length - 1].children.push(generatedLabelElement);
 					}
-					(stack[stack.length - 1] as any).table_list = true;
+					stack[stack.length - 1].table_list = true;
 				}
 			}
 
@@ -1783,12 +1818,18 @@ function processSurveyRows(
 			if (sectionDict.intent) {
 				if (!sectionDict[constants.CONTROL])
 					sectionDict[constants.CONTROL] = {};
-				sectionDict[constants.CONTROL].intent = sectionDict.intent;
+				(sectionDict[constants.CONTROL] as FormRecord).intent =
+					sectionDict.intent;
 				sectionDict.intent = undefined;
 			}
 
 			// Check entity save_to on begin group/repeat (error)
-			if (row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS] && name) {
+			if (
+				(row[constants.BIND] as FormRecord | undefined)?.[
+					constants.ENTITIES_SAVETO_NS
+				] &&
+				name
+			) {
 				processEntityReferencesForQuestion(
 					newPath,
 					row,
@@ -1796,7 +1837,9 @@ function processSurveyRows(
 					name,
 					entityDeclarations,
 					entityVariableReferences,
-					entityReferencesByQuestion,
+					entityReferencesByQuestion as Parameters<
+						typeof processEntityReferencesForQuestion
+					>[6],
 					true,
 					false,
 				);
@@ -1822,7 +1865,7 @@ function processSurveyRows(
 				namesInScope: new Set<string>(),
 				namesLowerInScope: new Set<string>(),
 			});
-			const sectionDict: Record<string, any> = {
+			const sectionDict: FormRecord = {
 				...row,
 				[constants.TYPE]: constants.LOOP,
 				[constants.NAME]: name,
@@ -1863,7 +1906,11 @@ function processSurveyRows(
 				);
 			}
 			// Check entity save_to on end group/repeat (error)
-			if (row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS]) {
+			if (
+				(row[constants.BIND] as FormRecord | undefined)?.[
+					constants.ENTITIES_SAVETO_NS
+				]
+			) {
 				const endCPath =
 					stack.length > 0
 						? (stack[stack.length - 1].container_path ??
@@ -1876,7 +1923,9 @@ function processSurveyRows(
 					endName,
 					entityDeclarations,
 					entityVariableReferences,
-					entityReferencesByQuestion,
+					entityReferencesByQuestion as Parameters<
+						typeof processEntityReferencesForQuestion
+					>[6],
 					false,
 					true,
 				);
@@ -1918,7 +1967,8 @@ function processSurveyRows(
 				);
 			}
 			// Check that calculation is not set
-			const calc = row.calculation ?? row.bind?.calculate;
+			const calc =
+				row.calculation ?? (row.bind as FormRecord | undefined)?.calculate;
 			if (calc?.toString().trim()) {
 				throw new PyXFormError(
 					`[row : ${rowNum}] For 'background-geopoint' questions, the 'calculation' column must be empty.`,
@@ -2014,7 +2064,9 @@ function processSurveyRows(
 		}
 
 		// Process entity references for this question
-		const hasSaveTo = row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS];
+		const hasSaveTo = (row[constants.BIND] as FormRecord | undefined)?.[
+			constants.ENTITIES_SAVETO_NS
+		];
 		if ((entityDeclarations || hasSaveTo) && name) {
 			const currentContainerPath =
 				stack.length > 0
@@ -2028,7 +2080,9 @@ function processSurveyRows(
 				name,
 				entityDeclarations,
 				entityVariableReferences,
-				entityReferencesByQuestion,
+				entityReferencesByQuestion as Parameters<
+					typeof processEntityReferencesForQuestion
+				>[6],
 				isContainerBegin,
 				isEnd,
 			);
@@ -2052,7 +2106,7 @@ function processSurveyRows(
 		if (!questionDict) continue;
 
 		// Handle or_other
-		let specifyOtherQuestion: Record<string, any> | null = null;
+		let specifyOtherQuestion: FormRecord | null = null;
 		if (questionDict.or_other) {
 			orOtherSeen = true;
 			if (
@@ -2066,7 +2120,7 @@ function processSurveyRows(
 			}
 			const listName =
 				questionDict[constants.LIST_NAME_U] ?? questionDict[constants.ITEMSET];
-			const itemsetChoices = listName ? choices[listName] : null;
+			const itemsetChoices = listName ? choices[String(listName)] : null;
 			if (itemsetChoices && Array.isArray(itemsetChoices)) {
 				const hasOther = itemsetChoices.some(
 					(c) => c[constants.NAME] === "other",
@@ -2112,14 +2166,12 @@ function processSurveyRows(
 
 		// Handle table-list select appearance
 		const currentTableList =
-			stack.length > 0
-				? (stack[stack.length - 1] as any).table_list
-				: undefined;
+			stack.length > 0 ? stack[stack.length - 1].table_list : undefined;
 		if (currentTableList !== undefined && questionDict[constants.ITEMSET]) {
 			const selectListName = questionDict[constants.ITEMSET];
 			if (currentTableList === true) {
 				// First select in the table-list group
-				(stack[stack.length - 1] as any).table_list = selectListName;
+				stack[stack.length - 1].table_list = selectListName as string;
 				if (
 					questionDict[constants.CHOICE_FILTER] ||
 					row[constants.CHOICE_FILTER] ||
@@ -2129,15 +2181,15 @@ function processSurveyRows(
 						`[row : ${rowNum}] Choice filter not supported for table-list appearance.`,
 					);
 				}
-				const tableListHeader: Record<string, any> = {
+				const tableListHeader: FormRecord = {
 					[constants.TYPE]: questionDict[constants.TYPE],
 					[constants.NAME]: `reserved_name_for_field_list_labels_${String(rowNum)}`,
 					[constants.CONTROL]: { appearance: "label" },
 					[constants.ITEMSET]: selectListName,
 					[constants.LABEL]: " ",
 				};
-				if (choices[selectListName]) {
-					tableListHeader[constants.CHOICES] = choices[selectListName];
+				if (choices[String(selectListName)]) {
+					tableListHeader[constants.CHOICES] = choices[String(selectListName)];
 				}
 				stack[stack.length - 1].children.push(tableListHeader);
 			} else if (currentTableList !== selectListName) {
@@ -2147,7 +2199,8 @@ function processSurveyRows(
 			}
 			if (!questionDict[constants.CONTROL])
 				questionDict[constants.CONTROL] = {};
-			questionDict[constants.CONTROL].appearance = "list-nolabel";
+			(questionDict[constants.CONTROL] as FormRecord).appearance =
+				"list-nolabel";
 		}
 
 		if (stack.length > 0) {
@@ -2261,10 +2314,10 @@ function processSurveyRows(
 		"simserial",
 		"subscriberid",
 	]);
-	const metaChildren: Record<string, any>[] = [];
-	const filteredResult: Record<string, any>[] = [];
+	const metaChildren: FormRecord[] = [];
+	const filteredResult: FormRecord[] = [];
 	for (const child of result) {
-		if (metaTypes.has(child[constants.TYPE])) {
+		if (metaTypes.has(child[constants.TYPE] as string)) {
 			metaChildren.push(child);
 		} else {
 			filteredResult.push(child);
@@ -2300,7 +2353,8 @@ function processSurveyRows(
 	}
 
 	if (metaChildren.length > 0 || !omitInstanceID) {
-		const instanceIdPreload = settings.instance_id ?? "uid";
+		const instanceIdPreload =
+			(settings.instance_id as string | undefined) ?? "uid";
 		result.push(getMetaGroup(metaChildren, omitInstanceID, instanceIdPreload));
 	}
 
@@ -2332,7 +2386,7 @@ function parseParameters(rawParams: string): Record<string, string> {
  * Extra/unknown columns are not validated.
  */
 function validateChoiceReferences(
-	choicesData: Record<string, any>[],
+	choicesData: FormRecord[],
 	surveyNames: Set<string>,
 ): void {
 	// The columns of interest for reference validation in choices:
@@ -2366,19 +2420,19 @@ function validateChoiceReferences(
 }
 
 function processQuestionRow(
-	row: Record<string, any>,
+	row: FormRecord,
 	rawType: string,
 	name: string,
-	choices: Record<string, Record<string, any>[]>,
+	choices: Record<string, FormRecord[]>,
 	rowNum: number,
 	warnings: string[],
-	settings: Record<string, any>,
+	settings: FormRecord,
 	hasChoicesSheet: boolean,
 	hasExternalChoicesSheet: boolean,
 	sheetNames: string[],
 	externalChoicesListNames: Set<string> = new Set(),
-	osmTags: Record<string, Record<string, any>[]> = {},
-): Record<string, any> | null {
+	osmTags: Record<string, FormRecord[]> = {},
+): FormRecord | null {
 	let type = rawType;
 	let listName: string | null = null;
 	let orOther = false;
@@ -2510,7 +2564,8 @@ function processQuestionRow(
 
 	// Validate calculate type has a calculation or dynamic default
 	if (type === "calculate") {
-		const calculation = row[constants.BIND]?.calculate;
+		const calculation = (row[constants.BIND] as FormRecord | undefined)
+			?.calculate;
 		const defaultVal = row.default;
 		const hasDynamic = defaultVal && defaultIsDynamic(String(defaultVal), type);
 		if (!calculation && !hasDynamic) {
@@ -2519,7 +2574,7 @@ function processQuestionRow(
 	}
 
 	// Build the question dict
-	const questionDict: Record<string, any> = { ...row };
+	const questionDict: FormRecord = { ...row };
 	questionDict[constants.TYPE] = type;
 	questionDict[constants.NAME] = name;
 
@@ -2607,7 +2662,7 @@ function processQuestionRow(
 			recordAudioAction["odk:quality"] = params.quality;
 		}
 		if (!questionDict.actions) questionDict.actions = [];
-		questionDict.actions.push(recordAudioAction);
+		(questionDict.actions as Record<string, string>[]).push(recordAudioAction);
 	}
 
 	// Photo/image parameter validation
@@ -2632,7 +2687,7 @@ function processQuestionRow(
 				);
 			}
 			if (!questionDict[constants.BIND]) questionDict[constants.BIND] = {};
-			questionDict[constants.BIND]["orx:max-pixels"] = mp;
+			(questionDict[constants.BIND] as FormRecord)["orx:max-pixels"] = mp;
 		} else {
 			warnings.push(
 				`[row : ${rowNum}] Use the max-pixels parameter to speed up submission sending and save storage space. Learn more: https://xlsform.org/#image`,
@@ -2641,7 +2696,10 @@ function processQuestionRow(
 
 		// App parameter → intent attribute on control
 		if (params && "app" in params) {
-			const appearance = (questionDict[constants.CONTROL]?.appearance ?? "")
+			const appearance = (
+				(questionDict[constants.CONTROL] as FormRecord | undefined)
+					?.appearance ?? ""
+			)
 				.toString()
 				.trim();
 			if (!appearance || appearance === "annotate") {
@@ -2650,7 +2708,8 @@ function processQuestionRow(
 				if (validationResult === null) {
 					if (!questionDict[constants.CONTROL])
 						questionDict[constants.CONTROL] = {};
-					questionDict[constants.CONTROL].intent = appPackageName;
+					(questionDict[constants.CONTROL] as FormRecord).intent =
+						appPackageName;
 				} else {
 					throw new PyXFormError(`[row : ${rowNum}] ${validationResult}`);
 				}
@@ -2763,8 +2822,8 @@ function processQuestionRow(
 	if (type === "osm" && listName && osmTags[listName]) {
 		const tags = osmTags[listName].map((tag) => ({ ...tag }));
 		for (const tag of tags) {
-			if (tag.name && osmTags[tag.name]) {
-				tag.choices = osmTags[tag.name];
+			if (tag.name && osmTags[tag.name as string]) {
+				tag.choices = osmTags[tag.name as string];
 			}
 		}
 		questionDict.tags = tags;
@@ -2788,7 +2847,7 @@ export function parseFileToJson(
 		defaultLanguage?: string;
 		warnings?: string[];
 	},
-): Record<string, any> {
+): FormRecord {
 	const defaultName = opts?.defaultName ?? constants.DEFAULT_FORM_NAME;
 	const defaultLanguage =
 		opts?.defaultLanguage ?? constants.DEFAULT_LANGUAGE_VALUE;
@@ -2809,7 +2868,7 @@ export function parseFileToJson(
  * create a reader, then call toJsonDict().
  */
 export class SurveyReader {
-	private _dict: Record<string, any>;
+	private _dict: FormRecord;
 	private _path: string;
 	private _warnings: string[];
 	_name: string;
@@ -2826,7 +2885,7 @@ export class SurveyReader {
 		});
 	}
 
-	toJsonDict(): Record<string, any> {
+	toJsonDict(): FormRecord {
 		return this._dict;
 	}
 }

@@ -8,20 +8,49 @@ import { PyXFormError } from "./errors.js";
 import { hasPyxformReference, isXmlTag } from "./parsing/expression.js";
 import { node } from "./utils.js";
 
+/**
+ * Interface representing the survey methods needed by elements during XML generation.
+ * Avoids circular dependency with Survey class.
+ */
+export interface SurveyContext {
+	insertXpaths(
+		text: string,
+		context: SurveyElement,
+		useCurrent?: boolean,
+		referenceParent?: boolean,
+	): string;
+	insertOutputValues(
+		text: string,
+		context: SurveyElement,
+	): { text: string; hasOutput: boolean };
+	getElementByName(
+		name: string,
+		errorPrefix?: string,
+	): SurveyElement | undefined;
+	getPathRelativeToLcar(
+		context: SurveyElement,
+		target: SurveyElement,
+		xpath: string,
+	): string;
+	setvalues_by_triggering_ref?: Record<string, [string, string][]>;
+	setgeopoint_by_triggering_ref?: Record<string, [string, string][]>;
+	choices?: Record<string, unknown> | null;
+}
+
 export interface SurveyElementData {
 	name: string;
 	label?: string | Record<string, string> | null;
 	hint?: string | Record<string, string> | null;
 	guidance_hint?: string | Record<string, string> | null;
 	type?: string;
-	bind?: Record<string, any> | null;
-	control?: Record<string, any> | null;
+	bind?: Record<string, unknown> | null;
+	control?: Record<string, unknown> | null;
 	media?: Record<string, string> | null;
 	instance?: Record<string, string> | null;
 	default?: string | null;
-	children?: any[];
+	children?: SurveyElement[];
 	parent?: SurveyElement | null;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export class SurveyElement {
@@ -30,13 +59,13 @@ export class SurveyElement {
 	hint: string | Record<string, string> | null;
 	guidance_hint: string | Record<string, string> | null;
 	type: string | null;
-	bind: Record<string, any> | null;
-	control: Record<string, any> | null;
+	bind: Record<string, unknown> | null;
+	control: Record<string, unknown> | null;
 	media: Record<string, string> | null;
 	instance: Record<string, string> | null;
 	default: string | null;
 	parent: SurveyElement | null;
-	extra_data: Record<string, any> | null;
+	extra_data: Record<string, unknown> | null;
 	private _xpath: string | null = null;
 
 	constructor(data: SurveyElementData) {
@@ -78,7 +107,7 @@ export class SurveyElement {
 			"actions",
 			"flat",
 		]);
-		const extra: Record<string, any> = {};
+		const extra: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(data)) {
 			if (!knownKeys.has(k) && v != null) {
 				extra[k] = v;
@@ -141,7 +170,7 @@ export class SurveyElement {
 	/**
 	 * Generate the label XML element.
 	 */
-	xmlLabel(survey: any): Element {
+	xmlLabel(survey: SurveyContext): Element {
 		if (this.needsItextRef()) {
 			const ref = `jr:itext('${this.translationPath("label")}')`;
 			return node("label", { attrs: { ref } });
@@ -156,7 +185,7 @@ export class SurveyElement {
 	/**
 	 * Generate the hint XML element.
 	 */
-	xmlHint(survey: any): Element {
+	xmlHint(survey: SurveyContext): Element {
 		if (
 			(this.hint != null && typeof this.hint === "object") ||
 			this.guidance_hint
@@ -174,7 +203,7 @@ export class SurveyElement {
 	/**
 	 * Return label and hint elements.
 	 */
-	xmlLabelAndHint(survey: any): Element[] {
+	xmlLabelAndHint(survey: SurveyContext): Element[] {
 		const result: Element[] = [];
 		let labelAppended = false;
 
@@ -220,7 +249,7 @@ export class SurveyElement {
 	/**
 	 * Generate the instance XML for this element.
 	 */
-	xmlInstance(survey: any): Element {
+	xmlInstance(_survey: SurveyContext): Element {
 		if (this.type === "entity" && this.extra_data?._entity_children) {
 			return this._xmlEntityInstance();
 		}
@@ -231,13 +260,16 @@ export class SurveyElement {
 	 * Generate instance XML for entity elements.
 	 */
 	private _xmlEntityInstance(): Element {
-		const children = this.extra_data!._entity_children as any[];
+		const children = (this.extra_data?._entity_children ?? []) as Record<
+			string,
+			unknown
+		>[];
 		const attrs: Record<string, string> = {};
 		const childElements: Element[] = [];
 
 		for (const child of children) {
 			if (child.type === "attribute") {
-				attrs[child[constants.NAME]] = child.value ?? "";
+				attrs[child[constants.NAME] as string] = (child.value as string) ?? "";
 			} else if (child.type === "label") {
 				childElements.push(node("label"));
 			}
@@ -249,24 +281,27 @@ export class SurveyElement {
 	/**
 	 * Generate bind XML elements for entity children (attributes and label).
 	 */
-	private *_xmlEntityBindings(survey: any): Generator<Element> {
-		const children = this.extra_data!._entity_children as any[];
+	private *_xmlEntityBindings(survey: SurveyContext): Generator<Element> {
+		const children = (this.extra_data?._entity_children ?? []) as Record<
+			string,
+			unknown
+		>[];
 		const entityXpath = this.getXpath();
 
 		for (const child of children) {
 			if (!child[constants.BIND]) continue;
-			const bindData = child[constants.BIND];
+			const bindData = child[constants.BIND] as Record<string, unknown>;
 			const bindDict: Record<string, string> = {};
 
 			let nodeset: string;
 			let context: SurveyElement;
 			if (child.type === "attribute") {
-				nodeset = `${entityXpath}/@${child[constants.NAME]}`;
-				context = this._createChildProxy(`@${child[constants.NAME]}`);
+				nodeset = `${entityXpath}/@${child[constants.NAME] as string}`;
+				context = this._createChildProxy(`@${child[constants.NAME] as string}`);
 			} else {
 				// label - one level deeper than entity
-				nodeset = `${entityXpath}/${child[constants.NAME]}`;
-				context = this._createChildProxy(child[constants.NAME]);
+				nodeset = `${entityXpath}/${child[constants.NAME] as string}`;
+				context = this._createChildProxy(child[constants.NAME] as string);
 			}
 
 			for (const [k, v] of Object.entries(bindData)) {
@@ -295,18 +330,21 @@ export class SurveyElement {
 	 */
 	getEntitySetvalues(): { ref: string; event: string; value: string }[] {
 		if (this.type !== "entity" || !this.extra_data?._entity_children) return [];
-		const children = this.extra_data._entity_children as any[];
+		const children = this.extra_data._entity_children as Record<
+			string,
+			unknown
+		>[];
 		const entityXpath = this.getXpath();
 		const result: { ref: string; event: string; value: string }[] = [];
 
 		for (const child of children) {
 			if (child.actions && Array.isArray(child.actions)) {
-				for (const action of child.actions) {
+				for (const action of child.actions as Record<string, unknown>[]) {
 					if (action.name === "setvalue") {
 						result.push({
-							ref: `${entityXpath}/@${child[constants.NAME]}`,
-							event: action.event,
-							value: action.value,
+							ref: `${entityXpath}/@${child[constants.NAME] as string}`,
+							event: action.event as string,
+							value: action.value as string,
 						});
 					}
 				}
@@ -323,7 +361,7 @@ export class SurveyElement {
 		return false;
 	}
 
-	*xmlBindings(survey: any): Generator<Element> {
+	*xmlBindings(survey: SurveyContext): Generator<Element> {
 		if (this.type === "entity" && this.extra_data?._entity_children) {
 			yield* this._xmlEntityBindings(survey);
 			return;
@@ -338,22 +376,23 @@ export class SurveyElement {
 		const skipCalculate = this.hasTrigger();
 
 		const bindDict: Record<string, string> = {};
-		for (let [k, v] of Object.entries(this.bind)) {
+		for (const [k, v] of Object.entries(this.bind)) {
 			// Skip calculate when element has a trigger (it becomes a setvalue)
 			if (skipCalculate && k === "calculate") continue;
 			if (typeof v === "string") {
 				// Apply binding conversions (yes→true(), no→false(), etc.)
+				let sv: string = v;
 				if (
 					constants.CONVERTIBLE_BIND_ATTRIBUTES.has(k) &&
-					v in BINDING_CONVERSIONS
+					sv in BINDING_CONVERSIONS
 				) {
-					v = BINDING_CONVERSIONS[v];
+					sv = BINDING_CONVERSIONS[sv];
 				}
 				// Translatable bind attrs with ${ref} → use itext reference
-				if (TRANSLATABLE_BIND_KEYS.has(k) && hasPyxformReference(v)) {
+				if (TRANSLATABLE_BIND_KEYS.has(k) && hasPyxformReference(sv)) {
 					bindDict[k] = `jr:itext('${this.translationPath(k)}')`;
 				} else {
-					bindDict[k] = survey.insertXpaths(v, this);
+					bindDict[k] = survey.insertXpaths(sv, this);
 				}
 			} else if (typeof v === "object") {
 				// Multi-language dict → use itext reference
@@ -373,7 +412,7 @@ export class SurveyElement {
 	/**
 	 * Generate the control XML. Subclasses override this.
 	 */
-	xmlControl(survey: any): any {
+	xmlControl(_survey: SurveyContext): Element | Generator<Element> | null {
 		return null;
 	}
 
@@ -449,8 +488,8 @@ export class SurveyElement {
 		}
 		return [
 			"Common Ancestor",
-			selfAncestors.get(lca)!,
-			otherAncestors.get(lca)!,
+			selfAncestors.get(lca) ?? null,
+			otherAncestors.get(lca) ?? null,
 			lca,
 		];
 	}
@@ -458,7 +497,9 @@ export class SurveyElement {
 	/**
 	 * Get translations from this element.
 	 */
-	*getTranslations(defaultLanguage: string): Generator<Record<string, any>> {
+	*getTranslations(
+		defaultLanguage: string,
+	): Generator<Record<string, unknown>> {
 		// Bind translations (constraintMsg, requiredMsg, noAppErrorString)
 		if (this.bind && typeof this.bind === "object") {
 			for (const bindKey of [
@@ -468,7 +509,9 @@ export class SurveyElement {
 			]) {
 				const val = this.bind[bindKey];
 				if (typeof val === "object" && val !== null) {
-					for (const [lang, text] of Object.entries(val)) {
+					for (const [lang, text] of Object.entries(
+						val as Record<string, unknown>,
+					)) {
 						yield {
 							path: this.translationPath(bindKey),
 							lang,
@@ -489,8 +532,9 @@ export class SurveyElement {
 		}
 
 		// Label, hint, guidance_hint translations
-		for (const displayElement of ["label", "hint", "guidance_hint"]) {
-			let labelOrHint: any = (this as any)[displayElement];
+		for (const displayElement of ["label", "hint", "guidance_hint"] as const) {
+			let labelOrHint: string | Record<string, string> | null =
+				this[displayElement];
 
 			if (
 				displayElement === "label" &&
@@ -574,9 +618,9 @@ export class SurveyElement {
 	 * Create a plain dict representation of this element, recursively converting children.
 	 * Matches Python's SurveyElement.to_json_dict().
 	 */
-	toJsonDict(deleteKeys?: Set<string>): Record<string, any> {
+	toJsonDict(deleteKeys?: Set<string>): Record<string, unknown> {
 		this.validate();
-		const result: Record<string, any> = {};
+		const result: Record<string, unknown> = {};
 
 		// Collect all relevant properties
 		const internalKeys = new Set(["parent", "extra_data", "_xpath"]);
@@ -587,43 +631,58 @@ export class SurveyElement {
 		for (const key of Object.keys(this)) {
 			if (key.startsWith("_")) continue;
 			if (internalKeys.has(key)) continue;
-			const val = (this as any)[key];
+			const val = (this as Record<string, unknown>)[key];
 			if (val == null) continue;
 			if (key === "children" && Array.isArray(val)) {
 				const children = val
-					.map((c: any) =>
-						typeof c.toJsonDict === "function"
-							? c.toJsonDict(new Set(["parent"]))
-							: c,
-					)
-					.filter((c: any) => c && Object.keys(c).length > 0);
+					.map((c: unknown) => {
+						const item = c as Record<string, unknown>;
+						return typeof item.toJsonDict === "function"
+							? (
+									item.toJsonDict as (
+										keys: Set<string>,
+									) => Record<string, unknown>
+								)(new Set(["parent"]))
+							: item;
+					})
+					.filter((c: unknown) => {
+						const item = c as Record<string, unknown>;
+						return item && Object.keys(item).length > 0;
+					});
 				if (children.length > 0) result[key] = children;
 			} else if (key === "choices" && typeof val === "object") {
-				const choices: Record<string, any[]> = {};
-				for (const [listName, itemset] of Object.entries(val)) {
-					const is = itemset as any;
-					if (is.options && Array.isArray(is.options)) {
-						choices[listName] = is.options.map((o: any) =>
-							typeof o.toJsonDict === "function"
-								? o.toJsonDict(new Set(["parent"]))
-								: o,
-						);
+				const choices: Record<string, unknown[]> = {};
+				for (const [listName, itemset] of Object.entries(
+					val as Record<string, unknown>,
+				)) {
+					const is_ = itemset as Record<string, unknown>;
+					if (is_.options && Array.isArray(is_.options)) {
+						choices[listName] = is_.options.map((o: unknown) => {
+							const item = o as Record<string, unknown>;
+							return typeof item.toJsonDict === "function"
+								? (
+										item.toJsonDict as (
+											keys: Set<string>,
+										) => Record<string, unknown>
+									)(new Set(["parent"]))
+								: item;
+						});
 					}
 				}
 				if (Object.keys(choices).length > 0) result[key] = choices;
 			} else if (key === "bind" && typeof val === "object") {
 				// Filter out XForm type mapping (type key) - this is an implementation
 				// detail not present in the Python model's bind dict at this level
-				const filtered: Record<string, any> = {};
-				for (const [bk, bv] of Object.entries(val)) {
+				const filtered: Record<string, unknown> = {};
+				for (const [bk, bv] of Object.entries(val as Record<string, unknown>)) {
 					if (bk === "type") continue;
 					filtered[bk] = bv;
 				}
 				if (Object.keys(filtered).length > 0) result[key] = filtered;
 			} else if (key === "control" && typeof val === "object") {
 				// Filter out the tag key - this is an XML generation detail
-				const filtered: Record<string, any> = {};
-				for (const [ck, cv] of Object.entries(val)) {
+				const filtered: Record<string, unknown> = {};
+				for (const [ck, cv] of Object.entries(val as Record<string, unknown>)) {
 					if (ck === "tag") continue;
 					filtered[ck] = cv;
 				}
@@ -631,7 +690,7 @@ export class SurveyElement {
 			} else if (
 				typeof val === "object" &&
 				!Array.isArray(val) &&
-				Object.keys(val).length === 0
+				Object.keys(val as Record<string, unknown>).length === 0
 			) {
 			} else if (val === "" || val === false) {
 			} else {

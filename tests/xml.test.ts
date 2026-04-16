@@ -45,8 +45,8 @@ describe("MinidomTextWriterMonkeyPatchTest", () => {
 		// (escapes \r, \n, \t in attributes as &#13;, &#10;, &#9;).
 		const replaceableChars = "' \" & < > \r \n \t";
 		const domImpl = new DOMImplementation();
-		const doc = domImpl.createDocument(null as any, "root", null);
-		const root = doc.documentElement!;
+		const doc = domImpl.createDocument(null as unknown as string, "root", null);
+		const root = doc.documentElement as Element;
 		root.appendChild(doc.createTextNode(replaceableChars));
 		root.setAttribute("attr", replaceableChars);
 		const serializer = new XMLSerializer();

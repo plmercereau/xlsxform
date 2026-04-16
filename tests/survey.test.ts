@@ -91,7 +91,7 @@ function buildSurveyFromPathSpec(
 	lcarContext: string,
 	targetPath: string,
 	sourcePath: string,
-): [Survey, any, InputQuestion] {
+): [Survey, RepeatingSection | InputQuestion, InputQuestion] {
 	const targetParts = `${lcarContext}${targetPath}`.split("/");
 	const sourceParts = `${lcarContext}${sourcePath}`.split("/");
 
@@ -106,7 +106,7 @@ function buildSurveyFromPathSpec(
 	const survey = new Survey({ name: "data", type: constants.SURVEY });
 	const targetName = targetParts[targetParts.length - 1];
 	let lcar: RepeatingSection;
-	let target: any;
+	let target: RepeatingSection | InputQuestion;
 
 	if (targetName === "t") {
 		lcar = new RepeatingSection({ name: "a", type: constants.REPEAT });
@@ -128,14 +128,14 @@ function buildSurveyFromPathSpec(
 		label: `source \${${targetName}}`,
 		type: "string",
 	});
-	let currentParent: any = survey;
+	let currentParent: Survey | RepeatingSection | GroupedSection = survey;
 	const sharedPath = targetParts.slice(0, sharedPathLength);
 
 	// Shared path
 	for (const item of sharedPath) {
 		if (!item || item === "y") continue;
 
-		let newNode: any;
+		let newNode: RepeatingSection | GroupedSection;
 		if (item[0] === "a") {
 			newNode = lcar;
 		} else if (item[0] === "r") {
@@ -155,7 +155,7 @@ function buildSurveyFromPathSpec(
 			targetParent.addChild(target);
 		} else {
 			if (!item) continue;
-			let newNode: any;
+			let newNode: RepeatingSection | GroupedSection;
 			if (item[0] === "r") {
 				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
 			} else {
@@ -173,7 +173,7 @@ function buildSurveyFromPathSpec(
 			sourceParent.addChild(source);
 		} else {
 			if (!item) continue;
-			let newNode: any;
+			let newNode: RepeatingSection | GroupedSection;
 			if (item[0] === "r") {
 				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
 			} else {
@@ -213,8 +213,8 @@ function assertRelativePath(opts: {
 	const observed = getPathRelativeToLcarStandalone(
 		target,
 		source,
-		relation[1]!,
-		relation[3]!,
+		relation[1] as number,
+		relation[3] as number,
 		referenceParent,
 	);
 

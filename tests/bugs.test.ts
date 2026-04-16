@@ -35,7 +35,7 @@ const TEST_OUTPUT_PATH = path.join(
 	"test_output",
 );
 
-function hasExternalChoices(jsonStruct: any): boolean {
+function hasExternalChoices(jsonStruct: unknown): boolean {
 	if (
 		typeof jsonStruct === "object" &&
 		jsonStruct !== null &&
@@ -123,7 +123,12 @@ describe("EmptyStringOnRelevantColumnTest", () => {
 		// bind:relevant should not be part of workbook_dict survey rows
 		// (empty strings on relevant column should be stripped)
 		expect(() => {
-			(workbookDict.survey[0] as any)["bind: relevant"].strip();
+			(
+				workbookDict.survey[0] as unknown as Record<
+					string,
+					{ strip: () => void }
+				>
+			)["bind: relevant"].strip();
 		}).toThrow();
 	});
 });

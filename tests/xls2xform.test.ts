@@ -219,6 +219,6 @@ describe("TestXLS2XFormConvertAPI", () => {
 			xml__contains: ["<family_name/>", "<phone_number/>", "<age/>"],
 		});
 		expect(result).not.toBeNull();
-		expect(result!.xform.length).toBeGreaterThan(0);
+		expect(result?.xform.length).toBeGreaterThan(0);
 	});
 });

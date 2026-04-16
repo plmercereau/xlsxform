@@ -181,7 +181,7 @@ describe("TestSurveyColumns", () => {
 });
 
 describe("TestChoicesColumns", () => {
-	function simpleChoiceSs(choiceSheet: Record<string, any>[] = []) {
+	function simpleChoiceSs(choiceSheet: Record<string, unknown>[] = []) {
 		return {
 			survey: [
 				{
@@ -920,7 +920,7 @@ describe("TestHeaderProcessing", () => {
 		const cases: [
 			Record<string, string>[], // sheet data
 			string[][], // expected headers
-			Record<string, any>[], // expected data
+			Record<string, unknown>[], // expected data
 		][] = [
 			// No delimiter
 			[
@@ -1136,7 +1136,7 @@ describe("TestHeaderProcessing", () => {
 	});
 
 	it("should raise an error if incomplete header info is provided via dict", () => {
-		const surveyData: Record<string, any>[] = Array.from(
+		const surveyData: Record<string, unknown>[] = Array.from(
 			{ length: 100 },
 			(_, i) => ({
 				type: "text",

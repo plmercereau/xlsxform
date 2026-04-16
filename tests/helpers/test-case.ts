@@ -24,7 +24,7 @@ const NSMAP_XPATH: Record<string, string> = {
 
 export interface PyxformXformOpts {
 	md?: string;
-	ss_structure?: Record<string, any>;
+	ss_structure?: Record<string, unknown>;
 	name?: string;
 	// XForm assertions
 	xml__xpath_match?: string[];
@@ -143,9 +143,9 @@ export function assertPyxformXform(
 		} else {
 			xpathDoc = doc;
 		}
-	} catch (e: any) {
+	} catch (e: unknown) {
 		surveyValid = false;
-		errors = [String(e.message || e)];
+		errors = [String((e instanceof Error ? e.message : null) || e)];
 		if (debug) {
 			console.log("ERROR:", errors[0]);
 		}
@@ -178,7 +178,7 @@ export function assertPyxformXform(
 
 		for (const [specs, section, assertFn] of stringTests) {
 			if (!specs) continue;
-			const content = getSectionXml(xml, doc!, section);
+			const content = getSectionXml(xml, doc as Document, section);
 			for (const text of specs) {
 				assertFn(content, text);
 			}
@@ -324,10 +324,11 @@ function assertXpathAtLeast(
 				`XPath '${xpath}' found ${count} matches, expected at least ${minCount}.\n\nXML:\n${xml.substring(0, 3000)}`,
 			);
 		}
-	} catch (e: any) {
-		if (e.message?.startsWith("XPath")) throw e;
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		if (msg?.startsWith("XPath")) throw e;
 		throw new Error(
-			`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`,
+			`Error evaluating XPath '${xpath}': ${msg}\n\nXML:\n${xml.substring(0, 3000)}`,
 		);
 	}
 }
@@ -347,10 +348,11 @@ function assertXpathCount(
 				`XPath '${xpath}' found ${count} matches, expected ${expectedCount}.\n\nXML:\n${xml.substring(0, 3000)}`,
 			);
 		}
-	} catch (e: any) {
-		if (e.message?.startsWith("XPath")) throw e;
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		if (msg?.startsWith("XPath")) throw e;
 		throw new Error(
-			`Error evaluating XPath '${xpath}': ${e.message}\n\nXML:\n${xml.substring(0, 3000)}`,
+			`Error evaluating XPath '${xpath}': ${msg}\n\nXML:\n${xml.substring(0, 3000)}`,
 		);
 	}
 }

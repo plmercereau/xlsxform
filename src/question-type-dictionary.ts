@@ -408,11 +408,11 @@ export const QUESTION_TYPE_DICT: Readonly<Record<string, QuestionTypeEntry>> =
 	Object.freeze(_QUESTION_TYPE_DICT);
 
 export function getMetaGroup(
-	children: Record<string, any>[] = [],
+	children: Record<string, unknown>[] = [],
 	omitInstanceID = false,
 	instanceId = "uid",
-): Record<string, any> {
-	const metaChildren: Record<string, any>[] = [];
+): Record<string, unknown> {
+	const metaChildren: Record<string, unknown>[] = [];
 
 	if (!omitInstanceID) {
 		metaChildren.push({

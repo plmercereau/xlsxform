@@ -100,42 +100,42 @@ describe("TestXLS2JSONBackends", () => {
 			]);
 
 			// Headers stripped, but not split or lower-cased yet
-			expect(Object.keys(data.survey_header![0])).toEqual([
+			expect(Object.keys(data.survey_header?.[0] ?? {})).toEqual([
 				"TYPE",
 				"NAME",
 				"LABEL::EN",
 				"CHOICE_FILTER",
 			]);
-			expect(Object.keys(data.choices_header![0])).toEqual([
+			expect(Object.keys(data.choices_header?.[0] ?? {})).toEqual([
 				"LIST_NAME",
 				"NAME",
 				"LABEL::EN",
 			]);
-			expect(Object.keys(data.settings_header![0])).toEqual([
+			expect(Object.keys(data.settings_header?.[0] ?? {})).toEqual([
 				"FORM_TITLE",
 				"FORM_ID",
 				"DEFAULT_LANGUAGE",
 			]);
-			expect(Object.keys(data.external_choices_header![0])).toEqual([
+			expect(Object.keys(data.external_choices_header?.[0] ?? {})).toEqual([
 				"LIST_NAME",
 				"NAME",
 				"LABEL",
 				"YES_NO",
 			]);
-			expect(Object.keys(data.entities_header![0])).toEqual([
+			expect(Object.keys(data.entities_header?.[0] ?? {})).toEqual([
 				"DATASET",
 				"LABEL",
 			]);
-			expect(Object.keys(data.osm_header![0])).toEqual([
+			expect(Object.keys(data.osm_header?.[0] ?? {})).toEqual([
 				"LIST_NAME",
 				"NAME",
 				"LABEL",
 			]);
 
 			// Survey data has expected rows (case-preserved in values)
-			expect(data.survey!.length).toBeGreaterThan(0);
-			expect(data.choices!.length).toBeGreaterThan(0);
-			expect(data.settings!.length).toBeGreaterThan(0);
+			expect(data.survey?.length).toBeGreaterThan(0);
+			expect(data.choices?.length).toBeGreaterThan(0);
+			expect(data.settings?.length).toBeGreaterThan(0);
 		}
 	});
 

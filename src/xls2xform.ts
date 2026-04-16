@@ -12,12 +12,12 @@ export interface ConvertResult {
 	xform: string;
 	warnings: string[];
 	itemsets: string | null;
-	_pyxform: Record<string, any> | null;
+	_pyxform: Record<string, unknown> | null;
 	_survey: Survey | null;
 }
 
 export function convert(opts: {
-	xlsform: string | Record<string, any>;
+	xlsform: string | Record<string, unknown>;
 	warnings?: string[];
 	validate?: boolean;
 	prettyPrint?: boolean;

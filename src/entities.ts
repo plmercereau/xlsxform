@@ -44,15 +44,21 @@ export class ContainerPath {
 		]);
 	}
 
-	static fromStack(stack: any[]): ContainerPath {
+	static fromStack(
+		stack: {
+			control_name?: string;
+			control_type?: string;
+			container_path?: ContainerPath;
+		}[],
+	): ContainerPath {
 		if (stack.length > 1) {
 			const parentPath = stack[stack.length - 2]
 				.container_path as ContainerPath;
 			return new ContainerPath([
 				...parentPath.nodes,
 				{
-					name: stack[stack.length - 1].control_name,
-					type: stack[stack.length - 1].control_type,
+					name: stack[stack.length - 1].control_name as string,
+					type: stack[stack.length - 1].control_type as string,
 				},
 			]);
 		}
@@ -190,9 +196,9 @@ function validateDatasetName(
 }
 
 export function getEntityDeclaration(
-	row: Record<string, any>,
+	row: Record<string, unknown>,
 	rowNumber: number,
-): Record<string, any> {
+): Record<string, unknown> {
 	// Check for unexpected columns
 	const extra = Object.keys(row).filter((k) => !ENTITY_COLUMNS.has(k));
 	if (extra.length > 0) {
@@ -201,7 +207,7 @@ export function getEntityDeclaration(
 		);
 	}
 
-	const datasetName = row.dataset ?? row.list_name ?? null;
+	const datasetName = (row.dataset ?? row.list_name ?? null) as string | null;
 	const entityId = row.entity_id ?? null;
 	const createIf = row.create_if ?? null;
 	const updateIf = row.update_if ?? null;
@@ -237,33 +243,36 @@ export function getEntityDeclaration(
 		}
 	}
 
-	const entity: Record<string, any> = {
+	const entityChildren: Record<string, unknown>[] = [
+		{
+			[constants.NAME]: "dataset",
+			type: "attribute",
+			value: datasetName,
+		},
+	];
+	const entity: Record<string, unknown> = {
 		[constants.NAME]: constants.ENTITY,
 		[constants.TYPE]: constants.ENTITY,
-		[constants.CHILDREN]: [
-			{
-				[constants.NAME]: "dataset",
-				type: "attribute",
-				value: datasetName,
-			},
-		],
+		[constants.CHILDREN]: entityChildren,
 		__row_number: rowNumber,
 		__variable_references: variableReferences,
 	};
 
-	const idAttr: Record<string, any> = {
+	const idAttrActions: Record<string, unknown>[] = [];
+	const idAttrBind: Record<string, unknown> = {
+		readonly: "true()",
+		type: "string",
+	};
+	const idAttr: Record<string, unknown> = {
 		[constants.NAME]: "id",
 		type: "attribute",
-		[constants.BIND]: {
-			readonly: "true()",
-			type: "string",
-		},
-		actions: [],
+		[constants.BIND]: idAttrBind,
+		actions: idAttrActions,
 	};
 
 	// Create mode
 	if (!entityId || createIf) {
-		const createAttr: Record<string, any> = {
+		const createAttr: Record<string, unknown> = {
 			[constants.NAME]: "create",
 			type: "attribute",
 			value: "1",
@@ -275,10 +284,10 @@ export function getEntityDeclaration(
 				type: "string",
 			};
 		}
-		entity[constants.CHILDREN].push(createAttr);
+		entityChildren.push(createAttr);
 
 		if (!entityId) {
-			idAttr.actions.push({
+			idAttrActions.push({
 				name: "setvalue",
 				event: "odk-instance-first-load",
 				value: "uuid()",
@@ -288,7 +297,7 @@ export function getEntityDeclaration(
 
 	// Update mode
 	if (entityId) {
-		const updateAttr: Record<string, any> = {
+		const updateAttr: Record<string, unknown> = {
 			[constants.NAME]: "update",
 			type: "attribute",
 			value: "1",
@@ -300,12 +309,12 @@ export function getEntityDeclaration(
 				type: "string",
 			};
 		}
-		entity[constants.CHILDREN].push(updateAttr);
+		entityChildren.push(updateAttr);
 
-		idAttr[constants.BIND].calculate = entityId;
+		idAttrBind.calculate = entityId;
 
 		const entityIdExpression = `instance('${datasetName}')/root/item[name=${entityId}]`;
-		entity[constants.CHILDREN].push(
+		entityChildren.push(
 			{
 				[constants.NAME]: "baseVersion",
 				type: "attribute",
@@ -336,10 +345,10 @@ export function getEntityDeclaration(
 		);
 	}
 
-	entity[constants.CHILDREN].push(idAttr);
+	entityChildren.push(idAttr);
 
 	if (label) {
-		entity[constants.CHILDREN].push({
+		entityChildren.push({
 			type: "label",
 			[constants.NAME]: "label",
 			[constants.BIND]: {
@@ -356,16 +365,17 @@ export function getEntityDeclaration(
 // --- Collect entity declarations ---
 
 export function getEntityDeclarations(
-	entitiesSheet: Record<string, any>[],
-): Record<string, Record<string, any>> {
-	const entities: Record<string, Record<string, any>> = {};
+	entitiesSheet: Record<string, unknown>[],
+): Record<string, Record<string, unknown>> {
+	const entities: Record<string, Record<string, unknown>> = {};
 	for (let i = 0; i < entitiesSheet.length; i++) {
 		const rowNumber = i + 2; // 1-based, after header
 		const row = normalizeEntityRow(entitiesSheet[i]);
 		const entity = getEntityDeclaration(row, rowNumber);
-		const datasetName = entity[constants.CHILDREN].find(
-			(c: any) => c[constants.NAME] === "dataset",
-		)?.value;
+		const datasetName = (
+			entity[constants.CHILDREN] as Record<string, unknown>[]
+		).find((c: Record<string, unknown>) => c[constants.NAME] === "dataset")
+			?.value as string;
 		if (datasetName in entities) {
 			throw new PyXFormError(
 				`[row : ${rowNumber}] On the 'entities' sheet, the 'list_name' value is invalid. The 'list_name' column must not have any duplicate names.`,
@@ -376,8 +386,10 @@ export function getEntityDeclarations(
 	return entities;
 }
 
-function normalizeEntityRow(row: Record<string, any>): Record<string, any> {
-	const result: Record<string, any> = {};
+function normalizeEntityRow(
+	row: Record<string, unknown>,
+): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(row)) {
 		// Map list_name to dataset
 		if (k === "list_name") {
@@ -392,7 +404,7 @@ function normalizeEntityRow(row: Record<string, any>): Record<string, any> {
 // --- Get entity variable references ---
 
 export function getEntityVariableReferences(
-	entityDeclarations: Record<string, Record<string, any>>,
+	entityDeclarations: Record<string, Record<string, unknown>>,
 ): Record<string, string[]> {
 	const variableReferences: Record<string, string[]> = {};
 	for (const [datasetName, declaration] of Object.entries(entityDeclarations)) {
@@ -461,16 +473,18 @@ function validateSaveto(
 
 export function processEntityReferencesForQuestion(
 	containerPath: ContainerPath,
-	row: Record<string, any>,
+	row: Record<string, unknown>,
 	rowNumber: number,
 	questionName: string,
-	entityDeclarations: Record<string, Record<string, any>> | null,
+	entityDeclarations: Record<string, Record<string, unknown>> | null,
 	entityVariableReferences: Record<string, string[]> | null,
 	entityReferencesByQuestion: Record<string, EntityReferences>,
 	isContainerBegin: boolean,
 	isContainerEnd: boolean,
 ): void {
-	const saveto = row[constants.BIND]?.[constants.ENTITIES_SAVETO_NS];
+	const saveto = (row[constants.BIND] as Record<string, unknown> | undefined)?.[
+		constants.ENTITIES_SAVETO_NS
+	] as string | undefined;
 	if (saveto) {
 		if (!entityDeclarations || Object.keys(entityDeclarations).length === 0) {
 			throw new PyXFormError(
@@ -484,7 +498,9 @@ export function processEntityReferencesForQuestion(
 
 		if (delimiterCount === 1) {
 			[datasetName, actualSaveto] = saveto.split("#", 2);
-			row[constants.BIND][constants.ENTITIES_SAVETO_NS] = actualSaveto;
+			(row[constants.BIND] as Record<string, unknown>)[
+				constants.ENTITIES_SAVETO_NS
+			] = actualSaveto;
 		} else if (delimiterCount > 1) {
 			throw new PyXFormError(
 				`[row : ${rowNumber}] On the 'survey' sheet, the 'save_to' value is invalid. A 'save_to' value must have at most one '#' delimiter character. Please check the spelling of this 'save_to' value.`,
@@ -508,7 +524,7 @@ export function processEntityReferencesForQuestion(
 		if (!entityReferencesByQuestion[datasetName]) {
 			entityReferencesByQuestion[datasetName] = {
 				dataset_name: datasetName,
-				row_number: entityDeclarations[datasetName].__row_number,
+				row_number: entityDeclarations[datasetName].__row_number as number,
 				references: [],
 			};
 		}
@@ -534,7 +550,9 @@ export function processEntityReferencesForQuestion(
 			if (!entityReferencesByQuestion[datasetName]) {
 				entityReferencesByQuestion[datasetName] = {
 					dataset_name: datasetName,
-					row_number: entityDeclarations![datasetName].__row_number,
+					row_number: (
+						entityDeclarations as Record<string, Record<string, unknown>>
+					)[datasetName].__row_number as number,
 					references: [],
 				};
 			}
@@ -551,15 +569,21 @@ export function processEntityReferencesForQuestion(
 // --- Validate entity label references ---
 
 export function validateEntityLabelReferences(
-	entityDeclarations: Record<string, Record<string, any>>,
+	entityDeclarations: Record<string, Record<string, unknown>>,
 	surveyQuestionNames: Set<string>,
 ): void {
 	for (const [, entity] of Object.entries(entityDeclarations)) {
-		const labelChild = entity[constants.CHILDREN]?.find(
-			(c: any) => c.type === "label" && c[constants.NAME] === "label",
+		const labelChild = (
+			entity[constants.CHILDREN] as Record<string, unknown>[] | undefined
+		)?.find(
+			(c: Record<string, unknown>) =>
+				c.type === "label" && c[constants.NAME] === "label",
 		);
-		if (labelChild?.bind?.calculate) {
-			const refs = extractPyxformReferences(labelChild.bind.calculate);
+		const labelBind = labelChild?.[constants.BIND] as
+			| Record<string, string>
+			| undefined;
+		if (labelBind?.calculate) {
+			const refs = extractPyxformReferences(labelBind.calculate);
 			for (const ref of refs) {
 				if (!surveyQuestionNames.has(ref)) {
 					throw new PyXFormError(
@@ -594,7 +618,7 @@ function getEntityAllocationRequest(
 
 		if (
 			deepestScopeBoundary === null ||
-			boundaryLength > deepestScopeBoundaryNodeCount!
+			boundaryLength > (deepestScopeBoundaryNodeCount as number)
 		) {
 			if (!deepestScopeBoundary || !boundary.equals(deepestScopeBoundary)) {
 				deepestContainerRef = ref;
@@ -613,8 +637,8 @@ function getEntityAllocationRequest(
 
 		if (
 			deepestContainerRef === null ||
-			(boundary.equals(deepestScopeBoundary!) &&
-				refSubpathLength > deepestContainerRefSubpathNodeCount!)
+			(boundary.equals(deepestScopeBoundary as ContainerPath) &&
+				refSubpathLength > (deepestContainerRefSubpathNodeCount as number))
 		) {
 			deepestContainerRef = ref;
 			deepestContainerRefSubpathNodeCount = refSubpathLength;
@@ -628,8 +652,8 @@ function getEntityAllocationRequest(
 			}
 			if (
 				deepestSaveto === null ||
-				(boundary.equals(deepestScopeBoundary!) &&
-					refSubpathLength > deepestSavetoSubpathNodeCount!)
+				(boundary.equals(deepestScopeBoundary as ContainerPath) &&
+					refSubpathLength > (deepestSavetoSubpathNodeCount as number))
 			) {
 				deepestSaveto = ref;
 				deepestSavetoSubpathNodeCount = refSubpathLength;
@@ -641,7 +665,7 @@ function getEntityAllocationRequest(
 	if (deepestSaveto) {
 		requestedPath = deepestSaveto.path;
 	} else {
-		requestedPath = deepestContainerRef!.path;
+		requestedPath = (deepestContainerRef as ReferenceSource).path;
 	}
 
 	if (savetoLineages.size > 0) {
@@ -667,7 +691,7 @@ function getEntityAllocationRequest(
 				if (mismatch) break;
 			}
 
-			const a = deepestSaveto!.path.getScopeBoundary();
+			const a = (deepestSaveto as ReferenceSource).path.getScopeBoundary();
 			const b = commonPath;
 			requestedPath =
 				a.getScopeBoundaryNodeCount() > b.getScopeBoundaryNodeCount() ||
@@ -685,7 +709,7 @@ function getEntityAllocationRequest(
 
 	// Validate each reference against the request constraints
 	for (const [refSource, scopeBoundary, scopeBoundaryLength] of boundaries) {
-		const deepestPrefix = deepestScopeBoundary!.nodes.slice(
+		const deepestPrefix = (deepestScopeBoundary as ContainerPath).nodes.slice(
 			0,
 			scopeBoundaryLength,
 		);
@@ -707,11 +731,11 @@ function getEntityAllocationRequest(
 		if (!prefixMatch) {
 			if (refSource.property_name !== null) {
 				throw new PyXFormError(
-					`[row : ${refSource.row}] On the 'survey' sheet, the 'save_to' value is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${deepestScopeRef!.path.pathAsStr()}' which is not compatible with this 'save_to' reference in scope '${refSource.path.pathAsStr()}'.`,
+					`[row : ${refSource.row}] On the 'survey' sheet, the 'save_to' value is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${(deepestScopeRef as ReferenceSource).path.pathAsStr()}' which is not compatible with this 'save_to' reference in scope '${refSource.path.pathAsStr()}'.`,
 				);
 			}
 			throw new PyXFormError(
-				`[row : ${entityRefs.row_number}] On the 'entities' sheet, the entity declaration is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${deepestScopeRef!.path.pathAsStr()}' which is not compatible with the variable reference to '${refSource.question_name}' in scope '${refSource.path.pathAsStr()}'.`,
+				`[row : ${entityRefs.row_number}] On the 'entities' sheet, the entity declaration is invalid. The entity list name '${entityRefs.dataset_name}' has a reference in container scope '${(deepestScopeRef as ReferenceSource).path.pathAsStr()}' which is not compatible with the variable reference to '${refSource.question_name}' in scope '${refSource.path.pathAsStr()}'.`,
 			);
 		}
 
@@ -726,7 +750,7 @@ function getEntityAllocationRequest(
 	}
 
 	return {
-		scope_path: deepestScopeBoundary!,
+		scope_path: deepestScopeBoundary as ContainerPath,
 		dataset_name: entityRefs.dataset_name,
 		requested_path: requestedPath,
 		requested_path_length: requestedPath.nodes.length,
@@ -739,7 +763,7 @@ function getEntityAllocationRequest(
 // --- Allocate entities to containers ---
 
 export function allocateEntitiesToContainers(
-	entityDeclarations: Record<string, Record<string, any>>,
+	entityDeclarations: Record<string, Record<string, unknown>>,
 	entityReferencesByQuestion: Record<string, EntityReferences>,
 ): Map<string, string> {
 	const allocations = new Map<string, string>(); // key = ContainerPath.key(), value = dataset_name
@@ -750,25 +774,29 @@ export function allocateEntitiesToContainers(
 	for (const entityRefs of Object.values(entityReferencesByQuestion)) {
 		const req = getEntityAllocationRequest(entityRefs);
 		const key = req.scope_path.key();
-		if (!scopePaths.has(key)) {
-			scopePaths.set(key, []);
+		let scopeList = scopePaths.get(key);
+		if (!scopeList) {
+			scopeList = [];
+			scopePaths.set(key, scopeList);
 		}
-		scopePaths.get(key)!.push(req);
+		scopeList.push(req);
 	}
 
 	// For unreferenced declarations, default to the survey scope
 	for (const [datasetName, declaration] of Object.entries(entityDeclarations)) {
 		if (!(datasetName in entityReferencesByQuestion)) {
 			const key = surveyPath.key();
-			if (!scopePaths.has(key)) {
-				scopePaths.set(key, []);
+			let scopeList = scopePaths.get(key);
+			if (!scopeList) {
+				scopeList = [];
+				scopePaths.set(key, scopeList);
 			}
-			scopePaths.get(key)!.push({
+			scopeList.push({
 				scope_path: surveyPath,
 				dataset_name: datasetName,
 				requested_path: surveyPath,
 				requested_path_length: 1,
-				entity_row_number: declaration.__row_number,
+				entity_row_number: declaration.__row_number as number,
 				saveto_lineages: new Map(),
 				saveto_lineage_paths: [],
 			});
@@ -777,7 +805,10 @@ export function allocateEntitiesToContainers(
 
 	// If there's only one entity, and its scope is the survey, just allocate to survey
 	if (scopePaths.size === 1) {
-		const [scopeKey, requests] = scopePaths.entries().next().value!;
+		const [scopeKey, requests] = scopePaths.entries().next().value as [
+			string,
+			AllocationRequest[],
+		];
 		if (scopeKey === surveyPath.key() && requests.length === 1) {
 			allocations.set(surveyPath.key(), requests[0].dataset_name);
 			return allocations;
@@ -878,27 +909,30 @@ export function getSearchPrefixes(
 }
 
 export function injectEntitiesIntoJson(
-	jsonNode: Record<string, any>,
+	jsonNode: Record<string, unknown>,
 	allocations: Map<string, string>,
-	entityDeclarations: Record<string, Record<string, any>>,
+	entityDeclarations: Record<string, Record<string, unknown>>,
 	currentPath: ContainerPath,
 	searchPrefixes: Set<string>,
 	entitiesAllocated: Set<string> = new Set(),
 	hasRepeatAncestor = false,
-): Record<string, any> {
+): Record<string, unknown> {
 	const datasetName = allocations.get(currentPath.key());
 	if (datasetName && !entitiesAllocated.has(datasetName)) {
 		const entityDecl = entityDeclarations[datasetName];
 
 		if (hasRepeatAncestor) {
-			const idAttr = entityDecl[constants.CHILDREN].find(
-				(c: any) => c[constants.NAME] === "id",
-			);
-			if (idAttr && idAttr.actions?.length === 1) {
-				idAttr.actions.push({
+			const idAttr = (
+				entityDecl[constants.CHILDREN] as Record<string, unknown>[]
+			).find((c: Record<string, unknown>) => c[constants.NAME] === "id");
+			const idAttrActions = idAttr?.actions as
+				| Record<string, unknown>[]
+				| undefined;
+			if (idAttr && idAttrActions?.length === 1) {
+				idAttrActions.push({
 					name: "setvalue",
 					event: "odk-new-repeat",
-					value: idAttr.actions[0].value,
+					value: idAttrActions[0].value,
 				});
 			}
 		}
@@ -906,13 +940,17 @@ export function injectEntitiesIntoJson(
 		if (!jsonNode[constants.CHILDREN]) {
 			jsonNode[constants.CHILDREN] = [];
 		}
-		jsonNode[constants.CHILDREN].push(getMetaGroup([entityDecl], true));
+		(jsonNode[constants.CHILDREN] as Record<string, unknown>[]).push(
+			getMetaGroup([entityDecl], true),
+		);
 		entitiesAllocated.add(datasetName);
 	}
 
-	for (const child of jsonNode[constants.CHILDREN] ?? []) {
-		const childName = child[constants.NAME];
-		const childType = child[constants.TYPE];
+	for (const child of (jsonNode[constants.CHILDREN] as
+		| Record<string, unknown>[]
+		| undefined) ?? []) {
+		const childName = child[constants.NAME] as string | undefined;
+		const childType = child[constants.TYPE] as string | undefined;
 		if (
 			childName &&
 			(childType === constants.GROUP || childType === constants.REPEAT)
@@ -945,9 +983,9 @@ export function injectEntitiesIntoJson(
 // --- Apply entities declarations ---
 
 export function applyEntitiesDeclarations(
-	entityDeclarations: Record<string, Record<string, any>>,
+	entityDeclarations: Record<string, Record<string, unknown>>,
 	entityReferencesByQuestion: Record<string, EntityReferences>,
-	jsonDict: Record<string, any>,
+	jsonDict: Record<string, unknown>,
 ): void {
 	const allocations = allocateEntitiesToContainers(
 		entityDeclarations,

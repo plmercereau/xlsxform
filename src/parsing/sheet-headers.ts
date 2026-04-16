@@ -6,7 +6,10 @@ import * as constants from "../constants.js";
 import { PyXFormError } from "../errors.js";
 
 /** Clean up text values (smart quotes, whitespace) */
-export function cleanTextValues(text: any, stripWhitespace = false): any {
+export function cleanTextValues(
+	text: unknown,
+	stripWhitespace = false,
+): unknown {
 	if (typeof text !== "string") return text;
 	let result = text;
 	// Optionally collapse sequences of whitespace to a single space
@@ -22,9 +25,9 @@ export function cleanTextValues(text: any, stripWhitespace = false): any {
 
 /** Merge dicts recursively, b overrides a */
 export function mergeDicts(
-	a: Record<string, any>,
-	b: Record<string, any>,
-): Record<string, any> {
+	a: Record<string, unknown>,
+	b: Record<string, unknown>,
+): Record<string, unknown> {
 	const result = { ...a };
 	for (const [key, value] of Object.entries(b)) {
 		if (
@@ -36,7 +39,10 @@ export function mergeDicts(
 			value !== null &&
 			!Array.isArray(value)
 		) {
-			result[key] = mergeDicts(result[key], value);
+			result[key] = mergeDicts(
+				result[key] as Record<string, unknown>,
+				value as Record<string, unknown>,
+			);
 		} else {
 			result[key] = value;
 		}
@@ -87,7 +93,7 @@ export function toSnakeCase(value: string): string {
 /**
  * Convert a list to a nested dict: [1,2,3,4] -> {1:{2:{3:4}}}
  */
-export function listToNestedDict(lst: any[]): any {
+export function listToNestedDict(lst: unknown[]): unknown {
 	if (lst.length > 1) {
 		return { [lst[0]]: listToNestedDict(lst.slice(1)) };
 	}
@@ -171,8 +177,8 @@ export function processRow(
 	defaultLanguage: string = constants.DEFAULT_LANGUAGE_VALUE,
 	stripWhitespace = false,
 	addRowNumber = false,
-): Record<string, any> {
-	let outRow: Record<string, any> = {};
+): Record<string, unknown> {
+	let outRow: Record<string, unknown> = {};
 	for (const [header, rawVal] of Object.entries(row)) {
 		const val = cleanTextValues(rawVal, stripWhitespace);
 		const tokens = headerKey[header];
@@ -202,10 +208,10 @@ export function processRow(
  * Merge dicts recursively with language-aware merging (matching Python merge_dicts).
  */
 function mergeDictsWithLang(
-	a: Record<string, any>,
-	b: Record<string, any>,
+	a: Record<string, unknown>,
+	b: Record<string, unknown>,
 	defaultLanguage: string,
-): Record<string, any> {
+): Record<string, unknown> {
 	const result = { ...a };
 	for (const [key, value] of Object.entries(b)) {
 		if (
@@ -217,7 +223,11 @@ function mergeDictsWithLang(
 			value !== null &&
 			!Array.isArray(value)
 		) {
-			result[key] = mergeDictsWithLang(result[key], value, defaultLanguage);
+			result[key] = mergeDictsWithLang(
+				result[key] as Record<string, unknown>,
+				value as Record<string, unknown>,
+				defaultLanguage,
+			);
 		} else if (
 			key in result &&
 			typeof result[key] === "string" &&
@@ -227,7 +237,7 @@ function mergeDictsWithLang(
 		) {
 			result[key] = mergeDictsWithLang(
 				{ [defaultLanguage]: result[key] },
-				value,
+				value as Record<string, unknown>,
 				defaultLanguage,
 			);
 		} else if (
@@ -237,7 +247,10 @@ function mergeDictsWithLang(
 			!Array.isArray(result[key]) &&
 			typeof value === "string"
 		) {
-			result[key] = { ...result[key], [defaultLanguage]: value };
+			result[key] = {
+				...(result[key] as Record<string, unknown>),
+				[defaultLanguage]: value,
+			};
 		} else {
 			result[key] = value;
 		}
@@ -247,7 +260,7 @@ function mergeDictsWithLang(
 
 export interface DealiasAndGroupHeadersResult {
 	headers: string[][];
-	data: Record<string, any>[];
+	data: Record<string, unknown>[];
 }
 
 /**
@@ -256,7 +269,7 @@ export interface DealiasAndGroupHeadersResult {
 export function dealiasAndGroupSheet(
 	sheetName: string,
 	sheetData: Record<string, string>[],
-	sheetHeader: Record<string, any>[] | null,
+	sheetHeader: Record<string, unknown>[] | null,
 	headerAliases: Record<string, string | string[]>,
 	headerColumns: Set<string>,
 	headersRequired?: Set<string>,
@@ -273,7 +286,7 @@ export function dealiasAndGroupSheet(
 		(!resolvedHeader || resolvedHeader.length === 0) &&
 		sheetData.length > 0
 	) {
-		const guessed: Record<string, any> = {};
+		const guessed: Record<string, unknown> = {};
 		for (const row of sheetData.slice(0, 100)) {
 			for (const k of Object.keys(row)) {
 				guessed[k] = null;
@@ -341,20 +354,20 @@ export function dealiasAndGroupSheet(
 }
 
 export interface DealiasedRow {
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 /**
  * Process a single row of data, dealiasing headers and grouping nested values.
  */
 export function dealiasAndGroupHeaders(
-	row: Record<string, any>,
+	row: Record<string, unknown>,
 	headerAliases: Record<string, string | [string, string]>,
 	isChoicesSheet = false,
 	defaultLanguage = "default",
 	stripWhitespace = false,
 ): DealiasedRow {
-	const result: Record<string, any> = {};
+	const result: Record<string, unknown> = {};
 
 	// Determine delimiter: if any header uses "::", use "::" for all; otherwise use ":"
 	const headers = Object.keys(row);

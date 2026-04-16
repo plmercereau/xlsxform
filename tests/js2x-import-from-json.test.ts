@@ -40,6 +40,8 @@ describe("TestJson2XformJsonImport", () => {
 		};
 		const survey = createSurveyElementFromDict(js);
 		// Calling toXml should not throw
-		expect(() => (survey as any).toXml()).not.toThrow();
+		expect(() =>
+			(survey as unknown as { toXml: () => string }).toXml(),
+		).not.toThrow();
 	});
 });

@@ -175,7 +175,7 @@ export interface SurveyData extends SurveyElementData {
 	style?: string;
 	default_language?: string;
 	choices?: Record<string, Itemset>;
-	_translations?: Record<string, any>;
+	_translations?: Record<string, Record<string, Record<string, unknown>>>;
 	public_key?: string;
 	submission_url?: string;
 	auto_send?: string;
@@ -184,7 +184,7 @@ export interface SurveyData extends SurveyElementData {
 	namespaces?: string;
 	instance_xmlns?: string;
 	entity_version?: string;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export class Survey extends SurveyElement {
@@ -196,7 +196,7 @@ export class Survey extends SurveyElement {
 	default_language: string;
 	children: (Section | Question | SurveyElement)[];
 	choices: Record<string, Itemset> | null;
-	_translations: Record<string, any>;
+	_translations: Record<string, Record<string, Record<string, unknown>>>;
 	_xpath_dictionary: Record<string, SurveyElement | null>;
 	setvalues_by_triggering_ref: Record<string, [string, string][]>;
 	setgeopoint_by_triggering_ref: Record<string, [string, string][]>;
@@ -288,7 +288,7 @@ export class Survey extends SurveyElement {
 	/**
 	 * Override to filter out underscore-prefixed properties (matching Python Survey.to_json_dict).
 	 */
-	toJsonDict(deleteKeys?: Set<string>): Record<string, any> {
+	toJsonDict(deleteKeys?: Set<string>): Record<string, unknown> {
 		const toDelete = new Set<string>(deleteKeys ?? []);
 		// Delete all keys starting with _
 		for (const k of Object.keys(this)) {
@@ -842,7 +842,7 @@ export class Survey extends SurveyElement {
 	private setupTranslations(): void {
 		const translations: Record<
 			string,
-			Record<string, Record<string, any>>
+			Record<string, Record<string, unknown>>
 		> = {};
 		this._translationContexts = {};
 
@@ -1047,7 +1047,7 @@ export class Survey extends SurveyElement {
 			const textElements: Element[] = [];
 
 			for (const [path, forms] of Object.entries(
-				items as Record<string, any>,
+				items as Record<string, Record<string, string>>,
 			)) {
 				const valueElements: Element[] = [];
 
@@ -1254,7 +1254,7 @@ export class Survey extends SurveyElement {
 			const control = child.xmlControl(this);
 			if (control != null) {
 				if (Symbol.iterator in Object(control)) {
-					for (const c of control as any) {
+					for (const c of control as Iterable<Element>) {
 						controls.push(c);
 					}
 				} else {
@@ -1366,7 +1366,8 @@ export class Survey extends SurveyElement {
 
 			// 4. pulldata() in choice_filter
 			if ("choice_filter" in element) {
-				const cf = (element as any).choice_filter;
+				const cf = (element as unknown as { choice_filter: string })
+					.choice_filter;
 				if (typeof cf === "string" && cf.includes("pulldata")) {
 					instances.push(...this.extractPulldataInstances(cf, context));
 				}
@@ -1385,14 +1386,17 @@ export class Survey extends SurveyElement {
 
 			// 6. Entity update mode - needs CSV instance for the dataset
 			if (element.type === "entity" && element.extra_data?._entity_children) {
-				const entityChildren = element.extra_data._entity_children as any[];
+				const entityChildren = element.extra_data._entity_children as Record<
+					string,
+					unknown
+				>[];
 				for (const child of entityChildren) {
-					if (
-						child[constants.NAME] === "baseVersion" &&
-						child[constants.BIND]?.calculate
-					) {
+					const childBind = child[constants.BIND] as
+						| Record<string, string>
+						| undefined;
+					if (child[constants.NAME] === "baseVersion" && childBind?.calculate) {
 						// Extract dataset name from the calculate expression
-						const calcExpr = child[constants.BIND].calculate;
+						const calcExpr = childBind.calculate;
 						const instanceMatch = calcExpr.match(
 							/instance\s*\(\s*'([^']+)'\s*\)/,
 						);
@@ -1586,8 +1590,13 @@ export class Survey extends SurveyElement {
 				);
 			}
 			// Generate model-level action elements (e.g. odk:recordaudio for background-audio)
-			if ("actions" in element && (element as any).actions) {
-				const actions = (element as any).actions as Record<string, string>[];
+			if (
+				"actions" in element &&
+				(element as unknown as { actions: unknown }).actions
+			) {
+				const actions = (
+					element as unknown as { actions: Record<string, string>[] }
+				).actions;
 				for (const action of actions) {
 					const actionName = action.name;
 					const event = action.event;
@@ -1706,11 +1715,11 @@ export class Survey extends SurveyElement {
 		return this.toXml({ prettyPrint: true });
 	}
 
-	xmlInstance_forSurvey(survey: any): Element {
+	xmlInstance_forSurvey(_survey: Survey): Element {
 		return this.xmlMainInstance();
 	}
 
-	*xmlBindings(survey: any): Generator<Element> {
+	*xmlBindings(_survey: Survey): Generator<Element> {
 		// Survey root doesn't generate its own bind
 	}
 }

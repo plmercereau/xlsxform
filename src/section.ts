@@ -4,7 +4,11 @@
 
 import * as constants from "./constants.js";
 import { type Question, defaultIsDynamic } from "./question.js";
-import { SurveyElement, type SurveyElementData } from "./survey-element.js";
+import {
+	type SurveyContext,
+	SurveyElement,
+	type SurveyElementData,
+} from "./survey-element.js";
 import { node } from "./utils.js";
 
 export interface SectionData extends SurveyElementData {
@@ -57,7 +61,7 @@ export class Section extends SurveyElement {
 		}
 	}
 
-	xmlInstance(survey: any, _appendTemplate = false): Element {
+	xmlInstance(survey: SurveyContext, _appendTemplate = false): Element {
 		let appendTemplate = _appendTemplate;
 		const attrs: Record<string, string> = {};
 		if (this.instance) {
@@ -79,7 +83,7 @@ export class Section extends SurveyElement {
 
 			const childInstance = child.xmlInstance(survey, appendTemplate);
 			if (childInstance) {
-				const doc = elem.ownerDocument!;
+				const doc = elem.ownerDocument as Document;
 				if (appendTemplate && repeatingTemplate) {
 					// Insert template before the regular instance
 					elem.appendChild(doc.importNode(repeatingTemplate, true));
@@ -92,17 +96,17 @@ export class Section extends SurveyElement {
 		return elem;
 	}
 
-	*xmlBindings(survey: any): Generator<Element> {
+	*xmlBindings(survey: SurveyContext): Generator<Element> {
 		// Only yield own bind - children are handled by Survey.iterDescendants
 		yield* super.xmlBindings(survey);
 	}
 
-	*xmlControl(survey: any): Generator<Element> {
+	*xmlControl(survey: SurveyContext): Generator<Element> {
 		for (const child of this.children) {
 			const control = child.xmlControl(survey);
 			if (control != null) {
 				if (Symbol.iterator in Object(control)) {
-					yield* control as any;
+					yield* control as Iterable<Element>;
 				} else {
 					yield control as Element;
 				}
@@ -116,7 +120,7 @@ export class RepeatingSection extends Section {
 		super({ ...data, type: data.type ?? constants.REPEAT });
 	}
 
-	*xmlControl(survey: any): Generator<Element> {
+	*xmlControl(survey: SurveyContext): Generator<Element> {
 		const controlAttrs: Record<string, string> = {
 			nodeset: this.getXpath(),
 		};
@@ -131,7 +135,7 @@ export class RepeatingSection extends Section {
 			const control = child.xmlControl(survey);
 			if (control != null) {
 				if (Symbol.iterator in Object(control)) {
-					for (const c of control as any) {
+					for (const c of control as Iterable<Element>) {
 						repeatChildren.push(c);
 					}
 				} else {
@@ -211,7 +215,7 @@ export class RepeatingSection extends Section {
 		return this;
 	}
 
-	xmlInstance(survey: any, _appendTemplate = false): Element {
+	xmlInstance(survey: SurveyContext, _appendTemplate = false): Element {
 		let appendTemplate = _appendTemplate;
 		const elem = node(this.name);
 		for (const child of this.children) {
@@ -225,7 +229,7 @@ export class RepeatingSection extends Section {
 
 			const childInstance = child.xmlInstance(survey, appendTemplate);
 			if (childInstance) {
-				const doc = elem.ownerDocument!;
+				const doc = elem.ownerDocument as Document;
 				if (appendTemplate && repeatingTemplate) {
 					elem.appendChild(doc.importNode(repeatingTemplate, true));
 					appendTemplate = false;
@@ -242,7 +246,7 @@ export class RepeatingSection extends Section {
 	 * Non-repeat children (groups, questions) get their regular xml_instance,
 	 * which means groups may generate template+regular for their nested repeats.
 	 */
-	generateRepeatingTemplate(survey: any): Element {
+	generateRepeatingTemplate(survey: SurveyContext): Element {
 		const elem = node(this.name, { attrs: { "jr:template": "" } });
 		for (const child of this.children) {
 			if (child instanceof ExternalInstance) continue;
@@ -250,7 +254,7 @@ export class RepeatingSection extends Section {
 				// Only generate the template version for nested repeats
 				const templateInstance = child.generateRepeatingTemplate(survey);
 				if (templateInstance) {
-					const doc = elem.ownerDocument!;
+					const doc = elem.ownerDocument as Document;
 					elem.appendChild(doc.importNode(templateInstance, true));
 				}
 			} else {
@@ -258,7 +262,7 @@ export class RepeatingSection extends Section {
 				// Groups will internally handle their own nested repeat templates
 				const childInstance = child.xmlInstance(survey);
 				if (childInstance) {
-					const doc = elem.ownerDocument!;
+					const doc = elem.ownerDocument as Document;
 					elem.appendChild(doc.importNode(childInstance, true));
 				}
 			}
@@ -272,7 +276,7 @@ export class GroupedSection extends Section {
 		super({ ...data, type: data.type ?? constants.GROUP });
 	}
 
-	*xmlControl(survey: any): Generator<Element> {
+	*xmlControl(survey: SurveyContext): Generator<Element> {
 		if (this.control?.bodyless) return;
 
 		const attrs: Record<string, string> = {};
@@ -294,7 +298,7 @@ export class GroupedSection extends Section {
 			const control = child.xmlControl(survey);
 			if (control != null) {
 				if (Symbol.iterator in Object(control)) {
-					for (const c of control as any) {
+					for (const c of control as Iterable<Element>) {
 						children.push(c);
 					}
 				} else {

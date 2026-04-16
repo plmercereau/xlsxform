@@ -9,7 +9,11 @@ import {
 	QUESTION_TYPE_DICT,
 	type QuestionTypeEntry,
 } from "./question-type-dictionary.js";
-import { SurveyElement, type SurveyElementData } from "./survey-element.js";
+import {
+	type SurveyContext,
+	SurveyElement,
+	type SurveyElementData,
+} from "./survey-element.js";
 import { node, setAttributeWithNS } from "./utils.js";
 
 export interface QuestionData extends SurveyElementData {
@@ -52,18 +56,22 @@ export class Question extends SurveyElement {
 						typeof merged[k] === "object" &&
 						merged[k] !== null
 					) {
-						Object.assign(template, merged[k] as Record<string, any>);
+						Object.assign(template, merged[k] as Record<string, unknown>);
 					}
-					(merged as any)[k] = template;
+					(merged as Record<string, unknown>)[k] = template;
 				} else if (!(k in merged) || merged[k as keyof typeof merged] == null) {
-					(merged as any)[k] = v;
+					(merged as Record<string, unknown>)[k] = v;
 				}
 			}
 		}
 
 		super(merged);
 		this.choice_filter = data.choice_filter ?? null;
-		this.parameters = (merged as any).parameters ?? null;
+		this.parameters =
+			((merged as Record<string, unknown>).parameters as Record<
+				string,
+				string
+			> | null) ?? null;
 		this.trigger = data.trigger ?? null;
 		this.query = data.query ?? null;
 		this.sms_field = data.sms_field ?? null;
@@ -77,7 +85,7 @@ export class Question extends SurveyElement {
 		return true;
 	}
 
-	xmlInstance(survey: any): Element {
+	xmlInstance(survey: SurveyContext): Element {
 		const defaultVal = this.default;
 		let text: string | undefined;
 		if (defaultVal && !defaultIsDynamic(defaultVal, this.type)) {
@@ -106,7 +114,7 @@ export class Question extends SurveyElement {
 		return elem;
 	}
 
-	xmlControl(survey: any): Element | null {
+	xmlControl(survey: SurveyContext): Element | null {
 		if (
 			this.type === "calculate" ||
 			this.type === "background-audio" ||
@@ -118,11 +126,11 @@ export class Question extends SurveyElement {
 		return this.buildXml(survey);
 	}
 
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		return null;
 	}
 
-	protected _buildXml(survey: any): Element | null {
+	protected _buildXml(survey: SurveyContext): Element | null {
 		if (!this.control?.tag) return null;
 
 		const labelAndHint = this.xmlLabelAndHint(survey);
@@ -251,7 +259,7 @@ export class Question extends SurveyElement {
 }
 
 export class InputQuestion extends Question {
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		const result = this._buildXml(survey);
 		if (!result) return null;
 
@@ -271,13 +279,13 @@ export class InputQuestion extends Question {
 }
 
 export class TriggerQuestion extends Question {
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		return this._buildXml(survey);
 	}
 }
 
 export class UploadQuestion extends Question {
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		return this._buildXml(survey);
 	}
 }
@@ -285,7 +293,7 @@ export class UploadQuestion extends Question {
 export interface TagData {
 	name: string;
 	label?: string | Record<string, string> | null;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export class OsmUploadQuestion extends UploadQuestion {
@@ -298,7 +306,7 @@ export class OsmUploadQuestion extends UploadQuestion {
 		this._osmTags = tags;
 	}
 
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		const result = this._buildXml(survey);
 		if (!result) return null;
 
@@ -329,7 +337,7 @@ export interface OptionData {
 	label?: string | Record<string, string> | null;
 	media?: Record<string, string> | null;
 	sms_option?: string | null;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export class Option extends SurveyElement {
@@ -352,7 +360,7 @@ export class Itemset {
 	requires_itext: boolean;
 	used_by_search: boolean;
 
-	constructor(name: string, choices: Record<string, any>[]) {
+	constructor(name: string, choices: Record<string, unknown>[]) {
 		this.name = name;
 		this.requires_itext = false;
 		this.used_by_search = false;
@@ -388,7 +396,7 @@ export class MultipleChoiceQuestion extends Question {
 		data: QuestionData & {
 			itemset?: string | null;
 			list_name?: string | null;
-			choices?: Itemset | Record<string, any>[] | null;
+			choices?: Itemset | Record<string, unknown>[] | null;
 		},
 	) {
 		const { choices: choicesData, ...rest } = data;
@@ -403,7 +411,7 @@ export class MultipleChoiceQuestion extends Question {
 		}
 	}
 
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		if (!this.bind?.type || !["string", "odk:rank"].includes(this.bind.type)) {
 			throw new PyXFormError("Invalid value for bind type.");
 		}
@@ -459,12 +467,12 @@ export class MultipleChoiceQuestion extends Question {
 			let nodeset: string;
 			if (isPreviousQuestion) {
 				// Extract the variable name from the ${ref} in this.itemset
-				const refMatch = /\$\{([^}]+)\}/.exec(this.itemset!);
-				const targetVarName = refMatch ? refMatch[1] : this.itemset!;
+				const refMatch = /\$\{([^}]+)\}/.exec(this.itemset);
+				const targetVarName = refMatch ? refMatch[1] : this.itemset;
 				const targetElement = survey.getElementByName?.(targetVarName);
 
 				// Find the nearest repeat ancestor of the target element
-				let targetRepeat: any = null;
+				let targetRepeat: SurveyElement | null = null;
 				if (targetElement) {
 					for (const { element: ancestor } of targetElement.iterAncestors()) {
 						if (ancestor.type === "repeat") {
@@ -623,7 +631,9 @@ export class MultipleChoiceQuestion extends Question {
 				],
 				attrs: { nodeset },
 			});
-			result.appendChild(result.ownerDocument!.importNode(itemsetElem, true));
+			result.appendChild(
+				(result.ownerDocument as Document).importNode(itemsetElem, true),
+			);
 		} else if (choices?.used_by_search) {
 			// Options processing specific to XLSForms using the "search()" function.
 			// The _choice_itext_ref is prepared by Survey._redirectIsSearchItext.
@@ -648,7 +658,9 @@ export class MultipleChoiceQuestion extends Question {
 				const itemElem = node("item", {
 					children: [labelNode, node("value", { text: option.name })],
 				});
-				result.appendChild(result.ownerDocument!.importNode(itemElem, true));
+				result.appendChild(
+					(result.ownerDocument as Document).importNode(itemElem, true),
+				);
 			}
 		}
 
@@ -677,7 +689,7 @@ export class RangeQuestion extends Question {
 		this.list_name = data.list_name ?? null;
 	}
 
-	protected buildXml(survey: any): Element | null {
+	protected buildXml(survey: SurveyContext): Element | null {
 		if (!this.bind?.type || !["int", "decimal"].includes(this.bind.type)) {
 			throw new PyXFormError(`Invalid value for bind type: ${this.bind?.type}`);
 		}
@@ -706,7 +718,9 @@ export class RangeQuestion extends Question {
 					],
 					attrs: { nodeset: `instance('${listName}')/root/item` },
 				});
-				result.appendChild(result.ownerDocument!.importNode(itemsetElem, true));
+				result.appendChild(
+					(result.ownerDocument as Document).importNode(itemsetElem, true),
+				);
 			}
 		}
 
@@ -726,7 +740,7 @@ export class RangeQuestion extends Question {
  * - XPATH_PRED: identifier[ predicates
  */
 export function defaultIsDynamic(
-	elementDefault: any,
+	elementDefault: unknown,
 	elementType?: string | null,
 ): boolean {
 	if (!elementDefault || typeof elementDefault !== "string") return false;

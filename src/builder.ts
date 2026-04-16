@@ -21,12 +21,20 @@ import {
 	TriggerQuestion,
 	UploadQuestion,
 } from "./question.js";
-import { GroupedSection, RepeatingSection, type Section } from "./section.js";
+import {
+	GroupedSection,
+	RepeatingSection,
+	type Section,
+	type SectionData,
+} from "./section.js";
 import { SurveyElement, type SurveyElementData } from "./survey-element.js";
 import { Survey } from "./survey.js";
 import { parseFileToJson } from "./xls2json.js";
 
-const QUESTION_CLASSES: Record<string, any> = {
+type QuestionConstructor = new (data: Record<string, unknown>) => Question;
+type SectionConstructor = new (data: Record<string, unknown>) => SurveyElement;
+
+const QUESTION_CLASSES: Record<string, QuestionConstructor> = {
 	"": InputQuestion, // Default
 	action: InputQuestion,
 	input: InputQuestion,
@@ -39,7 +47,7 @@ const QUESTION_CLASSES: Record<string, any> = {
 	upload: UploadQuestion,
 };
 
-const SECTION_CLASSES: Record<string, any> = {
+const SECTION_CLASSES: Record<string, SectionConstructor> = {
 	[constants.GROUP]: GroupedSection,
 	[constants.REPEAT]: RepeatingSection,
 	[constants.SURVEY]: Survey,
@@ -47,24 +55,26 @@ const SECTION_CLASSES: Record<string, any> = {
 
 export class SurveyElementBuilder {
 	private _addNoneOption = false;
-	private _sections: Record<string, any> = {};
+	private _sections: Record<string, Record<string, unknown>> = {};
 	setvalues_by_triggering_ref: Record<string, [string, string][]> = {};
 	setgeopoint_by_triggering_ref: Record<string, [string, string][]> = {};
 
-	constructor(opts: { sections?: Record<string, any> } = {}) {
+	constructor(
+		opts: { sections?: Record<string, Record<string, unknown>> } = {},
+	) {
 		if (opts.sections) {
 			this._sections = opts.sections;
 		}
 	}
 
-	setSections(sections: Record<string, any>): void {
+	setSections(sections: Record<string, Record<string, unknown>>): void {
 		this._sections = sections;
 	}
 
 	createSurveyElementFromDict(
-		d: Record<string, any>,
+		d: Record<string, unknown>,
 		choices?: Record<string, Itemset> | null,
-	): any {
+	): SurveyElement | SurveyElement[] {
 		if (d.add_none_option != null) {
 			this._addNoneOption = d.add_none_option;
 		}
@@ -95,7 +105,13 @@ export class SurveyElementBuilder {
 			}
 			const sectionDict = this._sections[sectionName];
 			const fullSurvey = this.createSurveyElementFromDict(sectionDict, choices);
-			return (fullSurvey as any).children ?? [];
+			if (!Array.isArray(fullSurvey) && "children" in fullSurvey) {
+				return (
+					(fullSurvey as unknown as { children: SurveyElement[] }).children ??
+					[]
+				);
+			}
+			return [];
 		}
 
 		if (type === "xml-external" || type === "csv-external") {
@@ -117,7 +133,7 @@ export class SurveyElementBuilder {
 		return this._createQuestionFromDict(d, QUESTION_TYPE_DICT, choices);
 	}
 
-	private _saveTrigger(d: Record<string, any>): void {
+	private _saveTrigger(d: Record<string, unknown>): void {
 		const trigger = d.trigger;
 		if (!trigger) return;
 
@@ -140,7 +156,7 @@ export class SurveyElementBuilder {
 	}
 
 	private _createQuestionFromDict(
-		d: Record<string, any>,
+		d: Record<string, unknown>,
 		qtd: Record<string, QuestionTypeEntry>,
 		choices?: Record<string, Itemset> | null,
 	): Question | Question[] {
@@ -167,7 +183,7 @@ export class SurveyElementBuilder {
 	private _getQuestionClass(
 		typeStr: string,
 		qtd: Record<string, QuestionTypeEntry>,
-	): any {
+	): QuestionConstructor {
 		let controlTag = "";
 		const questionType = qtd[typeStr];
 		if (questionType) {
@@ -184,7 +200,7 @@ export class SurveyElementBuilder {
 	}
 
 	private _createSectionFromDict(
-		d: Record<string, any>,
+		d: Record<string, unknown>,
 		choices?: Record<string, Itemset> | null,
 	): Survey | GroupedSection | RepeatingSection {
 		const children = d[constants.CHILDREN];
@@ -215,14 +231,16 @@ export class SurveyElementBuilder {
 	}
 
 	private _createLoopFromDict(
-		d: Record<string, any>,
+		d: Record<string, unknown>,
 		choices?: Record<string, Itemset> | null,
-	): any {
-		const children = d[constants.CHILDREN];
+	): GroupedSection | SurveyElement[] {
+		const children = d[constants.CHILDREN] as
+			| Record<string, unknown>[]
+			| undefined;
 		const result = new GroupedSection({
 			...d,
 			[constants.TYPE]: constants.GROUP,
-		} as any);
+		} as unknown as SectionData);
 
 		for (const columnDict of d[constants.COLUMNS] ?? []) {
 			if (columnDict[constants.NAME] === "none") continue;
@@ -241,7 +259,7 @@ export class SurveyElementBuilder {
 						questionDict,
 						choices,
 					);
-					column.addChildren(question as any);
+					column.addChildren(question as SurveyElement | SurveyElement[]);
 				}
 			}
 			result.addChild(column);
@@ -256,12 +274,12 @@ export class SurveyElementBuilder {
 	 * for loop expansion. Mirrors Python pyxform's _name_and_label_substitutions.
 	 */
 	private static _nameAndLabelSubstitutions(
-		questionTemplate: Record<string, any>,
-		columnHeaders: Record<string, any>,
-	): Record<string, any> {
+		questionTemplate: Record<string, unknown>,
+		columnHeaders: Record<string, unknown>,
+	): Record<string, unknown> {
 		// If the label in columnHeaders has multiple languages, setup a
 		// dictionary by language to do substitutions.
-		let infoByLang: Record<string, Record<string, any>> | null = null;
+		let infoByLang: Record<string, Record<string, unknown>> | null = null;
 		if (
 			columnHeaders[constants.LABEL] &&
 			typeof columnHeaders[constants.LABEL] === "object" &&
@@ -316,7 +334,7 @@ export class SurveyElementBuilder {
  */
 function pyPercentSubstitute(
 	template: string,
-	values: Record<string, any>,
+	values: Record<string, unknown>,
 ): string {
 	return template.replace(/%\((\w+)\)s/g, (match, key) => {
 		if (key in values) {
@@ -327,8 +345,8 @@ function pyPercentSubstitute(
 }
 
 export function createSurveyElementFromDict(
-	d: Record<string, any>,
-	sections?: Record<string, any>,
+	d: Record<string, unknown>,
+	sections?: Record<string, Record<string, unknown>>,
 ): SurveyElement {
 	const builder = new SurveyElementBuilder();
 	if (sections) builder.setSections(sections);
@@ -337,8 +355,8 @@ export function createSurveyElementFromDict(
 
 export function createSurvey(opts: {
 	nameOfMainSection?: string;
-	sections?: Record<string, any>;
-	mainSection?: Record<string, any>;
+	sections?: Record<string, Record<string, unknown>>;
+	mainSection?: Record<string, unknown>;
 	idString?: string;
 	title?: string;
 }): Survey {
@@ -394,7 +412,7 @@ function sectionName(pathOrFileName: string): string {
 	return basename.slice(0, basename.length - ext.length);
 }
 
-function loadFileToDict(filePath: string): [string, Record<string, any>] {
+function loadFileToDict(filePath: string): [string, Record<string, unknown>] {
 	const name = sectionName(filePath);
 	if (filePath.endsWith(".json")) {
 		const content = fs.readFileSync(filePath, "utf-8");
@@ -411,7 +429,7 @@ export function createSurveyFromPath(
 	includeDirectory = false,
 ): Survey {
 	let nameOfMainSection: string;
-	let sections: Record<string, any>;
+	let sections: Record<string, Record<string, unknown>>;
 
 	if (includeDirectory) {
 		nameOfMainSection = sectionName(filePath);
@@ -429,8 +447,10 @@ export function createSurveyFromPath(
 	});
 }
 
-function collectCompatibleFiles(directory: string): Record<string, any> {
-	const sections: Record<string, any> = {};
+function collectCompatibleFiles(
+	directory: string,
+): Record<string, Record<string, unknown>> {
+	const sections: Record<string, Record<string, unknown>> = {};
 	const files = fs.readdirSync(directory);
 	for (const file of files) {
 		if (

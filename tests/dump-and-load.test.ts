@@ -33,7 +33,7 @@ describe("DumpAndLoadTests", () => {
 	const jsonPaths: string[] = [];
 
 	it("test_load_from_dump", () => {
-		const surveys: Record<string, any> = {};
+		const surveys: Record<string, ReturnType<typeof createSurveyFromPath>> = {};
 
 		for (const filename of excelFiles) {
 			const filePath = pathToTextFixture(filename);

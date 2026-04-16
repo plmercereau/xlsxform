@@ -89,16 +89,16 @@ export function escapeTextForXml(text: string, attribute = false): string {
  * Create an XML element with children and attributes.
  * String args become text nodes. Element args become child elements.
  */
-export function xmlNode(tag: string, ...args: any[]): Element {
-	const doc: any = domImpl.createDocument(
-		null as any,
-		null as any,
-		null as any,
+export function xmlNode(tag: string, ...args: unknown[]): Element {
+	const doc = domImpl.createDocument(
+		null as unknown as string,
+		null as unknown as string,
+		null as unknown as DocumentType,
 	);
 	const elem = createElementWithNS(doc, tag);
 
 	const stringArgs: string[] = [];
-	const otherArgs: any[] = [];
+	const otherArgs: unknown[] = [];
 
 	for (const arg of args) {
 		if (typeof arg === "string") {
@@ -114,14 +114,14 @@ export function xmlNode(tag: string, ...args: any[]): Element {
 		otherArgs.length > 0 &&
 		otherArgs[otherArgs.length - 1] &&
 		typeof otherArgs[otherArgs.length - 1] === "object" &&
-		!otherArgs[otherArgs.length - 1].tagName &&
+		!(otherArgs[otherArgs.length - 1] as Record<string, unknown>).tagName &&
 		!Array.isArray(otherArgs[otherArgs.length - 1]) &&
 		!Array.isArray(otherArgs[otherArgs.length - 1])
 	) {
-		const last = otherArgs[otherArgs.length - 1];
+		const last = otherArgs[otherArgs.length - 1] as Record<string, unknown>;
 		// Check if it looks like attributes (not an Element)
 		if (!last.nodeType) {
-			kwargs = otherArgs.pop();
+			kwargs = otherArgs.pop() as Record<string, string>;
 		}
 	}
 
@@ -143,14 +143,14 @@ export function xmlNode(tag: string, ...args: any[]): Element {
 		if (child == null) continue;
 		if (typeof child === "number") {
 			elem.appendChild(doc.createTextNode(String(child)));
-		} else if (child.nodeType) {
+		} else if ((child as Node).nodeType) {
 			// It's a DOM node - import it
-			const imported = doc.importNode(child, true);
+			const imported = doc.importNode(child as Node, true);
 			elem.appendChild(imported);
 		} else if (Array.isArray(child)) {
 			for (const c of child) {
-				if (c?.nodeType) {
-					elem.appendChild(doc.importNode(c, true));
+				if ((c as Node)?.nodeType) {
+					elem.appendChild(doc.importNode(c as Node, true));
 				}
 			}
 		}
@@ -172,10 +172,10 @@ export function node(
 		attrs?: Record<string, string>;
 	} = {},
 ): Element {
-	const doc: any = domImpl.createDocument(
-		null as any,
-		null as any,
-		null as any,
+	const doc = domImpl.createDocument(
+		null as unknown as string,
+		null as unknown as string,
+		null as unknown as DocumentType,
 	);
 	const elem = createElementWithNS(doc, tag);
 
@@ -313,7 +313,10 @@ export function nodeToXml(
 	return result;
 }
 
-export function serializeXml(element: any, prettyPrint = false): string {
+export function serializeXml(
+	element: Element | Document,
+	prettyPrint = false,
+): string {
 	let xml = xmlSerializer.serializeToString(element);
 	if (prettyPrint) {
 		xml = formatXml(xml);

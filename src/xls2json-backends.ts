@@ -11,13 +11,22 @@ import { PyXFormError } from "./errors.js";
 // Use xlsx (SheetJS) for reading XLS/XLSX files
 import * as XLSX from "xlsx";
 
+/** A single row of form data with string keys and string values. */
+type FormRow = Record<string, string>;
+
+/** The raw dict structure returned by file-reading backends before conversion to DefinitionData. */
+type RawFormDict = Record<string, unknown>;
+
+/** Cell value types that can appear in spreadsheet cells. */
+type CellValue = string | number | boolean | Date;
+
 export interface DefinitionData {
-	survey: Record<string, any>[];
-	choices: Record<string, any>[];
-	settings: Record<string, any>[];
-	external_choices: Record<string, any>[];
-	entities: Record<string, any>[];
-	osm: Record<string, any>[];
+	survey: FormRow[];
+	choices: FormRow[];
+	settings: FormRow[];
+	external_choices: FormRow[];
+	entities: FormRow[];
+	osm: FormRow[];
 	survey_header?: Record<string, null>[];
 	choices_header?: Record<string, null>[];
 	settings_header?: Record<string, null>[];
@@ -30,7 +39,7 @@ export interface DefinitionData {
 
 const RE_WHITESPACE = /( )+/g;
 
-function isEmpty(value: any): boolean {
+function isEmpty(value: unknown): boolean {
 	if (value == null) return true;
 	if (typeof value === "string") {
 		if (!value || value.trim() === "") return true;
@@ -89,7 +98,7 @@ function getExcelColumnHeaders(
 /**
  * Convert a numeric value to string, displaying integers without decimal.
  */
-export function xlsxValueToStr(value: any): string {
+export function xlsxValueToStr(value: CellValue): string {
 	if (value === true) return "TRUE";
 	if (value === false) return "FALSE";
 	if (typeof value === "number") {
@@ -124,7 +133,7 @@ export function xlsxValueToStr(value: any): string {
  * Convert an XLS cell value to unicode string (equivalent to Python xls_value_to_unicode).
  */
 export function xlsValueToUnicode(
-	value: any,
+	value: CellValue,
 	valueType: number,
 	datemode: number,
 ): string {
@@ -137,7 +146,7 @@ export function xlsValueToUnicode(
 		return value ? "TRUE" : "FALSE";
 	}
 	if (valueType === XL_CELL_NUMBER) {
-		const intValue = Math.floor(value);
+		const intValue = Math.floor(value as number);
 		if (intValue === value) {
 			return String(intValue);
 		}
@@ -146,7 +155,7 @@ export function xlsValueToUnicode(
 	if (valueType === XL_CELL_DATE) {
 		// Handle date values - use XLSX date parsing
 		try {
-			const dateObj = XLSX.SSF.parse_date_code(value);
+			const dateObj = XLSX.SSF.parse_date_code(value as number);
 			if (dateObj.y === 0 && dateObj.m === 0 && dateObj.d === 0) {
 				// Time only
 				const h = String(dateObj.H).padStart(2, "0");
@@ -177,34 +186,34 @@ function readWorkbook(filePath: string): XLSX.WorkBook {
 /**
  * Read an XLSX file and return a dict structure.
  */
-export function xlsxToDict(pathOrFile: string): Record<string, any> {
+export function xlsxToDict(pathOrFile: string): RawFormDict {
 	try {
 		const wb = readWorkbook(pathOrFile);
 		return processWorkbook(wb);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		if (e instanceof PyXFormError) throw e;
-		throw new PyXFormError(`Error reading .xlsx file: ${e.message}`);
+		throw new PyXFormError(`Error reading .xlsx file: ${(e as Error).message}`);
 	}
 }
 
 /**
  * Read an XLS file and return a dict structure.
  */
-export function xlsToDict(pathOrFile: string): Record<string, any> {
+export function xlsToDict(pathOrFile: string): RawFormDict {
 	try {
 		const wb = readWorkbook(pathOrFile);
 		return processWorkbook(wb);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		if (e instanceof PyXFormError) throw e;
-		throw new PyXFormError(`Error reading .xls file: ${e.message}`);
+		throw new PyXFormError(`Error reading .xls file: ${(e as Error).message}`);
 	}
 }
 
-function processWorkbook(wb: XLSX.WorkBook): Record<string, any> {
-	const resultBook: Record<string, any> = { sheet_names: [] };
+function processWorkbook(wb: XLSX.WorkBook): RawFormDict {
+	const resultBook: RawFormDict = { sheet_names: [] };
 
 	for (const sheetName of wb.SheetNames) {
-		resultBook.sheet_names.push(sheetName);
+		(resultBook.sheet_names as string[]).push(sheetName);
 		const sheetNameLower = sheetName.toLowerCase();
 		const sheet = wb.Sheets[sheetName];
 
@@ -227,7 +236,7 @@ function processWorkbook(wb: XLSX.WorkBook): Record<string, any> {
 
 function sheetToRows(
 	sheet: XLSX.WorkSheet,
-): [Record<string, any>[], Record<string, null>[]] {
+): [FormRow[], Record<string, null>[]] {
 	const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
 	// Read first row as headers
 	const rawHeaders: (string | null)[] = [];
@@ -244,10 +253,10 @@ function sheetToRows(
 	// Read data rows
 	const maxAdjacentEmptyRows = 60;
 	let adjacentEmptyRows = 0;
-	const resultRows: Record<string, any>[] = [];
+	const resultRows: FormRow[] = [];
 
 	for (let r = range.s.r + 1; r <= range.e.r; r++) {
-		const rowDict: Record<string, any> = {};
+		const rowDict: FormRow = {};
 		for (let c = 0; c < headers.length; c++) {
 			const key = headers[c];
 			if (key === null) continue;
@@ -281,12 +290,12 @@ function sheetToRows(
 /**
  * Read a CSV file and return a dict structure.
  */
-export function csvToDict(pathOrFile: string): Record<string, any> {
+export function csvToDict(pathOrFile: string): RawFormDict {
 	try {
 		const content = fs.readFileSync(pathOrFile, "utf-8");
 		return processCsvData(content);
-	} catch (e: any) {
-		throw new PyXFormError(`Error reading .csv file: ${e.message}`);
+	} catch (e: unknown) {
+		throw new PyXFormError(`Error reading .csv file: ${(e as Error).message}`);
 	}
 }
 
@@ -329,9 +338,9 @@ function parseCsvLine(line: string): string[] {
 	return fields;
 }
 
-function processCsvData(content: string): Record<string, any> {
+function processCsvData(content: string): RawFormDict {
 	const lines = content.split(/\r?\n/);
-	const _dict: Record<string, any> = { sheet_names: [] };
+	const _dict: RawFormDict = { sheet_names: [] };
 	let sheetName: string | null = null;
 	let currentHeaders: string[] | null = null;
 
@@ -346,7 +355,7 @@ function processCsvData(content: string): Record<string, any> {
 			// This is a sheet name
 			sheetName = firstCol;
 			if (sheetName && !(sheetName in _dict)) {
-				_dict.sheet_names.push(sheetName);
+				(_dict.sheet_names as string[]).push(sheetName);
 				const lowerName = sheetName.toLowerCase();
 				_dict[lowerName] = [];
 				sheetName = lowerName;
@@ -362,14 +371,14 @@ function processCsvData(content: string): Record<string, any> {
 				currentHeaders = restCols;
 				_dict[`${sheetName}_header`] = listToDictList(currentHeaders);
 			} else {
-				const d: Record<string, any> = {};
+				const d: FormRow = {};
 				for (let i = 0; i < currentHeaders.length; i++) {
 					const v = i < restCols.length ? restCols[i] : "";
 					if (v !== "") {
 						d[currentHeaders[i]] = v;
 					}
 				}
-				_dict[sheetName].push(d);
+				(_dict[sheetName] as FormRow[]).push(d);
 			}
 		}
 	}
@@ -440,21 +449,21 @@ function mdTableToSsStructure(
  * File-based md_to_dict - reads an .md file and returns a dict structure.
  * This matches the Python md_to_dict function signature for file paths.
  */
-export function mdToDictFromFile(pathOrFile: string): Record<string, any> {
+export function mdToDictFromFile(pathOrFile: string): RawFormDict {
 	try {
 		const content = fs.readFileSync(pathOrFile, "utf-8");
 		return processMdData(content);
-	} catch (e: any) {
-		throw new PyXFormError(`Error reading .md file: ${e.message}`);
+	} catch (e: unknown) {
+		throw new PyXFormError(`Error reading .md file: ${(e as Error).message}`);
 	}
 }
 
-function processMdData(mdStr: string): Record<string, any> {
-	const resultBook: Record<string, any> = { sheet_names: [] };
+function processMdData(mdStr: string): RawFormDict {
+	const resultBook: RawFormDict = { sheet_names: [] };
 	const ssStructure = mdTableToSsStructure(mdStr);
 
 	for (const [sheet, contents] of Object.entries(ssStructure)) {
-		resultBook.sheet_names.push(sheet);
+		(resultBook.sheet_names as string[]).push(sheet);
 		const sheetNameLower = sheet.toLowerCase();
 
 		if (!constants.SUPPORTED_SHEET_NAMES.has(sheetNameLower)) {
@@ -476,11 +485,11 @@ function processMdData(mdStr: string): Record<string, any> {
 	return resultBook;
 }
 
-function listToDicts(arr: (string | null)[][]): Record<string, any>[] {
+function listToDicts(arr: (string | null)[][]): FormRow[] {
 	if (arr.length === 0) return [];
 	const headers = arr[0];
 	return arr.slice(1).map((row) => {
-		const d: Record<string, any> = {};
+		const d: FormRow = {};
 		for (let i = 0; i < row.length; i++) {
 			if (
 				i < headers.length &&
@@ -488,7 +497,11 @@ function listToDicts(arr: (string | null)[][]): Record<string, any>[] {
 				row[i] !== null &&
 				row[i] !== ""
 			) {
-				d[headers[i]!] = row[i];
+				const headerKey = headers[i];
+				const cellValue = row[i];
+				if (headerKey !== null && cellValue !== null) {
+					d[headerKey] = cellValue;
+				}
 			}
 		}
 		return d;
@@ -532,7 +545,7 @@ export function mdToDict(md: string): DefinitionData {
 		const firstCell = cells[0].trim();
 		if (firstCell) {
 			// Record original sheet name for misspelling detection
-			result.sheet_names!.push(firstCell);
+			result.sheet_names?.push(firstCell);
 
 			// This is a sheet name declaration
 			const sheetName = firstCell.toLowerCase();
@@ -571,7 +584,7 @@ export function mdToDict(md: string): DefinitionData {
 			headers = dataCells;
 			// Store headers for the sheet (excluding empty headers)
 			const headerKey = `${currentSheet}_header` as keyof DefinitionData;
-			(result as any)[headerKey] = [
+			(result as unknown as Record<string, unknown>)[headerKey] = [
 				Object.fromEntries(
 					headers.filter((h) => h !== "").map((h) => [h, null]),
 				),
@@ -580,7 +593,7 @@ export function mdToDict(md: string): DefinitionData {
 		}
 
 		// This is a data row
-		const row: Record<string, any> = {};
+		const row: FormRow = {};
 		let hasData = false;
 		for (let i = 0; i < headers.length; i++) {
 			const value = i < dataCells.length ? dataCells[i] : "";
@@ -594,7 +607,7 @@ export function mdToDict(md: string): DefinitionData {
 		}
 
 		if ((hasData || currentSheet === "settings") && currentSheet in result) {
-			(result as any)[currentSheet].push(row);
+			(result as unknown as Record<string, unknown[]>)[currentSheet].push(row);
 		}
 	}
 
@@ -637,15 +650,17 @@ function parseMdRow(line: string): string[] {
 /**
  * Convert a dict (ss_structure) directly to DefinitionData.
  */
-export function dictToDefinitionData(d: Record<string, any>): DefinitionData {
+export function dictToDefinitionData(
+	d: Record<string, unknown>,
+): DefinitionData {
 	return {
-		survey: d.survey ?? [],
-		choices: d.choices ?? [],
-		settings: d.settings ?? [],
-		external_choices: d.external_choices ?? [],
-		entities: d.entities ?? [],
-		osm: d.osm ?? [],
-		fallback_form_name: d.fallback_form_name,
+		survey: (d.survey ?? []) as FormRow[],
+		choices: (d.choices ?? []) as FormRow[],
+		settings: (d.settings ?? []) as FormRow[],
+		external_choices: (d.external_choices ?? []) as FormRow[],
+		entities: (d.entities ?? []) as FormRow[],
+		osm: (d.osm ?? []) as FormRow[],
+		fallback_form_name: d.fallback_form_name as string | undefined,
 	};
 }
 
@@ -653,23 +668,25 @@ export function dictToDefinitionData(d: Record<string, any>): DefinitionData {
  * Convert a raw dict result (from file backends) to DefinitionData.
  */
 function rawDictToDefinitionData(
-	d: Record<string, any>,
+	d: RawFormDict,
 	fallbackFormName?: string,
 ): DefinitionData {
 	return {
-		survey: d.survey ?? [],
-		choices: d.choices ?? [],
-		settings: d.settings ?? [],
-		external_choices: d.external_choices ?? [],
-		entities: d.entities ?? [],
-		osm: d.osm ?? [],
-		survey_header: d.survey_header,
-		choices_header: d.choices_header,
-		settings_header: d.settings_header,
-		external_choices_header: d.external_choices_header,
-		entities_header: d.entities_header,
-		osm_header: d.osm_header,
-		sheet_names: d.sheet_names,
+		survey: (d.survey ?? []) as FormRow[],
+		choices: (d.choices ?? []) as FormRow[],
+		settings: (d.settings ?? []) as FormRow[],
+		external_choices: (d.external_choices ?? []) as FormRow[],
+		entities: (d.entities ?? []) as FormRow[],
+		osm: (d.osm ?? []) as FormRow[],
+		survey_header: d.survey_header as Record<string, null>[] | undefined,
+		choices_header: d.choices_header as Record<string, null>[] | undefined,
+		settings_header: d.settings_header as Record<string, null>[] | undefined,
+		external_choices_header: d.external_choices_header as
+			| Record<string, null>[]
+			| undefined,
+		entities_header: d.entities_header as Record<string, null>[] | undefined,
+		osm_header: d.osm_header as Record<string, null>[] | undefined,
+		sheet_names: d.sheet_names as string[] | undefined,
 		fallback_form_name: fallbackFormName,
 	};
 }
@@ -677,9 +694,7 @@ function rawDictToDefinitionData(
 /**
  * Determine file type and call appropriate backend.
  */
-function getProcessorForFileType(
-	filePath: string,
-): (p: string) => Record<string, any> {
+function getProcessorForFileType(filePath: string): (p: string) => RawFormDict {
 	const ext = path.extname(filePath).toLowerCase();
 	switch (ext) {
 		case ".xlsx":
@@ -702,7 +717,7 @@ function getProcessorForFileType(
  * Get XLSForm data from various input types (file paths, dicts, or md strings).
  */
 export function getXlsform(
-	xlsform: string | Record<string, any>,
+	xlsform: string | Record<string, unknown>,
 	fileType?: string,
 ): DefinitionData {
 	if (typeof xlsform === "object" && !Array.isArray(xlsform)) {
@@ -719,7 +734,7 @@ export function getXlsform(
 				const stem = path.basename(xlsform, path.extname(xlsform));
 				return rawDictToDefinitionData(rawDict, stem);
 			}
-		} catch (e: any) {
+		} catch (e: unknown) {
 			if (e instanceof PyXFormError) throw e;
 			// Fall through to try as markdown
 		}
@@ -741,7 +756,7 @@ export function getXlsform(
  * Used for testing equivalency between formats.
  */
 export function convertFileToCsvString(filePath: string): string {
-	let importedSheets: Record<string, any>;
+	let importedSheets: RawFormDict;
 	if (filePath.endsWith(".csv")) {
 		importedSheets = csvToDict(filePath);
 	} else {
@@ -758,7 +773,7 @@ export function convertFileToCsvString(filePath: string): string {
 		const outKeys: string[] = [];
 		const outRows: string[][] = [];
 
-		for (const row of rows as Record<string, any>[]) {
+		for (const row of rows as FormRow[]) {
 			const outRow: (string | null)[] = [];
 			for (const key of Object.keys(row)) {
 				if (!outKeys.includes(key)) {
