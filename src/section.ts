@@ -2,6 +2,10 @@
  * Section survey element module - groups and repeats.
  */
 
+import type {
+	Document as XDocument,
+	Element as XElement,
+} from "@xmldom/xmldom";
 import * as constants from "./constants.js";
 import { type Question, defaultIsDynamic } from "./question.js";
 import {
@@ -10,6 +14,9 @@ import {
 	type SurveyElementData,
 } from "./survey-element.js";
 import { node } from "./utils.js";
+
+// Use xmldom's Element type throughout (returned by node() from utils.ts)
+type Element = XElement;
 
 export interface SectionData extends SurveyElementData {
 	flat?: boolean | null;
@@ -83,7 +90,7 @@ export class Section extends SurveyElement {
 
 			const childInstance = child.xmlInstance(survey, appendTemplate);
 			if (childInstance) {
-				const doc = elem.ownerDocument as Document;
+				const doc = elem.ownerDocument as XDocument;
 				if (appendTemplate && repeatingTemplate) {
 					// Insert template before the regular instance
 					elem.appendChild(doc.importNode(repeatingTemplate, true));
@@ -229,7 +236,7 @@ export class RepeatingSection extends Section {
 
 			const childInstance = child.xmlInstance(survey, appendTemplate);
 			if (childInstance) {
-				const doc = elem.ownerDocument as Document;
+				const doc = elem.ownerDocument as XDocument;
 				if (appendTemplate && repeatingTemplate) {
 					elem.appendChild(doc.importNode(repeatingTemplate, true));
 					appendTemplate = false;
@@ -254,7 +261,7 @@ export class RepeatingSection extends Section {
 				// Only generate the template version for nested repeats
 				const templateInstance = child.generateRepeatingTemplate(survey);
 				if (templateInstance) {
-					const doc = elem.ownerDocument as Document;
+					const doc = elem.ownerDocument as XDocument;
 					elem.appendChild(doc.importNode(templateInstance, true));
 				}
 			} else {
@@ -262,7 +269,7 @@ export class RepeatingSection extends Section {
 				// Groups will internally handle their own nested repeat templates
 				const childInstance = child.xmlInstance(survey);
 				if (childInstance) {
-					const doc = elem.ownerDocument as Document;
+					const doc = elem.ownerDocument as XDocument;
 					elem.appendChild(doc.importNode(childInstance, true));
 				}
 			}

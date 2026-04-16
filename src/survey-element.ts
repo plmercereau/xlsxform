@@ -2,11 +2,15 @@
  * Base class for all survey elements.
  */
 
+import type { Element as XElement } from "@xmldom/xmldom";
 import { BINDING_CONVERSIONS } from "./aliases.js";
 import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
 import { hasPyxformReference, isXmlTag } from "./parsing/expression.js";
 import { node } from "./utils.js";
+
+// Use xmldom's Element type throughout (returned by node() from utils.ts)
+type Element = XElement;
 
 /**
  * Interface representing the survey methods needed by elements during XML generation.

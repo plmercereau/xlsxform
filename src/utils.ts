@@ -1,4 +1,13 @@
-import { DOMImplementation, DOMParser, XMLSerializer } from "@xmldom/xmldom";
+import {
+	DOMImplementation,
+	DOMParser,
+	type CharacterData as XCharacterData,
+	type Document as XDocument,
+	type DocumentType as XDocumentType,
+	type Element as XElement,
+	XMLSerializer,
+	type Node as XNode,
+} from "@xmldom/xmldom";
 import { PyXFormError } from "./errors.js";
 
 const domImpl = new DOMImplementation();
@@ -30,7 +39,7 @@ export function registerNamespace(prefix: string, uri: string): void {
 }
 
 export function setAttributeWithNS(
-	elem: Element,
+	elem: XElement,
 	name: string,
 	value: string,
 ): void {
@@ -54,7 +63,7 @@ export function setAttributeWithNS(
 	elem.setAttribute(name, value);
 }
 
-function createElementWithNS(doc: Document, tag: string): Element {
+function createElementWithNS(doc: XDocument, tag: string): XElement {
 	const colonIdx = tag.indexOf(":");
 	if (colonIdx > 0) {
 		const prefix = tag.substring(0, colonIdx);
@@ -89,11 +98,11 @@ export function escapeTextForXml(text: string, attribute = false): string {
  * Create an XML element with children and attributes.
  * String args become text nodes. Element args become child elements.
  */
-export function xmlNode(tag: string, ...args: unknown[]): Element {
+export function xmlNode(tag: string, ...args: unknown[]): XElement {
 	const doc = domImpl.createDocument(
 		null as unknown as string,
 		null as unknown as string,
-		null as unknown as DocumentType,
+		null as unknown as XDocumentType,
 	);
 	const elem = createElementWithNS(doc, tag);
 
@@ -143,14 +152,14 @@ export function xmlNode(tag: string, ...args: unknown[]): Element {
 		if (child == null) continue;
 		if (typeof child === "number") {
 			elem.appendChild(doc.createTextNode(String(child)));
-		} else if ((child as Node).nodeType) {
+		} else if ((child as XNode).nodeType) {
 			// It's a DOM node - import it
-			const imported = doc.importNode(child as Node, true);
+			const imported = doc.importNode(child as XNode, true);
 			elem.appendChild(imported);
 		} else if (Array.isArray(child)) {
 			for (const c of child) {
-				if ((c as Node)?.nodeType) {
-					elem.appendChild(doc.importNode(c as Node, true));
+				if ((c as XNode)?.nodeType) {
+					elem.appendChild(doc.importNode(c as XNode, true));
 				}
 			}
 		}
@@ -166,16 +175,16 @@ export function xmlNode(tag: string, ...args: unknown[]): Element {
 export function node(
 	tag: string,
 	opts: {
-		children?: (Element | string | number | null | undefined)[];
+		children?: (XElement | string | number | null | undefined)[];
 		text?: string;
 		toParseString?: boolean;
 		attrs?: Record<string, string>;
 	} = {},
-): Element {
+): XElement {
 	const doc = domImpl.createDocument(
 		null as unknown as string,
 		null as unknown as string,
-		null as unknown as DocumentType,
+		null as unknown as XDocumentType,
 	);
 	const elem = createElementWithNS(doc, tag);
 
@@ -242,7 +251,7 @@ export function node(
  * Does NOT escape ', \r, \n, \t (unlike standard XML serializers).
  */
 export function nodeToXml(
-	elem: Element,
+	elem: XElement,
 	indent = "",
 	addindent = "",
 	newl = "",
@@ -282,9 +291,9 @@ export function nodeToXml(
 					result += " ";
 				}
 				if (cnode.nodeType === 3 || cnode.nodeType === 4) {
-					result += escapeTextForXml(cnode.data ?? "");
+					result += escapeTextForXml((cnode as XCharacterData).data ?? "");
 				} else if (cnode.nodeType === 1) {
-					result += nodeToXml(cnode as Element, "", "", "");
+					result += nodeToXml(cnode as unknown as XElement, "", "", "");
 				}
 				if (childCount > 1 && i + 1 === childCount) {
 					result += " ";
@@ -296,7 +305,7 @@ export function nodeToXml(
 				const cnode = elem.childNodes[i];
 				if (cnode.nodeType === 1) {
 					result += nodeToXml(
-						cnode as Element,
+						cnode as unknown as XElement,
 						`${indent}${addindent}`,
 						addindent,
 						newl,
@@ -314,7 +323,7 @@ export function nodeToXml(
 }
 
 export function serializeXml(
-	element: Element | Document,
+	element: XElement | XDocument,
 	prettyPrint = false,
 ): string {
 	let xml = xmlSerializer.serializeToString(element);

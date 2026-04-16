@@ -35,22 +35,22 @@ type QuestionConstructor = new (data: Record<string, unknown>) => Question;
 type SectionConstructor = new (data: Record<string, unknown>) => SurveyElement;
 
 const QUESTION_CLASSES: Record<string, QuestionConstructor> = {
-	"": InputQuestion, // Default
-	action: InputQuestion,
-	input: InputQuestion,
-	"odk:rank": MultipleChoiceQuestion,
-	range: RangeQuestion,
-	select: MultipleChoiceQuestion,
-	select1: MultipleChoiceQuestion,
-	osm: OsmUploadQuestion,
-	trigger: TriggerQuestion,
-	upload: UploadQuestion,
+	"": InputQuestion as unknown as QuestionConstructor, // Default
+	action: InputQuestion as unknown as QuestionConstructor,
+	input: InputQuestion as unknown as QuestionConstructor,
+	"odk:rank": MultipleChoiceQuestion as unknown as QuestionConstructor,
+	range: RangeQuestion as unknown as QuestionConstructor,
+	select: MultipleChoiceQuestion as unknown as QuestionConstructor,
+	select1: MultipleChoiceQuestion as unknown as QuestionConstructor,
+	osm: OsmUploadQuestion as unknown as QuestionConstructor,
+	trigger: TriggerQuestion as unknown as QuestionConstructor,
+	upload: UploadQuestion as unknown as QuestionConstructor,
 };
 
 const SECTION_CLASSES: Record<string, SectionConstructor> = {
-	[constants.GROUP]: GroupedSection,
-	[constants.REPEAT]: RepeatingSection,
-	[constants.SURVEY]: Survey,
+	[constants.GROUP]: GroupedSection as unknown as SectionConstructor,
+	[constants.REPEAT]: RepeatingSection as unknown as SectionConstructor,
+	[constants.SURVEY]: Survey as unknown as SectionConstructor,
 };
 
 export class SurveyElementBuilder {
@@ -76,12 +76,12 @@ export class SurveyElementBuilder {
 		choices?: Record<string, Itemset> | null,
 	): SurveyElement | SurveyElement[] {
 		if (d.add_none_option != null) {
-			this._addNoneOption = d.add_none_option;
+			this._addNoneOption = d.add_none_option as boolean;
 		}
 
-		const type = d[constants.TYPE];
+		const type = d[constants.TYPE] as string | undefined;
 
-		if (type in SECTION_CLASSES) {
+		if (type && type in SECTION_CLASSES) {
 			const section = this._createSectionFromDict(d, choices);
 
 			if (type === constants.SURVEY) {
@@ -99,7 +99,7 @@ export class SurveyElementBuilder {
 		}
 
 		if (type === "include") {
-			const sectionName = d[constants.NAME];
+			const sectionName = d[constants.NAME] as string;
 			if (!(sectionName in this._sections)) {
 				throw new PyXFormError("This section has not been included.");
 			}
@@ -139,8 +139,12 @@ export class SurveyElementBuilder {
 
 		const triggers = Array.isArray(trigger) ? trigger : [trigger];
 		for (const t of triggers) {
-			const value = d[constants.BIND]?.calculate ?? "";
-			const questionRef: [string, string] = [d[constants.NAME], value];
+			const bind = d[constants.BIND] as Record<string, unknown> | undefined;
+			const value = (bind?.calculate as string) ?? "";
+			const questionRef: [string, string] = [
+				d[constants.NAME] as string,
+				value,
+			];
 			if (d[constants.TYPE] === "background-geopoint") {
 				if (!this.setgeopoint_by_triggering_ref[t]) {
 					this.setgeopoint_by_triggering_ref[t] = [];
@@ -160,14 +164,14 @@ export class SurveyElementBuilder {
 		qtd: Record<string, QuestionTypeEntry>,
 		choices?: Record<string, Itemset> | null,
 	): Question | Question[] {
-		const typeStr = d[constants.TYPE];
+		const typeStr = d[constants.TYPE] as string;
 		const questionClass = this._getQuestionClass(typeStr, qtd);
 
 		if (!questionClass) return [];
 
 		// If choices are available and the question references them
 		if (choices && d[constants.ITEMSET]) {
-			const itemset = choices[d[constants.ITEMSET]];
+			const itemset = choices[d[constants.ITEMSET] as string];
 			if (itemset) {
 				return new questionClass({
 					...d,
@@ -203,14 +207,19 @@ export class SurveyElementBuilder {
 		d: Record<string, unknown>,
 		choices?: Record<string, Itemset> | null,
 	): Survey | GroupedSection | RepeatingSection {
-		const children = d[constants.CHILDREN];
-		const SectionClass = SECTION_CLASSES[d[constants.TYPE]];
+		const children = d[constants.CHILDREN] as
+			| Record<string, unknown>[]
+			| undefined;
+		const SectionClass = SECTION_CLASSES[d[constants.TYPE] as string];
 
 		if (d[constants.TYPE] === constants.SURVEY && !d[constants.TITLE]) {
 			d[constants.TITLE] = d[constants.NAME];
 		}
 
-		const result = new SectionClass(d);
+		const result = new SectionClass(d) as
+			| Survey
+			| GroupedSection
+			| RepeatingSection;
 
 		if (children) {
 			for (const child of children) {
@@ -242,13 +251,14 @@ export class SurveyElementBuilder {
 			[constants.TYPE]: constants.GROUP,
 		} as unknown as SectionData);
 
-		for (const columnDict of d[constants.COLUMNS] ?? []) {
+		const columns = (d[constants.COLUMNS] ?? []) as Record<string, unknown>[];
+		for (const columnDict of columns) {
 			if (columnDict[constants.NAME] === "none") continue;
 
 			const column = new GroupedSection({
 				type: constants.GROUP,
 				...columnDict,
-			});
+			} as SectionData);
 			if (children) {
 				for (const child of children) {
 					const questionDict = SurveyElementBuilder._nameAndLabelSubstitutions(
@@ -280,43 +290,39 @@ export class SurveyElementBuilder {
 		// If the label in columnHeaders has multiple languages, setup a
 		// dictionary by language to do substitutions.
 		let infoByLang: Record<string, Record<string, unknown>> | null = null;
-		if (
-			columnHeaders[constants.LABEL] &&
-			typeof columnHeaders[constants.LABEL] === "object" &&
-			!Array.isArray(columnHeaders[constants.LABEL])
-		) {
+		const colLabel = columnHeaders[constants.LABEL];
+		if (colLabel && typeof colLabel === "object" && !Array.isArray(colLabel)) {
 			infoByLang = {};
-			for (const lang of Object.keys(columnHeaders[constants.LABEL])) {
+			const labelObj = colLabel as Record<string, unknown>;
+			for (const lang of Object.keys(labelObj)) {
 				infoByLang[lang] = {
 					[constants.NAME]: columnHeaders[constants.NAME],
-					[constants.LABEL]: columnHeaders[constants.LABEL][lang],
+					[constants.LABEL]: labelObj[lang],
 				};
 			}
 		}
 
-		const result = { ...questionTemplate };
+		const result: Record<string, unknown> = { ...questionTemplate };
 		for (const key of Object.keys(result)) {
-			if (typeof result[key] === "string") {
-				result[key] = pyPercentSubstitute(result[key], columnHeaders);
-			} else if (
-				result[key] &&
-				typeof result[key] === "object" &&
-				!Array.isArray(result[key])
-			) {
-				result[key] = { ...result[key] };
-				for (const key2 of Object.keys(result[key])) {
-					if (typeof result[key][key2] === "string") {
+			const val = result[key];
+			if (typeof val === "string") {
+				result[key] = pyPercentSubstitute(val, columnHeaders);
+			} else if (val && typeof val === "object" && !Array.isArray(val)) {
+				const nested = { ...(val as Record<string, unknown>) };
+				result[key] = nested;
+				for (const key2 of Object.keys(nested)) {
+					if (typeof nested[key2] === "string") {
 						if (
 							infoByLang &&
 							typeof columnHeaders[constants.LABEL] === "object"
 						) {
-							result[key][key2] = pyPercentSubstitute(
-								result[key][key2],
+							nested[key2] = pyPercentSubstitute(
+								nested[key2] as string,
 								infoByLang[key2] ?? columnHeaders,
 							);
 						} else {
-							result[key][key2] = pyPercentSubstitute(
-								result[key][key2],
+							nested[key2] = pyPercentSubstitute(
+								nested[key2] as string,
 								columnHeaders,
 							);
 						}

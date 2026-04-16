@@ -35,7 +35,7 @@ export function _tryParse(root: string): Element {
 		const doc = parser.parseFromString(root, "text/xml");
 		const docEl = doc?.documentElement;
 		if (docEl && parseErrors.length === 0 && docEl.nodeName !== "parsererror") {
-			return docEl;
+			return docEl as unknown as Element;
 		}
 	} catch (_e) {
 		// Fall through to file path attempt
@@ -57,7 +57,7 @@ export function _tryParse(root: string): Element {
 				parseErrors.length === 0 &&
 				docEl.nodeName !== "parsererror"
 			) {
-				return docEl;
+				return docEl as unknown as Element;
 			}
 		} catch (_e) {
 			// xmldom may throw ParseError for invalid content
@@ -779,10 +779,9 @@ class XFormToDictBuilder {
 		if (!("translation" in itext)) {
 			throw new PyXFormError('Invalid value for `self.model["itext"]`.');
 		}
-		let translations = itext.translation;
-		if (!Array.isArray(translations)) {
-			translations = [translations];
-		}
+		const translations: unknown[] = Array.isArray(itext.translation)
+			? itext.translation
+			: [itext.translation];
 		const firstTranslation = translations[0] as Record<string, unknown>;
 		if (!("text" in firstTranslation)) {
 			throw new PyXFormError("Invalid value for `translations[0]`.");

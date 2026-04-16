@@ -95,7 +95,7 @@ export function toSnakeCase(value: string): string {
  */
 export function listToNestedDict(lst: unknown[]): unknown {
 	if (lst.length > 1) {
-		return { [lst[0]]: listToNestedDict(lst.slice(1)) };
+		return { [lst[0] as string]: listToNestedDict(lst.slice(1)) };
 	}
 	return lst[0];
 }
@@ -385,19 +385,17 @@ export function dealiasAndGroupHeaders(
 		if (mediaParts.length >= 2 && mediaParts[0] === "media") {
 			const mediaType = mediaParts[1]; // e.g., "audio", "image", "video", "big-image"
 			if (!result.media) result.media = {};
+			const media = result.media as Record<string, unknown>;
 			if (mediaParts.length === 3) {
 				// media::audio::English → translated media
 				const lang = mediaParts[2];
-				if (
-					typeof result.media[mediaType] !== "object" ||
-					result.media[mediaType] === null
-				) {
-					result.media[mediaType] = {};
+				if (typeof media[mediaType] !== "object" || media[mediaType] === null) {
+					media[mediaType] = {};
 				}
-				result.media[mediaType][lang] = value;
+				(media[mediaType] as Record<string, unknown>)[lang] = value;
 			} else {
 				// media::audio → untranslated media
-				result.media[mediaType] = value;
+				media[mediaType] = value;
 			}
 			continue;
 		}
@@ -425,10 +423,12 @@ export function dealiasAndGroupHeaders(
 				// For nested aliases like ["bind", "jr:constraintMsg"],
 				// create the nested structure with language
 				if (!result[alias[0]]) result[alias[0]] = {};
+				const aliasOuter = result[alias[0]] as Record<string, unknown>;
 				if (typeof result[alias[0]] === "object") {
-					if (!result[alias[0]][alias[1]]) result[alias[0]][alias[1]] = {};
-					if (typeof result[alias[0]][alias[1]] === "object") {
-						result[alias[0]][alias[1]][lang] = value;
+					if (!aliasOuter[alias[1]]) aliasOuter[alias[1]] = {};
+					const aliasInner = aliasOuter[alias[1]] as Record<string, unknown>;
+					if (typeof aliasOuter[alias[1]] === "object") {
+						aliasInner[lang] = value;
 					}
 				}
 				continue;
@@ -445,7 +445,7 @@ export function dealiasAndGroupHeaders(
 				typeof result[targetKey] === "object" &&
 				!Array.isArray(result[targetKey])
 			) {
-				result[targetKey][lang] = value;
+				(result[targetKey] as Record<string, unknown>)[lang] = value;
 			}
 			continue;
 		}
@@ -459,7 +459,7 @@ export function dealiasAndGroupHeaders(
 				result[path[0]] !== null &&
 				!Array.isArray(result[path[0]])
 			) {
-				result[path[0]][defaultLanguage] = value;
+				(result[path[0]] as Record<string, unknown>)[defaultLanguage] = value;
 			} else {
 				result[path[0]] = value;
 			}
@@ -471,7 +471,7 @@ export function dealiasAndGroupHeaders(
 				typeof result[path[0]] === "object" &&
 				!Array.isArray(result[path[0]])
 			) {
-				result[path[0]][path[1]] = value;
+				(result[path[0]] as Record<string, unknown>)[path[1]] = value;
 			}
 		}
 	}

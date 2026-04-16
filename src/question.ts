@@ -2,6 +2,10 @@
  * Question survey element types.
  */
 
+import type {
+	Document as XDocument,
+	Element as XElement,
+} from "@xmldom/xmldom";
 import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
 import { RE_PYXFORM_REF, hasPyxformReference } from "./parsing/expression.js";
@@ -15,6 +19,9 @@ import {
 	type SurveyElementData,
 } from "./survey-element.js";
 import { node, setAttributeWithNS } from "./utils.js";
+
+// Use xmldom's Element type throughout (returned by node() from utils.ts)
+type Element = XElement;
 
 export interface QuestionData extends SurveyElementData {
 	question_type_dictionary?: Record<string, QuestionTypeEntry>;
@@ -139,7 +146,7 @@ export class Question extends SurveyElement {
 		// Add control attributes
 		for (const [k, v] of Object.entries(this.control)) {
 			if (k !== "tag") {
-				attrs[k] = survey.insertXpaths(v, this);
+				attrs[k] = survey.insertXpaths(v as string, this);
 			}
 		}
 
@@ -249,7 +256,7 @@ export class Question extends SurveyElement {
 			}
 		}
 
-		const result = node(this.control.tag, {
+		const result = node(this.control.tag as string, {
 			children,
 			attrs,
 		});
@@ -412,7 +419,10 @@ export class MultipleChoiceQuestion extends Question {
 	}
 
 	protected buildXml(survey: SurveyContext): Element | null {
-		if (!this.bind?.type || !["string", "odk:rank"].includes(this.bind.type)) {
+		if (
+			!this.bind?.type ||
+			!["string", "odk:rank"].includes(this.bind.type as string)
+		) {
 			throw new PyXFormError("Invalid value for bind type.");
 		}
 
@@ -421,7 +431,8 @@ export class MultipleChoiceQuestion extends Question {
 
 		let choices: Itemset | null = null;
 		if (survey.choices) {
-			choices = survey.choices[this.itemset ?? ""] ?? null;
+			choices =
+				(survey.choices[this.itemset ?? ""] as Itemset | undefined) ?? null;
 		}
 		if (!choices) choices = this.choices;
 
@@ -632,7 +643,7 @@ export class MultipleChoiceQuestion extends Question {
 				attrs: { nodeset },
 			});
 			result.appendChild(
-				(result.ownerDocument as Document).importNode(itemsetElem, true),
+				(result.ownerDocument as XDocument).importNode(itemsetElem, true),
 			);
 		} else if (choices?.used_by_search) {
 			// Options processing specific to XLSForms using the "search()" function.
@@ -659,7 +670,7 @@ export class MultipleChoiceQuestion extends Question {
 					children: [labelNode, node("value", { text: option.name })],
 				});
 				result.appendChild(
-					(result.ownerDocument as Document).importNode(itemElem, true),
+					(result.ownerDocument as XDocument).importNode(itemElem, true),
 				);
 			}
 		}
@@ -690,7 +701,10 @@ export class RangeQuestion extends Question {
 	}
 
 	protected buildXml(survey: SurveyContext): Element | null {
-		if (!this.bind?.type || !["int", "decimal"].includes(this.bind.type)) {
+		if (
+			!this.bind?.type ||
+			!["int", "decimal"].includes(this.bind.type as string)
+		) {
 			throw new PyXFormError(`Invalid value for bind type: ${this.bind?.type}`);
 		}
 
@@ -719,7 +733,7 @@ export class RangeQuestion extends Question {
 					attrs: { nodeset: `instance('${listName}')/root/item` },
 				});
 				result.appendChild(
-					(result.ownerDocument as Document).importNode(itemsetElem, true),
+					(result.ownerDocument as XDocument).importNode(itemsetElem, true),
 				);
 			}
 		}

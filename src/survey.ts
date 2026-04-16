@@ -3,8 +3,15 @@
  */
 
 import * as fs from "node:fs";
-import { DOMImplementation, XMLSerializer } from "@xmldom/xmldom";
+import {
+	DOMImplementation,
+	type Element as XElement,
+	XMLSerializer,
+} from "@xmldom/xmldom";
 import * as constants from "./constants.js";
+
+// Use xmldom's Element type throughout (returned by node() from utils.ts)
+type Element = XElement;
 import { PyXFormError } from "./errors.js";
 import { SurveyInstance } from "./instance.js";
 import { RE_PYXFORM_REF, hasPyxformReference } from "./parsing/expression.js";
@@ -235,8 +242,8 @@ export class Survey extends SurveyElement {
 		this.client_editable = data.client_editable ?? null;
 		this.namespaces = data.namespaces ?? null;
 		this.instance_xmlns = data.instance_xmlns ?? null;
-		this.prefix = data.prefix ?? null;
-		this.delimiter = data.delimiter ?? null;
+		this.prefix = (data.prefix as string) ?? null;
+		this.delimiter = (data.delimiter as string) ?? null;
 		this.entity_version = data.entity_version ?? null;
 
 		// Collect attribute::* settings
@@ -860,7 +867,7 @@ export class Survey extends SurveyElement {
 					this._translationContexts[path] = t.output_context as SurveyElement;
 				}
 
-				const displayElement = t.display_element;
+				const displayElement = t.display_element as string | undefined;
 				if (displayElement) {
 					translations[lang][path][displayElement] = text;
 				} else {
@@ -958,7 +965,9 @@ export class Survey extends SurveyElement {
 	private _redirectIsSearchItext(element: MultipleChoiceQuestion): boolean {
 		let isSearch = false;
 		try {
-			const appearance = element.control?.[constants.APPEARANCE];
+			const appearance = element.control?.[constants.APPEARANCE] as
+				| string
+				| undefined;
 			if (appearance && appearance.length > 7) {
 				isSearch = SEARCH_FUNCTION_REGEX.test(appearance);
 			}

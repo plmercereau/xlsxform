@@ -92,10 +92,10 @@ function getAllAttributes(node: Node): [string, string][] {
 }
 
 export class XFormInstanceParser {
-	private _dict: Record<string, unknown>;
-	private _flatDict: Record<string, unknown>;
-	private _attributes: Record<string, string>;
-	private _rootNode: Element;
+	private _dict!: Record<string, unknown>;
+	private _flatDict!: Record<string, unknown>;
+	private _attributes!: Record<string, string>;
+	private _rootNode!: Element;
 
 	constructor(xmlStr: string) {
 		this.parse(xmlStr);
@@ -106,7 +106,7 @@ export class XFormInstanceParser {
 		cleanXmlStr = cleanXmlStr.replace(/>\s+</g, "><");
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(cleanXmlStr, "text/xml");
-		this._rootNode = doc.documentElement;
+		this._rootNode = doc.documentElement as unknown as Element;
 		this._dict = xmlNodeToDict(this._rootNode);
 		this._flatDict = {};
 		for (const [path, value] of flattenDict(this._dict, [])) {
