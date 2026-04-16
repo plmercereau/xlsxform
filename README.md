@@ -1,17 +1,17 @@
-# jsxform
+# xlsxform
 
 TypeScript port of [pyxform](https://github.com/XLSForm/pyxform) — converts [XLSForms](https://xlsform.org) to [ODK XForms](https://getodk.github.io/xforms-spec/).
 
-**[Live demo](https://jsxform.vercel.app)** — upload an XLSForm and preview it as a live ODK web form powered by [@getodk/web-forms](https://github.com/getodk/web-forms). Runs entirely in the browser, no backend.
+**[Live demo](https://xlsxform.vercel.app)** — upload an XLSForm and preview it as a live ODK web form powered by [@getodk/web-forms](https://github.com/getodk/web-forms). Runs entirely in the browser, no backend.
 
 ## Getting started
 
 ```bash
-npm install jsxform
+npm install xlsxform
 ```
 
 ```typescript
-import { convert } from "jsxform";
+import { convert } from "xlsxform";
 
 // Convert from a JSON workbook dict
 const result = convert({
@@ -32,7 +32,7 @@ const result2 = convert({
 });
 ```
 
-See the [jsxform README](jsxform/README.md) for full API documentation.
+See the [xlsxform README](xlsxform/README.md) for full API documentation.
 
 ## Development
 
@@ -46,5 +46,5 @@ pnpm run typecheck     # Typecheck all packages
 
 | Directory            | Description                                |
 | -------------------- | ------------------------------------------ |
-| [`jsxform`](jsxform) | Core library — XLSForm to XForm conversion |
+| [`xlsxform`](xlsxform) | Core library — XLSForm to XForm conversion |
 | [`demo`](demo)       | Demo app — upload & preview XLSForms       |

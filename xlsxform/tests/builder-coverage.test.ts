@@ -18,7 +18,7 @@ describe("createSurvey - idString and title overrides", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		// Now create a new survey with idString override
 		const newSurvey = createSurvey({
 			mainSection: survey.toJsonDict(),
@@ -36,7 +36,7 @@ describe("createSurvey - idString and title overrides", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const newSurvey = createSurvey({
 			mainSection: survey.toJsonDict(),
 			title: "Custom Title",
@@ -60,7 +60,7 @@ describe("createSurvey - idString and title overrides", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const dict = survey.toJsonDict();
 		const newSurvey = createSurvey({
 			nameOfMainSection: "survey",
@@ -78,7 +78,7 @@ describe("createSurvey - idString and title overrides", () => {
 			`,
 			prettyPrint: false,
 		});
-		const survey = result._survey!;
+		const survey = result._survey ?? expect.unreachable("_survey is null");
 		const newSurvey = createSurvey({
 			mainSection: survey.toJsonDict(),
 			idString: "new_id",

@@ -34,8 +34,7 @@ function processHeader(
 	if (parts.length === 1) {
 		// Simple header - check aliases (try original, then snake_case)
 		const headerNorm = toSnakeCase(header);
-		const alias =
-			headerAliases[header] ?? headerAliases[headerNorm];
+		const alias = headerAliases[header] ?? headerAliases[headerNorm];
 		if (alias) {
 			if (Array.isArray(alias)) {
 				return { path: alias };
@@ -390,8 +389,7 @@ export function dealiasAndGroupHeaders(
 			const baseColNorm = toSnakeCase(baseColRaw);
 			const lang = langMatch[2].trim();
 			// Check if it maps to an alias (try normalized then original)
-			const alias =
-				headerAliases[baseColNorm] ?? headerAliases[baseColRaw];
+			const alias = headerAliases[baseColNorm] ?? headerAliases[baseColRaw];
 			let targetKey: string;
 			if (alias && typeof alias === "string") {
 				targetKey = alias;

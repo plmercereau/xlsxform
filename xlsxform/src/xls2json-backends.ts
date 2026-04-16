@@ -38,10 +38,6 @@ export function xlsxValueToStr(value: CellValue): string {
 		if (Number.isInteger(value)) {
 			return String(value);
 		}
-		// Check if it's a float that represents an integer
-		if (Math.floor(value) === value) {
-			return String(Math.floor(value));
-		}
 		return String(value);
 	}
 	if (value instanceof Date) {

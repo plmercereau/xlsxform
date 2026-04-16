@@ -126,8 +126,10 @@ export function parseExpression(text: string): Token[] {
 		}
 
 		// bestMatch is always non-null because OTHER (/.+?/) catches any character
-		tokens.push(bestMatch!);
-		pos += bestMatch!.value.length;
+		if (bestMatch) {
+			tokens.push(bestMatch);
+			pos += bestMatch.value.length;
+		}
 	}
 
 	// Cache management (simple LRU-like: cap at 128)

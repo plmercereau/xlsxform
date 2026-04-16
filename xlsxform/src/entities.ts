@@ -44,27 +44,6 @@ export class ContainerPath {
 		]);
 	}
 
-	static fromStack(
-		stack: {
-			control_name?: string;
-			control_type?: string;
-			container_path?: ContainerPath;
-		}[],
-	): ContainerPath {
-		if (stack.length > 1) {
-			const parentPath = stack[stack.length - 2]
-				.container_path as ContainerPath;
-			return new ContainerPath([
-				...parentPath.nodes,
-				{
-					name: stack[stack.length - 1].control_name as string,
-					type: stack[stack.length - 1].control_type as string,
-				},
-			]);
-		}
-		return ContainerPath.default();
-	}
-
 	pathAsStr(): string {
 		return `/${this.nodes.map((n) => n.name).join("/")}`;
 	}

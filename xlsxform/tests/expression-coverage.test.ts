@@ -5,8 +5,8 @@
 import { describe, expect, it } from "vitest";
 import {
 	hasPyxformReference,
-	isXmlTag,
 	isPyxformReference,
+	isXmlTag,
 	parseExpression,
 } from "../src/parsing/expression.js";
 
@@ -152,9 +152,7 @@ describe("parseExpression - token types", () => {
 	});
 
 	it("should parse complex expressions", () => {
-		const tokens = parseExpression(
-			"${q1} = 'yes' and count(${items}) > 0",
-		);
+		const tokens = parseExpression("${q1} = 'yes' and count(${items}) > 0");
 		expect(tokens.length).toBeGreaterThan(0);
 		const types = tokens.map((t) => t.type);
 		expect(types).toContain("PYXFORM_REF");

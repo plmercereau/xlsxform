@@ -49,7 +49,7 @@ const csvFiles = [
 for (const file of [...xlsFiles, ...xlsxFiles, ...csvFiles]) {
 	test(`upload ${file} converts without error`, async ({ page }) => {
 		await page.goto("/");
-		await expect(page.locator("h1")).toHaveText("jsxform Demo");
+		await expect(page.locator("h1")).toHaveText("xlsxform Demo");
 
 		const fileInput = page.locator('input[type="file"]');
 		await fileInput.setInputFiles(path.join(FIXTURES, file));

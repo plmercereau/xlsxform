@@ -43,17 +43,18 @@ import type { DefinitionData } from "./xls2json-backends.js";
  * Python's dealias_and_group_headers normalizes known headers to snake_case,
  * so LIST_NAME/List Name become list_name. This function emulates that lookup.
  */
-function getRowValue(
-	row: FormRecord,
-	...keys: string[]
-): string | undefined {
+function getRowValue(row: FormRecord, ...keys: string[]): string | undefined {
 	for (const key of keys) {
 		if (row[key] != null && row[key] !== "") return String(row[key]);
 	}
 	// Try case-insensitive match (snake_case normalization)
 	for (const key of keys) {
 		for (const rowKey of Object.keys(row)) {
-			if (toSnakeCase(rowKey) === key && row[rowKey] != null && row[rowKey] !== "") {
+			if (
+				toSnakeCase(rowKey) === key &&
+				row[rowKey] != null &&
+				row[rowKey] !== ""
+			) {
 				return String(row[rowKey]);
 			}
 		}
@@ -1093,12 +1094,7 @@ export function workbookToJson(opts: {
 	// Known option column names (matching Python's Option.get_slot_names()).
 	// When a header normalizes to one of these, use the normalized form;
 	// otherwise preserve the original for choice_filter expressions.
-	const optionColumns = new Set([
-		"name",
-		"label",
-		"media",
-		"sms_option",
-	]);
+	const optionColumns = new Set(["name", "label", "media", "sms_option"]);
 	const choicesByListName: Record<string, FormRecord[]> = {};
 	const choicesDefaultLang =
 		(settings[constants.DEFAULT_LANGUAGE_KEY] as string | undefined) ??

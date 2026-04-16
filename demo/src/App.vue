@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { OdkWebForm } from "@getodk/web-forms";
-import { type ConvertResult, convert } from "jsxform";
 import { ref } from "vue";
 import * as XLSX from "xlsx";
+import { type ConvertResult, convert } from "xlsxform";
 
 const formXml = ref<string | null>(null);
 const error = ref<string | null>(null);
@@ -12,7 +12,7 @@ const loading = ref(false);
 
 /**
  * Parse an uploaded XLS/XLSX/CSV file into the workbook dict format
- * that jsxform expects (including _header metadata for each sheet).
+ * that xlsxform expects (including _header metadata for each sheet).
  */
 function parseWorkbook(
 	data: ArrayBuffer,
@@ -46,7 +46,7 @@ function parseWorkbook(
 			(h): h is string => h !== null && h !== "",
 		);
 
-		// Build header metadata dict (keys with null values, as jsxform expects)
+		// Build header metadata dict (keys with null values, as xlsxform expects)
 		const headerDict: Record<string, null> = {};
 		for (const h of validHeaders) {
 			headerDict[h] = null;
@@ -144,13 +144,13 @@ async function fetchFormAttachment(_url: string): Promise<Response> {
 <template>
 	<div class="app">
 		<header>
-			<h1>jsxform Demo</h1>
+			<h1>xlsxform Demo</h1>
 			<p>
 				Upload an XLSForm to preview it as a live ODK web form.
 				Everything runs in your browser — no server, no data uploaded.
 			</p>
 			<p>
-				<a href="https://github.com/plmercereau/jsxforms" target="_blank" rel="noopener">GitHub</a>
+				<a href="https://github.com/plmercereau/xlsxform" target="_blank" rel="noopener">GitHub</a>
 			</p>
 		</header>
 

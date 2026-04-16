@@ -1,17 +1,17 @@
-# jsxform
+# xlsxform
 
 TypeScript port of [pyxform](https://github.com/XLSForm/pyxform) — converts [XLSForms](https://xlsform.org) to [ODK XForms](https://getodk.github.io/xforms-spec/).
 
 ## Installation
 
 ```bash
-npm install jsxform
+npm install xlsxform
 ```
 
 ## Quick start
 
 ```typescript
-import { convert } from "jsxform";
+import { convert } from "xlsxform";
 
 // Convert from a JSON workbook dict
 const result = convert({
@@ -68,7 +68,7 @@ interface ConvertResult {
 For more control over the conversion pipeline:
 
 ```typescript
-import { createSurvey, createSurveyElementFromDict } from "jsxform";
+import { createSurvey, createSurveyElementFromDict } from "xlsxform";
 
 // From a survey definition dict
 const survey = createSurvey({ nameOfMainSection: "survey", sections });
@@ -77,7 +77,7 @@ const survey = createSurvey({ nameOfMainSection: "survey", sections });
 ### Low-level parsing
 
 ```typescript
-import { workbookToJson, mdToDict } from "jsxform";
+import { workbookToJson, mdToDict } from "xlsxform";
 
 // Parse a Markdown table (useful for testing)
 const workbook = mdToDict(`

@@ -11,6 +11,6 @@
 		"resolveJsonModule": true,
 		"isolatedModules": true
 	},
-	"references": [{ "path": "jsxform" }, { "path": "demo" }],
+	"references": [{ "path": "xlsxform" }, { "path": "demo" }],
 	"files": []
 }

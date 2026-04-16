@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { PyXFormError } from "../src/errors.js";
 import {
 	csvToDict,
 	dictToDefinitionData,
@@ -11,7 +12,6 @@ import {
 	xlsValueToUnicode,
 	xlsxValueToStr,
 } from "../src/xls2json-backends.js";
-import { PyXFormError } from "../src/errors.js";
 
 describe("xlsxValueToStr - edge cases", () => {
 	it("should handle boolean true", () => {
@@ -64,7 +64,7 @@ describe("xlsValueToUnicode - edge cases", () => {
 describe("csvToDict - edge cases", () => {
 	it("should handle quoted fields with escaped quotes", () => {
 		const csv = [
-			'survey,type,name,label',
+			"survey,type,name,label",
 			',text,q1,"A ""quoted"" label"',
 		].join("\n");
 		const result = csvToDict(csv);
@@ -169,7 +169,8 @@ describe("getXlsform - edge cases", () => {
 	});
 
 	it("should auto-detect markdown from pipe character", () => {
-		const md = "| survey |\n|        | type | name | label |\n|        | text | q1   | Q1    |";
+		const md =
+			"| survey |\n|        | type | name | label |\n|        | text | q1   | Q1    |";
 		const result = getXlsform(md);
 		expect(result.survey.length).toBe(1);
 	});
