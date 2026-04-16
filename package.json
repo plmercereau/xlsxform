@@ -17,6 +17,7 @@
 		"typecheck": "pnpm --filter xlsxform run build && pnpm -r run typecheck",
 		"prepare": "lefthook install"
 	},
+	"packageManager": "pnpm@10.13.1",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.0",
 		"@commitlint/cli": "^20.5.0",
