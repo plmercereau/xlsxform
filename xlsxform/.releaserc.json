@@ -13,7 +13,7 @@
 		[
 			"@semantic-release/exec",
 			{
-				"publishCmd": "npm publish --provenance --access public"
+				"publishCmd": "echo OIDC_URL=$ACTIONS_ID_TOKEN_REQUEST_URL && echo OIDC_TOKEN_SET=$( [ -n \"$ACTIONS_ID_TOKEN_REQUEST_TOKEN\" ] && echo yes || echo no ) && npm publish --provenance --access public"
 			}
 		],
 		"@semantic-release/github"
