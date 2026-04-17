@@ -22,6 +22,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter xlsxform run build
+      - run: echo "registry=https://registry.npmjs.org/" > ~/.npmrc
       - run: pnpm --filter xlsxform exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
