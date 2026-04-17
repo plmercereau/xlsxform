@@ -8,26 +8,22 @@ TypeScript port of [pyxform](https://github.com/XLSForm/pyxform) — converts [X
 npm install xlsxform
 ```
 
-## Quick start
+## Usage
 
 ```typescript
 import { convert } from "xlsxform";
 
-// Convert from an XLSX WorkBook (requires the optional `xlsx` peer dependency)
-import * as XLSX from "xlsx";
-const wb = XLSX.read(fileBuffer, { cellDates: true });
-const result = convert({ xlsform: wb, formName: "my_form", prettyPrint: true });
+// From a workbook dict (plain JS object)
+const result = convert({ xlsform: workbookDict, formName: "my_form" });
 console.log(result.xform); // XForm XML string
 
-// Convert from a JSON workbook dict
-const result2 = convert({
-  xlsform: workbookDict,
-  prettyPrint: true,
-  formName: "my_form",
-});
+// From an XLSX WorkBook (requires the optional `xlsx` peer dependency)
+import * as XLSX from "xlsx";
+const wb = XLSX.read(fileBuffer, { cellDates: true });
+const result = convert({ xlsform: wb, formName: "my_form" });
 
-// Convert from a Markdown table
-const result3 = convert({
+// From a Markdown table (handy for tests)
+const result = convert({
   xlsform: `
     | survey |      |       |        |
     |        | type | name  | label  |
@@ -37,80 +33,14 @@ const result3 = convert({
 });
 ```
 
-## API
+`convert()` returns an object with:
 
-### `convert(opts)`
+- **`xform`** — the generated XForm XML string
+- **`warnings`** — any conversion warnings
+- **`itemsets`** — external itemsets XML, if applicable
 
-Main entry point. Accepts a workbook dictionary or Markdown string, and returns XForm XML.
+See the [source types](./src/xls2xform.ts) for the full options and return type.
 
-**Options:**
+## License
 
-| Option            | Type                                | Default    | Description                    |
-| ----------------- | ----------------------------------- | ---------- | ------------------------------ |
-| `xlsform`         | `string \| Record<string, unknown> \| XlsxWorkBook` | *required* | XLSX WorkBook, Markdown string, or workbook dict |
-| `prettyPrint`     | `boolean`                           | `true`     | Pretty-print the XML output    |
-| `validate`        | `boolean`                           | `false`    | Run ODK Validate on the result |
-| `enketo`          | `boolean`                           | `false`    | Enable Enketo validation mode  |
-| `formName`        | `string \| null`                    | `null`     | Override the form name         |
-| `defaultLanguage` | `string \| null`                    | `null`     | Set the default language       |
-| `fileType`        | `string \| null`                    | `null`     | Force file type detection      |
-| `warnings`        | `string[]`                          | `[]`       | Array to collect warnings      |
-
-**Returns:** `ConvertResult`
-
-```typescript
-interface ConvertResult {
-  xform: string;           // Generated XForm XML
-  warnings: string[];      // Conversion warnings
-  itemsets: string | null;  // External itemsets XML
-  _pyxform: Record<string, unknown> | null; // Intermediate JSON (debug)
-  _survey: Survey | null;  // Survey object (debug)
-}
-```
-
-### Builder functions
-
-For more control over the conversion pipeline:
-
-```typescript
-import { createSurvey, createSurveyElementFromDict } from "xlsxform";
-
-// From a survey definition dict
-const survey = createSurvey({ nameOfMainSection: "survey", sections });
-```
-
-### Low-level parsing
-
-```typescript
-import { workbookToJson, mdToDict } from "xlsxform";
-
-// Parse a Markdown table (useful for testing)
-const workbook = mdToDict(`
-  | survey |      |       |        |
-  |        | type | name  | label  |
-  |        | text | name  | Name?  |
-`);
-```
-
-## Supported features
-
-- **Question types**: text, integer, decimal, select_one, select_multiple, rank, geopoint, geotrace, geoshape, image, audio, video, barcode, calculate, note, range, and more (130+ types)
-- **Structure**: groups, repeats, loops
-- **Logic**: relevance conditions, constraints, calculations, required fields, default values
-- **Translations**: multi-language support
-- **Choices**: static lists, cascading selects, external choices, filtered itemsets, search appearance
-- **Media**: images, audio, and video on questions and choices
-- **Entities**: ODK entity creation and updates
-- **Metadata**: deviceid, start/end time, audit logging, and other metadata fields
-- **Validation**: optional ODK Validate and Enketo validation
-
-## Development
-
-```bash
-pnpm run build       # Compile TypeScript
-pnpm run test        # Run tests
-pnpm run test:watch  # Watch mode
-pnpm run coverage    # Test coverage
-pnpm run lint        # Lint with Biome
-pnpm run format      # Format with Biome
-```
+[MIT](../LICENSE)
