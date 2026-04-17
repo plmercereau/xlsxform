@@ -1,8 +1,0 @@
-{
-  "bump-minor-pre-major": true,
-  "packages": {
-    "xlsxform": {
-      "release-type": "node"
-    }
-  }
-}
