@@ -1,12 +1,14 @@
 {
 	"name": "xlsxform",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "TypeScript port of pyxform - converts XLSForms to ODK XForms",
 	"type": "module",
 	"license": "MIT",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"import": "./dist/index.js",
@@ -26,7 +28,9 @@
 		"knip": "knip"
 	},
 	"knip": {
-		"ignoreBinaries": ["biome"]
+		"ignoreBinaries": [
+			"biome"
+		]
 	},
 	"peerDependencies": {
 		"xlsx": ">=0.18.0"
