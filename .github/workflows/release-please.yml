@@ -16,5 +16,5 @@ jobs:
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
-          release-type: node
-          path: xlsxform
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
