@@ -36,3 +36,5 @@ jobs:
       - name: Publish to npm
         if: steps.release.outputs.new_release == 'true'
         run: pnpm --filter xlsxform publish --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ""
