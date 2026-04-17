@@ -8,6 +8,7 @@ import type { Survey } from "../../src/survey.js";
 import { coalesce } from "../../src/utils.js";
 import {
 	type DefinitionData,
+	type XlsxWorkBook,
 	getXlsform,
 } from "../../src/xls2json-backends.js";
 import { workbookToJson } from "../../src/xls2json.js";
@@ -22,7 +23,7 @@ interface ConvertResult {
 }
 
 export function convert(opts: {
-	xlsform: string | Record<string, unknown>;
+	xlsform: string | XlsxWorkBook;
 	warnings?: string[];
 	validate?: boolean;
 	prettyPrint?: boolean;

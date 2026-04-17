@@ -10,82 +10,6 @@ const warnings = ref<string[]>([]);
 const fileName = ref<string | null>(null);
 const loading = ref(false);
 
-/**
- * Parse an uploaded XLS/XLSX/CSV file into the workbook dict format
- * that xlsxform expects (including _header metadata for each sheet).
- */
-function parseWorkbook(
-	data: ArrayBuffer,
-	name: string,
-): Record<string, unknown> {
-	const wb = XLSX.read(data, { cellDates: true });
-	const supportedSheetNames = new Set([
-		"survey",
-		"choices",
-		"settings",
-		"external_choices",
-		"osm",
-		"entities",
-	]);
-	const result: Record<string, unknown> = { sheet_names: wb.SheetNames };
-
-	for (const sheetName of wb.SheetNames) {
-		const sheet = wb.Sheets[sheetName];
-		const ref = sheet["!ref"];
-		if (!ref) continue;
-
-		const range = XLSX.utils.decode_range(ref);
-
-		// Extract column headers from first row
-		const headers: (string | null)[] = [];
-		for (let c = range.s.c; c <= range.e.c; c++) {
-			const cell = sheet[XLSX.utils.encode_cell({ r: range.s.r, c })];
-			headers.push(cell ? String(cell.v).trim() : null);
-		}
-		const validHeaders = headers.filter(
-			(h): h is string => h !== null && h !== "",
-		);
-
-		// Build header metadata dict (keys with null values, as xlsxform expects)
-		const headerDict: Record<string, null> = {};
-		for (const h of validHeaders) {
-			headerDict[h] = null;
-		}
-
-		// Extract data rows
-		const rows: Record<string, string>[] = [];
-		for (let r = range.s.r + 1; r <= range.e.r; r++) {
-			const row: Record<string, string> = {};
-			for (let c = 0; c < headers.length; c++) {
-				const key = headers[c];
-				if (!key) continue;
-				const cell = sheet[XLSX.utils.encode_cell({ r, c: range.s.c + c })];
-				if (cell != null && cell.v != null && String(cell.v).trim() !== "") {
-					row[key] = String(cell.v).trim();
-				}
-			}
-			if (Object.keys(row).length > 0) {
-				rows.push(row);
-			}
-		}
-
-		let key = sheetName.toLowerCase();
-		// When there's only one sheet and it's not a known XLSForm sheet,
-		// treat it as the survey sheet (matches Python pyxform behavior).
-		if (!supportedSheetNames.has(key) && wb.SheetNames.length === 1) {
-			key = "survey";
-		}
-		result[key] = rows;
-		result[`${key}_header`] = [headerDict];
-	}
-
-	// Set fallback form name from file name (without extension)
-	const dotIdx = name.lastIndexOf(".");
-	result.fallback_form_name = dotIdx > 0 ? name.slice(0, dotIdx) : name;
-
-	return result;
-}
-
 function isCsv(name: string): boolean {
 	return name.toLowerCase().endsWith(".csv");
 }
@@ -112,11 +36,9 @@ async function handleFile(event: Event) {
 			});
 		} else {
 			const buffer = await file.arrayBuffer();
-			const workbook = parseWorkbook(buffer, file.name);
-			result = convert({
-				xlsform: workbook,
-				prettyPrint: true,
-			});
+			const wb = XLSX.read(buffer, { cellDates: true });
+			const formName = file.name.replace(/\.[^.]+$/, "");
+			result = convert({ xlsform: wb, formName, prettyPrint: true });
 		}
 		formXml.value = result.xform;
 		warnings.value = result.warnings;

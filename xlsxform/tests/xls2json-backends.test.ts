@@ -5,7 +5,7 @@
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createSurveyElementFromDict } from "../src/builder.js";
-import { xlsValueToUnicode, xlsxValueToStr } from "../src/xls2json-backends.js";
+import { xlsxValueToStr } from "../src/xls2json-backends.js";
 import { workbookToJson } from "../src/xls2json.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 import {
@@ -38,17 +38,6 @@ function pathToTextFixture(filename: string): string {
 }
 
 describe("TestXLS2JSONBackends", () => {
-	it("test_xls_value_to_unicode", () => {
-		// Test that integer float values are displayed as integers
-		const XL_CELL_NUMBER = 2;
-		let csvData = xlsValueToUnicode(32.0, XL_CELL_NUMBER, 1);
-		expect(csvData).toBe("32");
-
-		// Test that the decimal value is not changed during conversion
-		csvData = xlsValueToUnicode(46.9, XL_CELL_NUMBER, 1);
-		expect(csvData).toBe("46.9");
-	});
-
 	it("test_xlsx_value_to_str", () => {
 		let csvData = xlsxValueToStr(32.0);
 		expect(csvData).toBe("32");

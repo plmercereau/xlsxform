@@ -1,6 +1,7 @@
 /**
  * Node.js file-reading backends for XLSForm data.
  * These functions require node:fs and should only be imported in Node.js environments.
+ * WorkBook→DefinitionData conversion is handled by the library's workbookToDict.
  */
 
 import * as fs from "node:fs";
@@ -8,7 +9,7 @@ import * as path from "node:path";
 import * as constants from "../../src/constants.js";
 import { PyXFormError } from "../../src/errors.js";
 import type { DefinitionData } from "../../src/xls2json-backends.js";
-import { xlsxValueToStr } from "../../src/xls2json-backends.js";
+import { workbookToDict } from "../../src/xls2json-backends.js";
 
 import * as XLSX from "xlsx";
 
@@ -18,152 +19,44 @@ type FormRow = Record<string, string>;
 /** The raw dict structure returned by file-reading backends before conversion to DefinitionData. */
 type RawFormDict = Record<string, unknown>;
 
-const RE_WHITESPACE = /( )+/g;
-
-function isEmpty(value: unknown): boolean {
-	if (value == null) return true;
-	if (typeof value === "string") {
-		if (!value || value.trim() === "") return true;
-	}
-	return false;
-}
-
-function listToDictList(items: (string | null)[]): Record<string, null>[] {
-	if (items && items.length > 0) {
-		const d: Record<string, null> = {};
-		for (const item of items) {
-			if (item != null) {
-				d[String(item)] = null;
-			}
-		}
-		return [d];
-	}
-	return [];
-}
-
-function trimTrailingEmpty<T>(list: T[], nEmpty: number): T[] {
-	if (nEmpty > 0) {
-		return list.slice(0, list.length - nEmpty);
-	}
-	return list;
-}
-
-function getExcelColumnHeaders(
-	firstRow: (string | null | undefined)[],
-): (string | null)[] {
-	const maxAdjacentEmptyCols = 20;
-	const columnHeaderList: (string | null)[] = [];
-	let adjacentEmptyCols = 0;
-
-	for (const colHeader of firstRow) {
-		if (isEmpty(colHeader)) {
-			columnHeaderList.push(null);
-			if (maxAdjacentEmptyCols === adjacentEmptyCols) {
-				break;
-			}
-			adjacentEmptyCols++;
-		} else {
-			adjacentEmptyCols = 0;
-			const header = String(colHeader);
-			if (columnHeaderList.includes(header)) {
-				throw new PyXFormError(`Duplicate column header: ${header}`);
-			}
-			const cleanHeader = header.trim().replace(RE_WHITESPACE, " ");
-			columnHeaderList.push(cleanHeader);
-		}
-	}
-
-	return trimTrailingEmpty(columnHeaderList, adjacentEmptyCols);
-}
-
 function readWorkbook(filePath: string): XLSX.WorkBook {
 	const data = fs.readFileSync(filePath);
 	return XLSX.read(data, { cellDates: true });
 }
 
-function processWorkbook(wb: XLSX.WorkBook): RawFormDict {
-	const resultBook: RawFormDict = { sheet_names: [] };
-
-	for (const sheetName of wb.SheetNames) {
-		(resultBook.sheet_names as string[]).push(sheetName);
-		const sheetNameLower = sheetName.toLowerCase();
-		const sheet = wb.Sheets[sheetName];
-
-		if (!constants.SUPPORTED_SHEET_NAMES.has(sheetNameLower)) {
-			if (wb.SheetNames.length === 1) {
-				const [rows, header] = sheetToRows(sheet);
-				resultBook[constants.SURVEY] = rows;
-				resultBook[`${constants.SURVEY}_header`] = header;
-			}
-			continue;
+/**
+ * Convert a WorkBook to a sparse raw dict (only populated sheets have keys).
+ * This preserves the format expected by equivalency tests.
+ */
+function workbookToRawDict(wb: XLSX.WorkBook): RawFormDict {
+	const def = workbookToDict(wb);
+	const raw: RawFormDict = { sheet_names: def.sheet_names };
+	for (const key of [
+		"survey",
+		"choices",
+		"settings",
+		"external_choices",
+		"entities",
+		"osm",
+	] as const) {
+		const headerKey = `${key}_header` as keyof typeof def;
+		const header = def[headerKey];
+		if (header) {
+			// If headers exist, include both rows (even if empty) and headers
+			raw[key] = def[key];
+			raw[`${key}_header`] = header;
 		}
-
-		const [rows, header] = sheetToRows(sheet);
-		resultBook[sheetNameLower] = rows;
-		resultBook[`${sheetNameLower}_header`] = header;
 	}
-
-	return resultBook;
-}
-
-function sheetToRows(
-	sheet: XLSX.WorkSheet,
-): [FormRow[], Record<string, null>[]] {
-	const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
-	const rawHeaders: (string | null)[] = [];
-	for (let c = range.s.c; c <= range.e.c; c++) {
-		const cellAddr = XLSX.utils.encode_cell({ r: range.s.r, c });
-		const cell = sheet[cellAddr];
-		rawHeaders.push(cell ? String(cell.v) : null);
-	}
-
-	const headers = getExcelColumnHeaders(rawHeaders);
-	const columnHeaderList = headers.filter((h): h is string => h !== null);
-	const headerDictList = listToDictList(columnHeaderList);
-
-	const maxAdjacentEmptyRows = 60;
-	let adjacentEmptyRows = 0;
-	const resultRows: FormRow[] = [];
-
-	for (let r = range.s.r + 1; r <= range.e.r; r++) {
-		const rowDict: FormRow = {};
-		for (let c = 0; c < headers.length; c++) {
-			const key = headers[c];
-			if (key === null) continue;
-			const cellAddr = XLSX.utils.encode_cell({ r, c: range.s.c + c });
-			const cell = sheet[cellAddr];
-			if (cell != null && !isEmpty(cell.v)) {
-				let value = cell.v;
-				if (typeof value === "string") {
-					value = value.trim();
-				}
-				if (!isEmpty(value)) {
-					rowDict[key] = xlsxValueToStr(value);
-				}
-			}
-		}
-
-		if (Object.keys(rowDict).length === 0) {
-			if (maxAdjacentEmptyRows === adjacentEmptyRows) {
-				break;
-			}
-			adjacentEmptyRows++;
-		} else {
-			adjacentEmptyRows = 0;
-		}
-		resultRows.push(rowDict);
-	}
-
-	return [trimTrailingEmpty(resultRows, adjacentEmptyRows), headerDictList];
+	return raw;
 }
 
 /**
- * Read an XLSX file and return a dict structure.
+ * Read an XLSX file and return a raw dict structure.
  */
 export function xlsxToDict(pathOrFile: string): RawFormDict {
 	try {
 		const wb = readWorkbook(pathOrFile);
-		return processWorkbook(wb);
+		return workbookToRawDict(wb);
 	} catch (e: unknown) {
 		if (e instanceof PyXFormError) throw e;
 		throw new PyXFormError(`Error reading .xlsx file: ${(e as Error).message}`);
@@ -171,12 +64,12 @@ export function xlsxToDict(pathOrFile: string): RawFormDict {
 }
 
 /**
- * Read an XLS file and return a dict structure.
+ * Read an XLS file and return a raw dict structure.
  */
 export function xlsToDict(pathOrFile: string): RawFormDict {
 	try {
 		const wb = readWorkbook(pathOrFile);
-		return processWorkbook(wb);
+		return workbookToRawDict(wb);
 	} catch (e: unknown) {
 		if (e instanceof PyXFormError) throw e;
 		throw new PyXFormError(`Error reading .xls file: ${(e as Error).message}`);
@@ -232,6 +125,19 @@ function parseCsvLine(line: string): string[] {
 	}
 	fields.push(current);
 	return fields;
+}
+
+function listToDictList(items: (string | null)[]): Record<string, null>[] {
+	if (items && items.length > 0) {
+		const d: Record<string, null> = {};
+		for (const item of items) {
+			if (item != null) {
+				d[String(item)] = null;
+			}
+		}
+		return [d];
+	}
+	return [];
 }
 
 function processCsvData(content: string): RawFormDict {

@@ -13,12 +13,10 @@ npm install xlsxform
 ```typescript
 import { convert } from "xlsxform";
 
-// Convert from a JSON workbook dict
-const result = convert({
-  xlsform: workbookDict,
-  prettyPrint: true,
-  formName: "my_form",
-});
+// Convert from an XLSX WorkBook (requires the optional `xlsx` peer dependency)
+import * as XLSX from "xlsx";
+const wb = XLSX.read(fileBuffer, { cellDates: true });
+const result = convert({ xlsform: wb, formName: "my_form", prettyPrint: true });
 console.log(result.xform); // XForm XML string
 
 // Convert from a Markdown table
@@ -44,7 +42,7 @@ pnpm run lint          # Lint all packages
 pnpm run typecheck     # Typecheck all packages
 ```
 
-| Directory            | Description                                |
-| -------------------- | ------------------------------------------ |
+| Directory              | Description                                |
+| ---------------------- | ------------------------------------------ |
 | [`xlsxform`](xlsxform) | Core library — XLSForm to XForm conversion |
-| [`demo`](demo)       | Demo app — upload & preview XLSForms       |
+| [`demo`](demo)         | Demo app — upload & preview XLSForms       |

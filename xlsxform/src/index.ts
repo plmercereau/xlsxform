@@ -26,9 +26,11 @@ export {
 	mdToDict,
 	csvToDict,
 	type DefinitionData,
+	type XlsxWorkBook,
+	type XlsxWorkSheet,
 	getXlsform,
-	dictToDefinitionData,
-	xlsValueToUnicode,
+	workbookToDict,
+	isWorkBook,
 	xlsxValueToStr,
 } from "./xls2json-backends.js";
 export * as constants from "./constants.js";

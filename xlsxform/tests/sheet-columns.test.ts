@@ -1150,6 +1150,10 @@ describe("TestHeaderProcessing", () => {
 			label: "Q101",
 			e: "?",
 		});
-		expect(() => convert({ xlsform: { survey: surveyData } })).toThrow("e");
+		expect(() =>
+			convert({
+				xlsform: { survey: surveyData } as unknown as string,
+			}),
+		).toThrow("e");
 	});
 });
