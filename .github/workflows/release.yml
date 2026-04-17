@@ -20,9 +20,19 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter xlsxform run build
-      - run: pnpm --filter xlsxform exec semantic-release
+      - name: Semantic Release
+        id: release
+        run: |
+          OUTPUT=$(pnpm --filter xlsxform exec semantic-release 2>&1) || true
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "Published release"; then
+            echo "new_release=true" >> "$GITHUB_OUTPUT"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      - name: Publish to npm
+        if: steps.release.outputs.new_release == 'true'
+        run: pnpm --filter xlsxform publish --no-git-checks --provenance
