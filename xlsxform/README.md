@@ -13,16 +13,21 @@ npm install xlsxform
 ```typescript
 import { convert } from "xlsxform";
 
+// Convert from an XLSX WorkBook (requires the optional `xlsx` peer dependency)
+import * as XLSX from "xlsx";
+const wb = XLSX.read(fileBuffer, { cellDates: true });
+const result = convert({ xlsform: wb, formName: "my_form", prettyPrint: true });
+console.log(result.xform); // XForm XML string
+
 // Convert from a JSON workbook dict
-const result = convert({
+const result2 = convert({
   xlsform: workbookDict,
   prettyPrint: true,
   formName: "my_form",
 });
-console.log(result.xform); // XForm XML string
 
 // Convert from a Markdown table
-const result2 = convert({
+const result3 = convert({
   xlsform: `
     | survey |      |       |        |
     |        | type | name  | label  |
@@ -42,7 +47,7 @@ Main entry point. Accepts a workbook dictionary or Markdown string, and returns 
 
 | Option            | Type                                | Default    | Description                    |
 | ----------------- | ----------------------------------- | ---------- | ------------------------------ |
-| `xlsform`         | `string \| Record<string, unknown>` | *required* | Markdown string or workbook dict |
+| `xlsform`         | `string \| Record<string, unknown> \| XlsxWorkBook` | *required* | XLSX WorkBook, Markdown string, or workbook dict |
 | `prettyPrint`     | `boolean`                           | `true`     | Pretty-print the XML output    |
 | `validate`        | `boolean`                           | `false`    | Run ODK Validate on the result |
 | `enketo`          | `boolean`                           | `false`    | Enable Enketo validation mode  |

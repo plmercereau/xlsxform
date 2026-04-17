@@ -30,9 +30,9 @@ describe("index.ts exports", () => {
 		expect(typeof mod.mdToDict).toBe("function");
 		expect(typeof mod.csvToDict).toBe("function");
 		expect(typeof mod.getXlsform).toBe("function");
-		expect(typeof mod.dictToDefinitionData).toBe("function");
-		expect(typeof mod.xlsValueToUnicode).toBe("function");
 		expect(typeof mod.xlsxValueToStr).toBe("function");
+		expect(typeof mod.workbookToDict).toBe("function");
+		expect(typeof mod.isWorkBook).toBe("function");
 		expect(mod.constants).toBeDefined();
 		expect(typeof mod.createSurveyElementFromXml).toBe("function");
 		expect(typeof mod.createSurveyElementFromJson).toBe("function");

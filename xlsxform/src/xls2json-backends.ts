@@ -1,8 +1,9 @@
 /**
  * Backend for reading XLSForm data from various formats.
- * Supports markdown tables and dict input.
+ * Supports markdown tables, dict input, and XLSX WorkBook objects.
  */
 
+import * as constants from "./constants.js";
 import { PyXFormError } from "./errors.js";
 
 /** A single row of form data with string keys and string values. */
@@ -10,6 +11,60 @@ type FormRow = Record<string, string>;
 
 /** Cell value types that can appear in spreadsheet cells. */
 type CellValue = string | number | boolean | Date;
+
+// --- XLSX WorkBook types (duck-typed, no xlsx import needed) ---
+
+/** Duck-typed XLSX worksheet cell. */
+export interface XlsxCell {
+	v?: CellValue;
+}
+
+/** Duck-typed XLSX worksheet — plain object keyed by cell addresses like "A1". */
+export interface XlsxWorkSheet {
+	"!ref"?: string;
+	[cell: string]: unknown;
+}
+
+/** Duck-typed XLSX WorkBook. */
+export interface XlsxWorkBook {
+	SheetNames: string[];
+	Sheets: Record<string, XlsxWorkSheet>;
+}
+
+/** Type guard for XlsxWorkBook. */
+export function isWorkBook(obj: unknown): obj is XlsxWorkBook {
+	return (
+		typeof obj === "object" &&
+		obj !== null &&
+		"SheetNames" in obj &&
+		"Sheets" in obj &&
+		Array.isArray((obj as XlsxWorkBook).SheetNames)
+	);
+}
+
+const SHEET_KEYS = [
+	"survey",
+	"choices",
+	"settings",
+	"external_choices",
+	"entities",
+	"osm",
+] as const;
+
+/** Coerce a loose dict into a typed DefinitionData. */
+function toDefinitionData(
+	d: Record<string, unknown>,
+	fallbackFormName?: string,
+): DefinitionData {
+	const result = { fallback_form_name: fallbackFormName } as DefinitionData;
+	for (const key of SHEET_KEYS) {
+		result[key] = (d[key] ?? []) as FormRow[];
+		const hKey = `${key}_header` as keyof DefinitionData;
+		if (d[hKey]) (result as unknown as Record<string, unknown>)[hKey] = d[hKey];
+	}
+	result.sheet_names = d.sheet_names as string[] | undefined;
+	return result;
+}
 
 export interface DefinitionData {
 	survey: FormRow[];
@@ -58,36 +113,165 @@ export function xlsxValueToStr(value: CellValue): string {
 	return s;
 }
 
-/**
- * Convert an XLS cell value to unicode string (equivalent to Python xls_value_to_unicode).
- */
-export function xlsValueToUnicode(
-	value: CellValue,
-	valueType: number,
-	_datemode: number,
-): string {
-	// xlrd cell types
-	const XL_CELL_BOOLEAN = 4;
-	const XL_CELL_NUMBER = 2;
-	const XL_CELL_DATE = 3;
+// --- WorkBook → DefinitionData conversion (isomorphic, no XLSX.utils needed) ---
 
-	if (valueType === XL_CELL_BOOLEAN) {
-		return value ? "TRUE" : "FALSE";
-	}
-	if (valueType === XL_CELL_NUMBER) {
-		const intValue = Math.floor(value as number);
-		if (intValue === value) {
-			return String(intValue);
+const RE_WHITESPACE = /( )+/g;
+
+/** Encode a 0-based (row, col) into an A1-style cell address. */
+function encodeCell(row: number, col: number): string {
+	let colStr = "";
+	let c = col;
+	do {
+		colStr = String.fromCharCode(65 + (c % 26)) + colStr;
+		c = Math.floor(c / 26) - 1;
+	} while (c >= 0);
+	return `${colStr}${row + 1}`;
+}
+
+/** Decode a range ref like "A1:D10" into start/end row/col. */
+function decodeRange(ref: string): {
+	s: { r: number; c: number };
+	e: { r: number; c: number };
+} {
+	const parts = ref.split(":");
+	const decode = (addr: string) => {
+		const m = /^([A-Z]+)(\d+)$/.exec(addr);
+		if (!m) return { r: 0, c: 0 };
+		let c = 0;
+		for (let i = 0; i < m[1].length; i++) {
+			c = c * 26 + (m[1].charCodeAt(i) - 64);
 		}
-		return String(value);
+		return { r: Number(m[2]) - 1, c: c - 1 };
+	};
+	const s = decode(parts[0]);
+	const e = parts.length > 1 ? decode(parts[1]) : s;
+	return { s, e };
+}
+
+function isEmpty(value: unknown): boolean {
+	if (value == null) return true;
+	if (typeof value === "string") {
+		if (!value || value.trim() === "") return true;
 	}
-	if (valueType === XL_CELL_DATE) {
-		// Handle date values - needs XLSX SSF for proper parsing
-		// In browser context, fall back to string conversion
-		return String(value);
+	return false;
+}
+
+function getExcelColumnHeaders(
+	firstRow: (string | null | undefined)[],
+): (string | null)[] {
+	const maxAdjacentEmptyCols = 20;
+	const columnHeaderList: (string | null)[] = [];
+	let adjacentEmptyCols = 0;
+
+	for (const colHeader of firstRow) {
+		if (isEmpty(colHeader)) {
+			columnHeaderList.push(null);
+			if (maxAdjacentEmptyCols === adjacentEmptyCols) {
+				break;
+			}
+			adjacentEmptyCols++;
+		} else {
+			adjacentEmptyCols = 0;
+			const header = String(colHeader);
+			if (columnHeaderList.includes(header)) {
+				throw new PyXFormError(`Duplicate column header: ${header}`);
+			}
+			const cleanHeader = header.trim().replace(RE_WHITESPACE, " ");
+			columnHeaderList.push(cleanHeader);
+		}
 	}
-	// Default: ensure string and replace nbsp
-	return String(value).replace(/\u00a0/g, " ");
+
+	return trimTrailingEmpty(columnHeaderList, adjacentEmptyCols);
+}
+
+function trimTrailingEmpty<T>(list: T[], nEmpty: number): T[] {
+	if (nEmpty > 0) {
+		return list.slice(0, list.length - nEmpty);
+	}
+	return list;
+}
+
+function sheetToRows(
+	sheet: XlsxWorkSheet,
+): [FormRow[], Record<string, null>[]] {
+	const range = decodeRange(sheet["!ref"] || "A1");
+	const rawHeaders: (string | null)[] = [];
+	for (let c = range.s.c; c <= range.e.c; c++) {
+		const cellAddr = encodeCell(range.s.r, c);
+		const cell = sheet[cellAddr] as XlsxCell | undefined;
+		rawHeaders.push(cell?.v != null ? String(cell.v) : null);
+	}
+
+	const headers = getExcelColumnHeaders(rawHeaders);
+	const columnHeaderList = headers.filter((h): h is string => h !== null);
+	const headerDictList = listToDictList(columnHeaderList);
+
+	const maxAdjacentEmptyRows = 60;
+	let adjacentEmptyRows = 0;
+	const resultRows: FormRow[] = [];
+
+	for (let r = range.s.r + 1; r <= range.e.r; r++) {
+		const rowDict: FormRow = {};
+		for (let c = 0; c < headers.length; c++) {
+			const key = headers[c];
+			if (key === null) continue;
+			const cellAddr = encodeCell(r, range.s.c + c);
+			const cell = sheet[cellAddr] as XlsxCell | undefined;
+			if (cell != null && !isEmpty(cell.v)) {
+				let value = cell.v;
+				if (typeof value === "string") {
+					value = value.trim();
+				}
+				if (!isEmpty(value)) {
+					rowDict[key] = xlsxValueToStr(value as CellValue);
+				}
+			}
+		}
+
+		if (Object.keys(rowDict).length === 0) {
+			if (maxAdjacentEmptyRows === adjacentEmptyRows) {
+				break;
+			}
+			adjacentEmptyRows++;
+		} else {
+			adjacentEmptyRows = 0;
+		}
+		resultRows.push(rowDict);
+	}
+
+	return [trimTrailingEmpty(resultRows, adjacentEmptyRows), headerDictList];
+}
+
+/**
+ * Convert an XLSX WorkBook into DefinitionData.
+ * Pure JS — no XLSX.utils needed.
+ */
+export function workbookToDict(
+	wb: XlsxWorkBook,
+	fallbackFormName?: string,
+): DefinitionData {
+	const raw: Record<string, unknown> = { sheet_names: [] };
+
+	for (const sheetName of wb.SheetNames) {
+		(raw.sheet_names as string[]).push(sheetName);
+		const lower = sheetName.toLowerCase();
+		const sheet = wb.Sheets[sheetName];
+
+		if (!constants.SUPPORTED_SHEET_NAMES.has(lower)) {
+			if (wb.SheetNames.length === 1) {
+				const [rows, header] = sheetToRows(sheet);
+				raw[constants.SURVEY] = rows;
+				raw[`${constants.SURVEY}_header`] = header;
+			}
+			continue;
+		}
+
+		const [rows, header] = sheetToRows(sheet);
+		raw[lower] = rows;
+		raw[`${lower}_header`] = header;
+	}
+
+	return toDefinitionData(raw, fallbackFormName);
 }
 
 // --- Inline markdown parser for md strings ---
@@ -343,41 +527,18 @@ export function csvToDict(content: string): DefinitionData {
 }
 
 /**
- * Convert a dict (ss_structure) directly to DefinitionData.
- */
-export function dictToDefinitionData(
-	d: Record<string, unknown>,
-): DefinitionData {
-	return {
-		survey: (d.survey ?? []) as FormRow[],
-		choices: (d.choices ?? []) as FormRow[],
-		settings: (d.settings ?? []) as FormRow[],
-		external_choices: (d.external_choices ?? []) as FormRow[],
-		entities: (d.entities ?? []) as FormRow[],
-		osm: (d.osm ?? []) as FormRow[],
-		survey_header: d.survey_header as Record<string, null>[] | undefined,
-		choices_header: d.choices_header as Record<string, null>[] | undefined,
-		settings_header: d.settings_header as Record<string, null>[] | undefined,
-		external_choices_header: d.external_choices_header as
-			| Record<string, null>[]
-			| undefined,
-		entities_header: d.entities_header as Record<string, null>[] | undefined,
-		osm_header: d.osm_header as Record<string, null>[] | undefined,
-		sheet_names: d.sheet_names as string[] | undefined,
-		fallback_form_name: d.fallback_form_name as string | undefined,
-	};
-}
-
-/**
- * Get XLSForm data from dict or markdown string inputs.
+ * Get XLSForm data from WorkBook, string, or dict inputs.
  */
 export function getXlsform(
-	xlsform: string | Record<string, unknown>,
+	xlsform: string | XlsxWorkBook | Record<string, unknown>,
 	fileType?: string,
 ): DefinitionData {
+	if (isWorkBook(xlsform)) {
+		return workbookToDict(xlsform);
+	}
+
 	if (typeof xlsform === "object" && !Array.isArray(xlsform)) {
-		// It's a dict/ss_structure
-		return dictToDefinitionData(xlsform);
+		return toDefinitionData(xlsform);
 	}
 
 	if (typeof xlsform === "string") {

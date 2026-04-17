@@ -27,6 +27,14 @@
 	"knip": {
 		"ignoreBinaries": ["biome"]
 	},
+	"peerDependencies": {
+		"xlsx": ">=0.18.0"
+	},
+	"peerDependenciesMeta": {
+		"xlsx": {
+			"optional": true
+		}
+	},
 	"dependencies": {
 		"@xmldom/xmldom": "^0.9.8"
 	},

@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest";
 import { PyXFormError } from "../src/errors.js";
 import {
 	csvToDict,
-	dictToDefinitionData,
 	getXlsform,
+	isWorkBook,
 	mdToDict,
-	xlsValueToUnicode,
+	workbookToDict,
 	xlsxValueToStr,
 } from "../src/xls2json-backends.js";
 
@@ -36,28 +36,92 @@ describe("xlsxValueToStr - edge cases", () => {
 	});
 });
 
-describe("xlsValueToUnicode - edge cases", () => {
-	const XL_CELL_BOOLEAN = 4;
-	const XL_CELL_DATE = 3;
-	const XL_CELL_TEXT = 1;
-
-	it("should handle boolean true", () => {
-		expect(xlsValueToUnicode(1, XL_CELL_BOOLEAN, 0)).toBe("TRUE");
-	});
-
-	it("should handle boolean false", () => {
-		expect(xlsValueToUnicode(0, XL_CELL_BOOLEAN, 0)).toBe("FALSE");
-	});
-
-	it("should handle date type", () => {
-		const result = xlsValueToUnicode(44000, XL_CELL_DATE, 0);
-		expect(result).toBe("44000");
-	});
-
-	it("should replace nbsp in default text type", () => {
-		expect(xlsValueToUnicode("hello\u00a0world", XL_CELL_TEXT, 0)).toBe(
-			"hello world",
+describe("isWorkBook", () => {
+	it("should detect a valid WorkBook", () => {
+		expect(isWorkBook({ SheetNames: ["survey"], Sheets: { survey: {} } })).toBe(
+			true,
 		);
+	});
+
+	it("should reject plain objects", () => {
+		expect(isWorkBook({ survey: [] })).toBe(false);
+	});
+
+	it("should reject non-objects", () => {
+		expect(isWorkBook("hello")).toBe(false);
+		expect(isWorkBook(null)).toBe(false);
+	});
+});
+
+describe("workbookToDict", () => {
+	it("should convert a mock WorkBook to DefinitionData", () => {
+		const wb = {
+			SheetNames: ["survey", "choices"],
+			Sheets: {
+				survey: {
+					"!ref": "A1:C2",
+					A1: { v: "type" },
+					B1: { v: "name" },
+					C1: { v: "label" },
+					A2: { v: "text" },
+					B2: { v: "q1" },
+					C2: { v: "Question 1" },
+				},
+				choices: {
+					"!ref": "A1:C3",
+					A1: { v: "list_name" },
+					B1: { v: "name" },
+					C1: { v: "label" },
+					A2: { v: "yn" },
+					B2: { v: "yes" },
+					C2: { v: "Yes" },
+					A3: { v: "yn" },
+					B3: { v: "no" },
+					C3: { v: "No" },
+				},
+			},
+		};
+		const result = workbookToDict(wb);
+		expect(result.survey).toEqual([
+			{ type: "text", name: "q1", label: "Question 1" },
+		]);
+		expect(result.choices).toEqual([
+			{ list_name: "yn", name: "yes", label: "Yes" },
+			{ list_name: "yn", name: "no", label: "No" },
+		]);
+		expect(result.sheet_names).toEqual(["survey", "choices"]);
+	});
+
+	it("should set fallback_form_name", () => {
+		const wb = {
+			SheetNames: ["survey"],
+			Sheets: {
+				survey: {
+					"!ref": "A1:A2",
+					A1: { v: "type" },
+					A2: { v: "text" },
+				},
+			},
+		};
+		const result = workbookToDict(wb, "my_form");
+		expect(result.fallback_form_name).toBe("my_form");
+	});
+
+	it("should treat single unknown sheet as survey", () => {
+		const wb = {
+			SheetNames: ["Sheet1"],
+			Sheets: {
+				Sheet1: {
+					"!ref": "A1:B2",
+					A1: { v: "type" },
+					B1: { v: "name" },
+					A2: { v: "text" },
+					B2: { v: "q1" },
+				},
+			},
+		};
+		const result = workbookToDict(wb);
+		expect(result.survey).toEqual([{ type: "text", name: "q1" }]);
 	});
 });
 
@@ -117,41 +181,7 @@ describe("mdToDict - edge cases", () => {
 	});
 });
 
-describe("dictToDefinitionData", () => {
-	it("should handle empty dict", () => {
-		const result = dictToDefinitionData({});
-		expect(result.survey).toEqual([]);
-		expect(result.choices).toEqual([]);
-		expect(result.settings).toEqual([]);
-	});
-
-	it("should pass through all sheet data", () => {
-		const input = {
-			survey: [{ type: "text", name: "q1", label: "Q1" }],
-			choices: [{ list_name: "yn", name: "yes", label: "Yes" }],
-			settings: [{ form_title: "Test" }],
-			external_choices: [],
-			entities: [],
-			osm: [],
-			sheet_names: ["survey", "choices", "settings"],
-			fallback_form_name: "test_form",
-		};
-		const result = dictToDefinitionData(input);
-		expect(result.survey).toEqual(input.survey);
-		expect(result.choices).toEqual(input.choices);
-		expect(result.sheet_names).toEqual(input.sheet_names);
-		expect(result.fallback_form_name).toBe("test_form");
-	});
-});
-
 describe("getXlsform - edge cases", () => {
-	it("should handle dict input", () => {
-		const result = getXlsform({
-			survey: [{ type: "text", name: "q1", label: "Q1" }],
-		});
-		expect(result.survey.length).toBe(1);
-	});
-
 	it("should handle CSV string input", () => {
 		const csv = "survey,type,name,label\n,text,q1,Q1";
 		const result = getXlsform(csv, "csv");
@@ -181,5 +211,26 @@ describe("getXlsform - edge cases", () => {
 
 	it("should throw for unsupported input type", () => {
 		expect(() => getXlsform(123 as unknown as string)).toThrow(PyXFormError);
+	});
+
+	it("should handle WorkBook input", () => {
+		const wb = {
+			SheetNames: ["survey"],
+			Sheets: {
+				survey: {
+					"!ref": "A1:C2",
+					A1: { v: "type" },
+					B1: { v: "name" },
+					C1: { v: "label" },
+					A2: { v: "note" },
+					B2: { v: "n1" },
+					C2: { v: "Hello" },
+				},
+			},
+		};
+		const result = getXlsform(wb);
+		expect(result.survey).toEqual([
+			{ type: "note", name: "n1", label: "Hello" },
+		]);
 	});
 });

@@ -5,6 +5,7 @@
 import { createSurveyElementFromDict } from "./builder.js";
 import type { Survey } from "./survey.js";
 import { coalesce } from "./utils.js";
+import type { XlsxWorkBook } from "./xls2json-backends.js";
 import { getXlsform } from "./xls2json-backends.js";
 import { workbookToJson } from "./xls2json.js";
 
@@ -17,7 +18,7 @@ export interface ConvertResult {
 }
 
 export function convert(opts: {
-	xlsform: string | Record<string, unknown>;
+	xlsform: string | XlsxWorkBook;
 	warnings?: string[];
 	validate?: boolean;
 	prettyPrint?: boolean;
