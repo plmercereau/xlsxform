@@ -6,7 +6,14 @@
 		[
 			"@semantic-release/npm",
 			{
-				"pkgRoot": "."
+				"pkgRoot": ".",
+				"npmPublish": false
+			}
+		],
+		[
+			"@semantic-release/exec",
+			{
+				"publishCmd": "pnpm publish --no-git-checks --provenance"
 			}
 		],
 		"@semantic-release/github"
