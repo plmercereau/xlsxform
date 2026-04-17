@@ -66,7 +66,7 @@ async function fetchFormAttachment(_url: string): Promise<Response> {
 <template>
 	<div class="app">
 		<header>
-			<h1>xlsxform Demo</h1>
+			<h1>xlsxform demo</h1>
 			<p>
 				Upload an XLSForm to preview it as a live ODK web form.
 				Everything runs in your browser — no server, no data uploaded.
