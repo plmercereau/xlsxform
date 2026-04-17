@@ -26,4 +26,3 @@ jobs:
       - run: pnpm --filter xlsxform exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ''
