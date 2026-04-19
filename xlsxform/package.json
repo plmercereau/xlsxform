@@ -1,6 +1,6 @@
 {
 	"name": "xlsxform",
-	"version": "0.0.1",
+	"version": "0.1.1",
 	"description": "TypeScript port of pyxform - converts XLSForms to ODK XForms",
 	"type": "module",
 	"license": "MIT",
