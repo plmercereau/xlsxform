@@ -4,13 +4,16 @@
 
 import * as constants from "../constants.js";
 import { PyXFormError } from "../errors.js";
+import type { FormRecord } from "../types.js";
 
 /** Clean up text values (smart quotes, whitespace) */
 export function cleanTextValues(
 	text: unknown,
 	stripWhitespace = false,
 ): unknown {
-	if (typeof text !== "string") return text;
+	if (typeof text !== "string") {
+		return text;
+	}
 	let result = text;
 	// Optionally collapse sequences of whitespace to a single space
 	if (stripWhitespace) {
@@ -74,6 +77,51 @@ function listToNestedDict(lst: unknown[]): unknown {
 	return lst[0];
 }
 
+/** Split a header into tokens based on delimiter conventions. */
+function splitHeaderTokens(header: string, useDoubleColon: boolean): string[] {
+	const groupDelimiter = "::";
+	if (useDoubleColon || header.includes(groupDelimiter)) {
+		return header.split(groupDelimiter).map((t) => t.trim());
+	}
+	const tokens = header.split(":").map((t) => t.trim());
+	// Handle "jr:count" or similar when used with single colon delimiters.
+	const jrIdx = tokens.indexOf("jr");
+	if (jrIdx !== -1 && jrIdx + 1 < tokens.length) {
+		return [
+			...tokens.slice(0, jrIdx),
+			`jr:${tokens[jrIdx + 1]}`,
+			...tokens.slice(jrIdx + 2),
+		];
+	}
+	return tokens;
+}
+
+/** Apply header aliases and resolve the new header and tokens. */
+function resolveHeaderAlias(
+	tokens: string[],
+	header: string,
+	headerAliases: Record<string, string | string[]>,
+	columnsSet: Set<string>,
+): { newHeader: string | string[]; tokens: string[] } {
+	const normalized = toSnakeCase(tokens[0]);
+	const dealiased = headerAliases[normalized];
+	if (dealiased) {
+		const base = Array.isArray(dealiased) ? dealiased : [dealiased];
+		return {
+			newHeader: dealiased,
+			tokens: [...base, ...tokens.slice(1)],
+		};
+	}
+	if (columnsSet.has(normalized)) {
+		return {
+			newHeader: normalized,
+			tokens: [normalized, ...tokens.slice(1)],
+		};
+	}
+	// Avoid changing unknown columns, since it could break choice_filter expressions.
+	return { newHeader: header, tokens: [...tokens] };
+}
+
 /**
  * Python-compatible process_header: lookup the header in expected columns or aliases.
  *
@@ -102,42 +150,14 @@ export function processHeaderFull(
 		return [headerNormalised, [headerNormalised]];
 	}
 
-	const groupDelimiter = "::";
-	let tokens: string[];
-	if (useDoubleColon || header.includes(groupDelimiter)) {
-		tokens = header.split(groupDelimiter).map((t) => t.trim());
-	} else {
-		tokens = header.split(":").map((t) => t.trim());
-		// Handle "jr:count" or similar when used with single colon delimiters.
-		const jrIdx = tokens.indexOf("jr");
-		if (jrIdx !== -1 && jrIdx + 1 < tokens.length) {
-			tokens = [
-				...tokens.slice(0, jrIdx),
-				`jr:${tokens[jrIdx + 1]}`,
-				...tokens.slice(jrIdx + 2),
-			];
-		}
-	}
-
-	let newHeader: string | string[] = toSnakeCase(tokens[0]);
-	const dealiased = headerAliases[newHeader as string];
-	if (dealiased) {
-		if (Array.isArray(dealiased)) {
-			newHeader = dealiased;
-			tokens = [...dealiased, ...tokens.slice(1)];
-		} else {
-			newHeader = dealiased;
-			tokens = [dealiased, ...tokens.slice(1)];
-		}
-	} else if (columnsSet.has(newHeader as string)) {
-		tokens = [newHeader as string, ...tokens.slice(1)];
-	} else {
-		// Avoid changing unknown columns, since it could break choice_filter expressions.
-		newHeader = header;
-		tokens = [...tokens];
-	}
-
-	return [newHeader, tokens];
+	const tokens = splitHeaderTokens(header, useDoubleColon);
+	const resolved = resolveHeaderAlias(
+		tokens,
+		header,
+		headerAliases,
+		columnsSet,
+	);
+	return [resolved.newHeader, resolved.tokens];
 }
 
 /**
@@ -178,6 +198,11 @@ export function processRow(
 	return outRow;
 }
 
+/** Check if a value is a non-null, non-array object (i.e. a plain dict). */
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+	return typeof val === "object" && val !== null && !Array.isArray(val);
+}
+
 /**
  * Merge dicts recursively with language-aware merging (matching Python merge_dicts).
  */
@@ -188,43 +213,25 @@ function mergeDictsWithLang(
 ): Record<string, unknown> {
 	const result = { ...a };
 	for (const [key, value] of Object.entries(b)) {
-		if (
+		const existing = result[key];
+		if (key in result && isPlainObject(existing) && isPlainObject(value)) {
+			result[key] = mergeDictsWithLang(existing, value, defaultLanguage);
+		} else if (
 			key in result &&
-			typeof result[key] === "object" &&
-			result[key] !== null &&
-			!Array.isArray(result[key]) &&
-			typeof value === "object" &&
-			value !== null &&
-			!Array.isArray(value)
+			typeof existing === "string" &&
+			isPlainObject(value)
 		) {
 			result[key] = mergeDictsWithLang(
-				result[key] as Record<string, unknown>,
-				value as Record<string, unknown>,
+				{ [defaultLanguage]: existing },
+				value,
 				defaultLanguage,
 			);
 		} else if (
 			key in result &&
-			typeof result[key] === "string" &&
-			typeof value === "object" &&
-			value !== null &&
-			!Array.isArray(value)
-		) {
-			result[key] = mergeDictsWithLang(
-				{ [defaultLanguage]: result[key] },
-				value as Record<string, unknown>,
-				defaultLanguage,
-			);
-		} else if (
-			key in result &&
-			typeof result[key] === "object" &&
-			result[key] !== null &&
-			!Array.isArray(result[key]) &&
+			isPlainObject(existing) &&
 			typeof value === "string"
 		) {
-			result[key] = {
-				...(result[key] as Record<string, unknown>),
-				[defaultLanguage]: value,
-			};
+			result[key] = { ...existing, [defaultLanguage]: value };
 		} else {
 			result[key] = value;
 		}
@@ -235,6 +242,80 @@ function mergeDictsWithLang(
 interface DealiasAndGroupHeadersResult {
 	headers: string[][];
 	data: Record<string, unknown>[];
+}
+
+/** Guess headers from the first 100 rows of sheet data. */
+function guessHeaders(
+	sheetData: Record<string, string>[],
+): Record<string, unknown>[] | null {
+	if (sheetData.length === 0) {
+		return null;
+	}
+	const guessed: Record<string, unknown> = {};
+	for (const row of sheetData.slice(0, 100)) {
+		for (const k of Object.keys(row)) {
+			guessed[k] = null;
+		}
+	}
+	return [guessed];
+}
+
+/** Build header-to-tokens mapping, detecting duplicate headers. */
+function buildHeaderKeyMap(
+	sheetName: string,
+	resolvedHeader: Record<string, unknown>[],
+	headerAliases: Record<string, string | string[]>,
+	headerColumns: Set<string>,
+): { headerKey: Record<string, string[]>; tokensKey: Map<string, string> } {
+	const headerKey: Record<string, string[]> = {};
+	const tokensKey: Map<string, string> = new Map();
+
+	const useDoubleColon = Object.keys(resolvedHeader[0]).some((k) =>
+		k.includes("::"),
+	);
+
+	for (const header of Object.keys(resolvedHeader[0])) {
+		if (header in headerKey) {
+			continue;
+		}
+		const [newHeader, tokens] = processHeaderFull(
+			header,
+			useDoubleColon,
+			headerAliases,
+			headerColumns,
+		);
+		const tokensStr = JSON.stringify(tokens);
+		const otherHeader = tokensKey.get(tokensStr);
+		const newHeaderStr =
+			typeof newHeader === "string" ? newHeader : JSON.stringify(newHeader);
+		if (otherHeader && newHeaderStr !== header) {
+			throw new PyXFormError(
+				`Invalid headers provided for sheet: '${sheetName}'. Headers that are different names for the same column were found: '${otherHeader}', '${header}'. Rename or remove one of these columns.`,
+			);
+		}
+		headerKey[header] = tokens;
+		tokensKey.set(tokensStr, header);
+	}
+
+	return { headerKey, tokensKey };
+}
+
+/** Validate that all required headers are present. */
+function validateRequiredHeaders(
+	sheetName: string,
+	headersRequired: Set<string>,
+	headerKey: Record<string, string[]>,
+	tokensKey: Map<string, string>,
+): void {
+	const allFirstTokens = new Set(
+		[...tokensKey.values()].map((h) => headerKey[h]?.[0]).filter(Boolean),
+	);
+	const missing = [...headersRequired].filter((h) => !allFirstTokens.has(h));
+	if (missing.length > 0) {
+		throw new PyXFormError(
+			`Invalid headers provided for sheet: '${sheetName}'. One or more required column headers were not found: ${missing.map((h) => `'${h}'`).join(", ")}. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
+		);
+	}
 }
 
 /**
@@ -251,51 +332,23 @@ export function dealiasAndGroupSheet(
 	stripWhitespace = false,
 	addRowNumber = false,
 ): DealiasAndGroupHeadersResult {
-	const headerKey: Record<string, string[]> = {};
-	const tokensKey: Map<string, string> = new Map();
-
-	// If not specified, guess headers from first 100 rows
 	let resolvedHeader = sheetHeader;
-	if (
-		(!resolvedHeader || resolvedHeader.length === 0) &&
-		sheetData.length > 0
-	) {
-		const guessed: Record<string, unknown> = {};
-		for (const row of sheetData.slice(0, 100)) {
-			for (const k of Object.keys(row)) {
-				guessed[k] = null;
-			}
-		}
-		resolvedHeader = [guessed];
+	if (!resolvedHeader || resolvedHeader.length === 0) {
+		resolvedHeader = guessHeaders(sheetData);
 	}
 
+	let headerKey: Record<string, string[]> = {};
+	let tokensKey: Map<string, string> = new Map();
+
 	if (resolvedHeader && resolvedHeader.length > 0) {
-		const useDoubleColon = Object.keys(resolvedHeader[0]).some((k) =>
-			k.includes("::"),
+		const mapped = buildHeaderKeyMap(
+			sheetName,
+			resolvedHeader,
+			headerAliases,
+			headerColumns,
 		);
-		for (const header of Object.keys(resolvedHeader[0])) {
-			if (header in headerKey) continue;
-			const [newHeader, tokens] = processHeaderFull(
-				header,
-				useDoubleColon,
-				headerAliases,
-				headerColumns,
-			);
-			const tokensStr = JSON.stringify(tokens);
-			const otherHeader = tokensKey.get(tokensStr);
-			if (
-				otherHeader &&
-				(typeof newHeader === "string"
-					? newHeader
-					: JSON.stringify(newHeader)) !== header
-			) {
-				throw new PyXFormError(
-					`Invalid headers provided for sheet: '${sheetName}'. Headers that are different names for the same column were found: '${otherHeader}', '${header}'. Rename or remove one of these columns.`,
-				);
-			}
-			headerKey[header] = tokens;
-			tokensKey.set(tokensStr, header);
-		}
+		headerKey = mapped.headerKey;
+		tokensKey = mapped.tokensKey;
 	}
 
 	const data = sheetData.map((row, idx) =>
@@ -311,15 +364,7 @@ export function dealiasAndGroupSheet(
 	);
 
 	if (headersRequired && (data.length > 0 || sheetName === constants.SURVEY)) {
-		const allFirstTokens = new Set(
-			[...tokensKey.values()].map((h) => headerKey[h]?.[0]).filter(Boolean),
-		);
-		const missing = [...headersRequired].filter((h) => !allFirstTokens.has(h));
-		if (missing.length > 0) {
-			throw new PyXFormError(
-				`Invalid headers provided for sheet: '${sheetName}'. One or more required column headers were not found: ${missing.map((h) => `'${h}'`).join(", ")}. Learn more: https://xlsform.org/en/#setting-up-your-worksheets`,
-			);
-		}
+		validateRequiredHeaders(sheetName, headersRequired, headerKey, tokensKey);
 	}
 
 	const headers = [...tokensKey.keys()].map((k) => JSON.parse(k) as string[]);
@@ -331,13 +376,145 @@ interface DealiasedRow {
 	[key: string]: unknown;
 }
 
+/** Handle media columns like media::audio or media::audio::English. */
+function handleMediaColumn(
+	result: Record<string, unknown>,
+	mediaParts: string[],
+	value: unknown,
+): void {
+	const mediaType = mediaParts[1];
+	if (!result.media) {
+		result.media = {};
+	}
+	const media = result.media as Record<string, unknown>;
+	if (mediaParts.length === 3) {
+		if (!isPlainObject(media[mediaType])) {
+			media[mediaType] = {};
+		}
+		(media[mediaType] as Record<string, unknown>)[mediaParts[2]] = value;
+	} else {
+		media[mediaType] = value;
+	}
+}
+
+/** Handle a nested alias (tuple) with language, e.g. ["bind", "jr:constraintMsg"]. */
+function handleNestedAliasWithLang(
+	result: Record<string, unknown>,
+	alias: [string, string],
+	lang: string,
+	value: unknown,
+): void {
+	if (!result[alias[0]]) {
+		result[alias[0]] = {};
+	}
+	const outer = result[alias[0]];
+	if (!isPlainObject(outer)) {
+		return;
+	}
+	if (!outer[alias[1]]) {
+		outer[alias[1]] = {};
+	}
+	const inner = outer[alias[1]];
+	if (isPlainObject(inner)) {
+		inner[lang] = value;
+	}
+}
+
+/** Set a value in a translation dict, converting strings to dicts as needed. */
+function setTranslationValue(
+	result: Record<string, unknown>,
+	targetKey: string,
+	lang: string,
+	value: unknown,
+	defaultLanguage: string,
+): void {
+	if (!result[targetKey]) {
+		result[targetKey] = {};
+	} else if (typeof result[targetKey] === "string") {
+		result[targetKey] = { [defaultLanguage]: result[targetKey] };
+	}
+	if (isPlainObject(result[targetKey])) {
+		(result[targetKey] as Record<string, unknown>)[lang] = value;
+	}
+}
+
+/** Resolve a translation column header and apply the value to the result. */
+function handleTranslationColumn(
+	result: Record<string, unknown>,
+	langMatch: RegExpMatchArray,
+	headerAliases: Record<string, string | [string, string]>,
+	value: unknown,
+	defaultLanguage: string,
+): boolean {
+	const baseColRaw = langMatch[1].trim();
+	const baseColNorm = toSnakeCase(baseColRaw);
+	const lang = langMatch[2].trim();
+	const alias = headerAliases[baseColNorm] ?? headerAliases[baseColRaw];
+
+	if (Array.isArray(alias)) {
+		handleNestedAliasWithLang(result, alias as [string, string], lang, value);
+		return true;
+	}
+
+	const targetKey = alias && typeof alias === "string" ? alias : baseColNorm;
+	setTranslationValue(result, targetKey, lang, value, defaultLanguage);
+	return true;
+}
+
+/** Match a translation header like "label::English" or "hint:French". */
+function matchTranslationHeader(
+	header: string,
+	useDoubleColon: boolean,
+): RegExpMatchArray | null {
+	const delimPattern = useDoubleColon
+		? /^(.+?)(?:\s*)::\s*(.+)$/
+		: /^(.+?)(?:\s*):\s*(.+)$/;
+	const langMatch = header.match(delimPattern);
+	if (!langMatch) {
+		return null;
+	}
+	// When using single colon, skip known colon-containing names like jr:constraintMsg
+	if (!useDoubleColon && langMatch[1].trim() === "jr") {
+		return null;
+	}
+	return langMatch;
+}
+
+/** Determine if a header is a media column. */
+function isMediaHeader(mediaParts: string[]): boolean {
+	return mediaParts.length >= 2 && mediaParts[0].toLowerCase() === "media";
+}
+
+/** Assign a value at a given path within the result dict. */
+function assignAtPath(
+	result: Record<string, unknown>,
+	path: string[],
+	value: unknown,
+	defaultLanguage: string,
+): void {
+	if (path.length === 1) {
+		if (isPlainObject(result[path[0]])) {
+			(result[path[0]] as Record<string, unknown>)[defaultLanguage] = value;
+		} else {
+			result[path[0]] = value;
+		}
+	} else if (path.length === 2) {
+		if (!result[path[0]]) {
+			result[path[0]] = {};
+		}
+		if (isPlainObject(result[path[0]])) {
+			(result[path[0]] as Record<string, unknown>)[path[1]] = value;
+		}
+	}
+}
+
 /**
  * Process a single row of data, dealiasing headers and grouping nested values.
  */
 export function dealiasAndGroupHeaders(
 	row: Record<string, unknown>,
 	headerAliases: Record<string, string | [string, string]>,
-	isChoicesSheet = false,
+	_isChoicesSheet = false,
 	defaultLanguage = "default",
 	stripWhitespace = false,
 ): DealiasedRow {
@@ -346,109 +523,101 @@ export function dealiasAndGroupHeaders(
 	// Determine delimiter: if any header uses "::", use "::" for all; otherwise use ":"
 	const headers = Object.keys(row);
 	const useDoubleColon = headers.some((h) => h.includes("::"));
-	const delimiter = useDoubleColon ? "::" : ":";
 
 	for (const [header, rawValue] of Object.entries(row)) {
-		if (rawValue == null || rawValue === "") continue;
+		if (rawValue == null || rawValue === "") {
+			continue;
+		}
 
 		const value = cleanTextValues(rawValue, stripWhitespace);
-		if (value === "" || value == null) continue;
+		if (value === "" || value == null) {
+			continue;
+		}
 
 		// Handle media columns: media::audio, media::audio::English
 		const mediaParts = header.split("::").map((p) => p.trim());
-		if (mediaParts.length >= 2 && mediaParts[0].toLowerCase() === "media") {
-			const mediaType = mediaParts[1]; // e.g., "audio", "image", "video", "big-image"
-			if (!result.media) result.media = {};
-			const media = result.media as Record<string, unknown>;
-			if (mediaParts.length === 3) {
-				// media::audio::English → translated media
-				const lang = mediaParts[2];
-				if (typeof media[mediaType] !== "object" || media[mediaType] === null) {
-					media[mediaType] = {};
-				}
-				(media[mediaType] as Record<string, unknown>)[lang] = value;
-			} else {
-				// media::audio → untranslated media
-				media[mediaType] = value;
-			}
+		if (isMediaHeader(mediaParts)) {
+			handleMediaColumn(result, mediaParts, value);
 			continue;
 		}
 
 		// Handle translation columns like "label::English", "hint::French"
-		// Also handles spaces around :: like "constraint_message :: English (en)"
-		// When useDoubleColon is false, also handle single colon "label:English"
-		const delimPattern = useDoubleColon
-			? /^(.+?)(?:\s*)::\s*(.+)$/
-			: /^(.+?)(?:\s*):\s*(.+)$/;
-		const langMatch = header.match(delimPattern);
-		// When using single colon, skip known colon-containing names like jr:constraintMsg
-		const isJrPrefix =
-			langMatch && !useDoubleColon && langMatch[1].trim() === "jr";
-		if (langMatch && !isJrPrefix) {
-			const baseColRaw = langMatch[1].trim();
-			const baseColNorm = toSnakeCase(baseColRaw);
-			const lang = langMatch[2].trim();
-			// Check if it maps to an alias (try normalized then original)
-			const alias = headerAliases[baseColNorm] ?? headerAliases[baseColRaw];
-			let targetKey: string;
-			if (alias && typeof alias === "string") {
-				targetKey = alias;
-			} else if (Array.isArray(alias)) {
-				// For nested aliases like ["bind", "jr:constraintMsg"],
-				// create the nested structure with language
-				if (!result[alias[0]]) result[alias[0]] = {};
-				const aliasOuter = result[alias[0]] as Record<string, unknown>;
-				if (typeof result[alias[0]] === "object") {
-					if (!aliasOuter[alias[1]]) aliasOuter[alias[1]] = {};
-					const aliasInner = aliasOuter[alias[1]] as Record<string, unknown>;
-					if (typeof aliasOuter[alias[1]] === "object") {
-						aliasInner[lang] = value;
-					}
-				}
-				continue;
-			} else {
-				targetKey = baseColNorm;
-			}
-			if (!result[targetKey]) {
-				result[targetKey] = {};
-			} else if (typeof result[targetKey] === "string") {
-				// Convert existing string value to a dict with default language
-				result[targetKey] = { [defaultLanguage]: result[targetKey] };
-			}
-			if (
-				typeof result[targetKey] === "object" &&
-				!Array.isArray(result[targetKey])
-			) {
-				(result[targetKey] as Record<string, unknown>)[lang] = value;
-			}
+		const langMatch = matchTranslationHeader(header, useDoubleColon);
+		if (langMatch) {
+			handleTranslationColumn(
+				result,
+				langMatch,
+				headerAliases,
+				value,
+				defaultLanguage,
+			);
 			continue;
 		}
 
 		const { path } = processHeader(header, headerAliases);
-
-		if (path.length === 1) {
-			// If a translation dict already exists for this key, add as default language
-			if (
-				typeof result[path[0]] === "object" &&
-				result[path[0]] !== null &&
-				!Array.isArray(result[path[0]])
-			) {
-				(result[path[0]] as Record<string, unknown>)[defaultLanguage] = value;
-			} else {
-				result[path[0]] = value;
-			}
-		} else if (path.length === 2) {
-			if (!result[path[0]]) {
-				result[path[0]] = {};
-			}
-			if (
-				typeof result[path[0]] === "object" &&
-				!Array.isArray(result[path[0]])
-			) {
-				(result[path[0]] as Record<string, unknown>)[path[1]] = value;
-			}
-		}
+		assignAtPath(result, path, value, defaultLanguage);
 	}
 
 	return result;
+}
+
+// --- Sheet-level utility functions ---
+
+/**
+ * Extract all unique header names from an array of row objects.
+ */
+export function extractHeaders(rows: FormRecord[]): string[] {
+	const headers = new Set<string>();
+	for (const row of rows) {
+		for (const key of Object.keys(row)) {
+			headers.add(key);
+		}
+	}
+	return [...headers];
+}
+
+// --- Levenshtein distance for sheet name misspelling detection ---
+
+export function levenshteinDistance(a: string, b: string): number {
+	const m = a.length;
+	const n = b.length;
+	const v1 = new Array(n + 1).fill(0);
+	const v0 = Array.from({ length: n + 1 }, (_, i) => i);
+	for (let i = 0; i < m; i++) {
+		v1[0] = i + 1;
+		for (let j = 0; j < n; j++) {
+			const deletionCost = v0[j + 1] + 1;
+			const insertionCost = v1[j] + 1;
+			const substitutionCost = a[i] === b[j] ? v0[j] : v0[j] + 1;
+			v1[j + 1] = Math.min(deletionCost, insertionCost, substitutionCost);
+		}
+		for (let j = 0; j <= n; j++) {
+			v0[j] = v1[j];
+		}
+	}
+	return v0[n];
+}
+
+/**
+ * Find possible sheet name misspellings.
+ * Returns a message fragment if similar names are found, or null otherwise.
+ */
+export function findSheetMisspellings(
+	key: string,
+	sheetNames: string[],
+): string | null {
+	if (!sheetNames || sheetNames.length === 0) {
+		return null;
+	}
+	const candidates = sheetNames.filter(
+		(k) =>
+			levenshteinDistance(k.toLowerCase(), key) <= 2 &&
+			!constants.SUPPORTED_SHEET_NAMES.has(k.toLowerCase()) &&
+			!k.startsWith("_"),
+	);
+	if (candidates.length > 0) {
+		const candidateStr = candidates.map((c) => `'${c}'`).join(", ");
+		return `When looking for a sheet named '${key}', the following sheets with similar names were found: ${candidateStr}.`;
+	}
+	return null;
 }

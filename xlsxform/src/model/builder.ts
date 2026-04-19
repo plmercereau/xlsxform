@@ -2,27 +2,25 @@
  * Survey builder - creates Survey objects from JSON dicts.
  */
 
-import * as constants from "./constants.js";
-import { PyXFormError } from "./errors.js";
+import * as constants from "../constants.js";
+import { PyXFormError } from "../errors.js";
 import {
 	QUESTION_TYPE_DICT,
 	type QuestionTypeEntry,
-} from "./question-type-dictionary.js";
+} from "../question-type-dictionary.js";
+import { MultipleChoiceQuestion } from "./multiple-choice-question.js";
+import type { Itemset } from "./option.js";
 import {
 	InputQuestion,
-	type Itemset,
-	MultipleChoiceQuestion,
-	type Option,
 	OsmUploadQuestion,
 	type Question,
-	RangeQuestion,
 	TriggerQuestion,
 	UploadQuestion,
 } from "./question.js";
+import { RangeQuestion } from "./range-question.js";
 import {
 	GroupedSection,
 	RepeatingSection,
-	type Section,
 	type SectionData,
 } from "./section.js";
 import { SurveyElement, type SurveyElementData } from "./survey-element.js";
@@ -79,16 +77,7 @@ export class SurveyElementBuilder {
 		const type = d[constants.TYPE] as string | undefined;
 
 		if (type && type in SECTION_CLASSES) {
-			const section = this._createSectionFromDict(d, choices);
-
-			if (type === constants.SURVEY) {
-				(section as Survey).setvalues_by_triggering_ref =
-					this.setvalues_by_triggering_ref;
-				(section as Survey).setgeopoint_by_triggering_ref =
-					this.setgeopoint_by_triggering_ref;
-			}
-
-			return section;
+			return this._createSectionElement(d, type, choices);
 		}
 
 		if (type === constants.LOOP) {
@@ -96,43 +85,70 @@ export class SurveyElementBuilder {
 		}
 
 		if (type === "include") {
-			const sectionName = d[constants.NAME] as string;
-			if (!(sectionName in this._sections)) {
-				throw new PyXFormError("This section has not been included.");
-			}
-			const sectionDict = this._sections[sectionName];
-			const fullSurvey = this.createSurveyElementFromDict(sectionDict, choices);
-			if (!Array.isArray(fullSurvey) && "children" in fullSurvey) {
-				return (
-					(fullSurvey as unknown as { children: SurveyElement[] }).children ??
-					[]
-				);
-			}
-			return [];
+			return this._createIncludeElement(d, choices);
 		}
 
 		if (type === "xml-external" || type === "csv-external") {
-			// External instance - return a placeholder
 			return new SurveyElement(d as SurveyElementData);
 		}
 
 		if (type === "entity") {
-			// Entity declaration - preserve children data in extra_data
-			const entityElement = new SurveyElement(d as SurveyElementData);
-			if (!entityElement.extra_data) entityElement.extra_data = {};
-			entityElement.extra_data._entity_children = d[constants.CHILDREN] ?? [];
-			return entityElement;
+			return this._createEntityElement(d);
 		}
 
-		// Save trigger info
 		this._saveTrigger(d);
-
 		return this._createQuestionFromDict(d, QUESTION_TYPE_DICT, choices);
+	}
+
+	private _createSectionElement(
+		d: Record<string, unknown>,
+		type: string,
+		choices?: Record<string, Itemset> | null,
+	): Survey | GroupedSection | RepeatingSection {
+		const section = this._createSectionFromDict(d, choices);
+
+		if (type === constants.SURVEY) {
+			(section as Survey).setvalues_by_triggering_ref =
+				this.setvalues_by_triggering_ref;
+			(section as Survey).setgeopoint_by_triggering_ref =
+				this.setgeopoint_by_triggering_ref;
+		}
+
+		return section;
+	}
+
+	private _createIncludeElement(
+		d: Record<string, unknown>,
+		choices?: Record<string, Itemset> | null,
+	): SurveyElement[] {
+		const sectionName = d[constants.NAME] as string;
+		if (!(sectionName in this._sections)) {
+			throw new PyXFormError("This section has not been included.");
+		}
+		const sectionDict = this._sections[sectionName];
+		const fullSurvey = this.createSurveyElementFromDict(sectionDict, choices);
+		if (!Array.isArray(fullSurvey) && "children" in fullSurvey) {
+			return (
+				(fullSurvey as unknown as { children: SurveyElement[] }).children ?? []
+			);
+		}
+		return [];
+	}
+
+	private _createEntityElement(d: Record<string, unknown>): SurveyElement {
+		const entityElement = new SurveyElement(d as SurveyElementData);
+		if (!entityElement.extra_data) {
+			entityElement.extra_data = {};
+		}
+		entityElement.extra_data._entity_children = d[constants.CHILDREN] ?? [];
+		return entityElement;
 	}
 
 	private _saveTrigger(d: Record<string, unknown>): void {
 		const trigger = d.trigger;
-		if (!trigger) return;
+		if (!trigger) {
+			return;
+		}
 
 		const triggers = Array.isArray(trigger) ? trigger : [trigger];
 		for (const t of triggers) {
@@ -164,7 +180,9 @@ export class SurveyElementBuilder {
 		const typeStr = d[constants.TYPE] as string;
 		const questionClass = this._getQuestionClass(typeStr, qtd);
 
-		if (!questionClass) return [];
+		if (!questionClass) {
+			return [];
+		}
 
 		// If choices are available and the question references them
 		if (choices && d[constants.ITEMSET]) {
@@ -250,7 +268,9 @@ export class SurveyElementBuilder {
 
 		const columns = (d[constants.COLUMNS] ?? []) as Record<string, unknown>[];
 		for (const columnDict of columns) {
-			if (columnDict[constants.NAME] === "none") continue;
+			if (columnDict[constants.NAME] === "none") {
+				continue;
+			}
 
 			const column = new GroupedSection({
 				type: constants.GROUP,
@@ -272,7 +292,9 @@ export class SurveyElementBuilder {
 			result.addChild(column);
 		}
 
-		if (result.name !== "") return result;
+		if (result.name !== "") {
+			return result;
+		}
 		return result.children;
 	}
 
@@ -284,20 +306,7 @@ export class SurveyElementBuilder {
 		questionTemplate: Record<string, unknown>,
 		columnHeaders: Record<string, unknown>,
 	): Record<string, unknown> {
-		// If the label in columnHeaders has multiple languages, setup a
-		// dictionary by language to do substitutions.
-		let infoByLang: Record<string, Record<string, unknown>> | null = null;
-		const colLabel = columnHeaders[constants.LABEL];
-		if (colLabel && typeof colLabel === "object" && !Array.isArray(colLabel)) {
-			infoByLang = {};
-			const labelObj = colLabel as Record<string, unknown>;
-			for (const lang of Object.keys(labelObj)) {
-				infoByLang[lang] = {
-					[constants.NAME]: columnHeaders[constants.NAME],
-					[constants.LABEL]: labelObj[lang],
-				};
-			}
-		}
+		const infoByLang = buildInfoByLang(columnHeaders);
 
 		const result: Record<string, unknown> = { ...questionTemplate };
 		for (const key of Object.keys(result)) {
@@ -305,30 +314,59 @@ export class SurveyElementBuilder {
 			if (typeof val === "string") {
 				result[key] = pyPercentSubstitute(val, columnHeaders);
 			} else if (val && typeof val === "object" && !Array.isArray(val)) {
-				const nested = { ...(val as Record<string, unknown>) };
-				result[key] = nested;
-				for (const key2 of Object.keys(nested)) {
-					if (typeof nested[key2] === "string") {
-						if (
-							infoByLang &&
-							typeof columnHeaders[constants.LABEL] === "object"
-						) {
-							nested[key2] = pyPercentSubstitute(
-								nested[key2] as string,
-								infoByLang[key2] ?? columnHeaders,
-							);
-						} else {
-							nested[key2] = pyPercentSubstitute(
-								nested[key2] as string,
-								columnHeaders,
-							);
-						}
-					}
-				}
+				result[key] = substituteNested(
+					val as Record<string, unknown>,
+					columnHeaders,
+					infoByLang,
+				);
 			}
 		}
 		return result;
 	}
+}
+
+/**
+ * Build a language-keyed substitution map from multi-language labels.
+ */
+function buildInfoByLang(
+	columnHeaders: Record<string, unknown>,
+): Record<string, Record<string, unknown>> | null {
+	const colLabel = columnHeaders[constants.LABEL];
+	if (!colLabel || typeof colLabel !== "object" || Array.isArray(colLabel)) {
+		return null;
+	}
+	const labelObj = colLabel as Record<string, unknown>;
+	const result: Record<string, Record<string, unknown>> = {};
+	for (const lang of Object.keys(labelObj)) {
+		result[lang] = {
+			[constants.NAME]: columnHeaders[constants.NAME],
+			[constants.LABEL]: labelObj[lang],
+		};
+	}
+	return result;
+}
+
+/**
+ * Apply substitutions to a nested object's string values.
+ */
+function substituteNested(
+	obj: Record<string, unknown>,
+	columnHeaders: Record<string, unknown>,
+	infoByLang: Record<string, Record<string, unknown>> | null,
+): Record<string, unknown> {
+	const nested = { ...obj };
+	const hasMultiLangLabel =
+		infoByLang && typeof columnHeaders[constants.LABEL] === "object";
+
+	for (const key of Object.keys(nested)) {
+		if (typeof nested[key] !== "string") {
+			continue;
+		}
+		const context =
+			hasMultiLangLabel && infoByLang[key] ? infoByLang[key] : columnHeaders;
+		nested[key] = pyPercentSubstitute(nested[key] as string, context);
+	}
+	return nested;
 }
 
 /**
@@ -352,7 +390,9 @@ export function createSurveyElementFromDict(
 	sections?: Record<string, Record<string, unknown>>,
 ): SurveyElement {
 	const builder = new SurveyElementBuilder();
-	if (sections) builder.setSections(sections);
+	if (sections) {
+		builder.setSections(sections);
+	}
 	return builder.createSurveyElementFromDict(d) as SurveyElement;
 }
 

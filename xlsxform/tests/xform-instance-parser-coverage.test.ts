@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseXformInstance } from "../src/xform-instance-parser.js";
+import { parseXformInstance } from "../src/parsing/xform-instance-parser.js";
 
 describe("XFormInstanceParser", () => {
 	it("should parse a simple instance", () => {

@@ -2,11 +2,11 @@
  * Main conversion entry point: XLSForm → XForm.
  */
 
-import { createSurveyElementFromDict } from "./builder.js";
-import type { Survey } from "./survey.js";
-import { coalesce } from "./utils.js";
-import type { XlsxWorkBook } from "./xls2json-backends.js";
-import { getXlsform } from "./xls2json-backends.js";
+import { createSurveyElementFromDict } from "../model/builder.js";
+import type { Survey } from "../model/survey.js";
+import { coalesce } from "../utils.js";
+import type { XlsxWorkBook } from "./backends/index.js";
+import { getXlsform } from "./backends/index.js";
 import { workbookToJson } from "./xls2json.js";
 
 export interface ConvertResult {
@@ -18,7 +18,7 @@ export interface ConvertResult {
 }
 
 export function convert(opts: {
-	xlsform: string | XlsxWorkBook;
+	xlsform: string | XlsxWorkBook | Record<string, unknown>;
 	warnings?: string[];
 	validate?: boolean;
 	prettyPrint?: boolean;

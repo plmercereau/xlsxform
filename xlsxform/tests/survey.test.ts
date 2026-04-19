@@ -6,9 +6,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import * as constants from "../src/constants.js";
-import { InputQuestion } from "../src/question.js";
-import { GroupedSection, RepeatingSection } from "../src/section.js";
-import { Survey, getPathRelativeToLcarStandalone } from "../src/survey.js";
+import { InputQuestion } from "../src/model/question.js";
+import { GroupedSection, RepeatingSection } from "../src/model/section.js";
+import {
+	Survey,
+	getPathRelativeToLcarStandalone,
+} from "../src/model/survey.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestSurvey", () => {
@@ -112,6 +115,61 @@ describe("TestSurvey", () => {
 });
 
 /**
+ * Create a section node from a path item name.
+ */
+function createSectionNode(item: string): RepeatingSection | GroupedSection {
+	if (item[0] === "r") {
+		return new RepeatingSection({ name: item, type: constants.REPEAT });
+	}
+	return new GroupedSection({ name: item, type: constants.GROUP });
+}
+
+/**
+ * Build branch nodes (target or source side) by walking path items,
+ * creating intermediate section nodes, and attaching the leaf.
+ */
+function buildBranchNodes(
+	startParent: Survey | RepeatingSection | GroupedSection,
+	pathItems: string[],
+	leafName: string,
+	leaf: RepeatingSection | GroupedSection | InputQuestion,
+): void {
+	let parent = startParent;
+	for (const item of pathItems) {
+		if (!item) {
+			continue;
+		}
+		if (item === leafName) {
+			parent.addChild(leaf);
+		} else {
+			const newNode = createSectionNode(item);
+			parent.addChild(newNode);
+			parent = newNode;
+		}
+	}
+}
+
+/**
+ * Build shared path nodes, returning the deepest shared parent.
+ */
+function buildSharedPathNodes(
+	survey: Survey,
+	sharedPath: string[],
+	lcar: RepeatingSection,
+): Survey | RepeatingSection | GroupedSection {
+	let currentParent: Survey | RepeatingSection | GroupedSection = survey;
+	for (const item of sharedPath) {
+		if (!item || item === "y") {
+			continue;
+		}
+		const newNode = item[0] === "a" ? lcar : createSectionNode(item);
+		currentParent.addChild(newNode);
+		currentParent = newNode;
+	}
+	return currentParent;
+}
+
+/**
  * Build a Survey object tree from XPath specifications (matching Python build_survey_from_path_spec).
  */
 function buildSurveyFromPathSpec(
@@ -155,61 +213,22 @@ function buildSurveyFromPathSpec(
 		label: `source \${${targetName}}`,
 		type: "string",
 	});
-	let currentParent: Survey | RepeatingSection | GroupedSection = survey;
+
 	const sharedPath = targetParts.slice(0, sharedPathLength);
+	const currentParent = buildSharedPathNodes(survey, sharedPath, lcar);
 
-	// Shared path
-	for (const item of sharedPath) {
-		if (!item || item === "y") continue;
-
-		let newNode: RepeatingSection | GroupedSection;
-		if (item[0] === "a") {
-			newNode = lcar;
-		} else if (item[0] === "r") {
-			newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
-		} else {
-			newNode = new GroupedSection({ name: item, type: constants.GROUP });
-		}
-
-		currentParent.addChild(newNode);
-		currentParent = newNode;
-	}
-
-	// Target path
-	let targetParent = currentParent;
-	for (const item of targetParts.slice(sharedPathLength)) {
-		if (item === "t") {
-			targetParent.addChild(target);
-		} else {
-			if (!item) continue;
-			let newNode: RepeatingSection | GroupedSection;
-			if (item[0] === "r") {
-				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
-			} else {
-				newNode = new GroupedSection({ name: item, type: constants.GROUP });
-			}
-			targetParent.addChild(newNode);
-			targetParent = newNode;
-		}
-	}
-
-	// Source path
-	let sourceParent = currentParent;
-	for (const item of sourceParts.slice(sharedPathLength)) {
-		if (item === "s") {
-			sourceParent.addChild(source);
-		} else {
-			if (!item) continue;
-			let newNode: RepeatingSection | GroupedSection;
-			if (item[0] === "r") {
-				newNode = new RepeatingSection({ name: item, type: constants.REPEAT });
-			} else {
-				newNode = new GroupedSection({ name: item, type: constants.GROUP });
-			}
-			sourceParent.addChild(newNode);
-			sourceParent = newNode;
-		}
-	}
+	buildBranchNodes(
+		currentParent,
+		targetParts.slice(sharedPathLength),
+		"t",
+		target,
+	);
+	buildBranchNodes(
+		currentParent,
+		sourceParts.slice(sharedPathLength),
+		"s",
+		source,
+	);
 
 	return [survey, target, source];
 }
@@ -237,11 +256,14 @@ function assertRelativePath(opts: {
 	const expectNone = opts.expectNone === "1";
 
 	const relation = source.lowestCommonAncestor(target, constants.REPEAT);
+	if (relation[1] == null || relation[3] == null) {
+		throw new Error("Expected non-null relation values");
+	}
 	const observed = getPathRelativeToLcarStandalone(
 		target,
 		source,
-		relation[1] as number,
-		relation[3] as number,
+		relation[1],
+		relation[3],
 		referenceParent,
 	);
 

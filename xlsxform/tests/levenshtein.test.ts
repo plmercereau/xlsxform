@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { levenshteinDistance } from "../src/xls2json.js";
+import { levenshteinDistance } from "../src/parsing/sheet-headers.js";
 
 describe("TestLevenshteinDistance", () => {
 	it("test_levenshtein_distance", () => {

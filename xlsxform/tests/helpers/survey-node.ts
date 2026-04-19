@@ -3,7 +3,7 @@
  */
 
 import * as fs from "node:fs";
-import type { Survey } from "../../src/survey.js";
+import type { Survey } from "../../src/model/survey.js";
 
 /**
  * Dump the survey as JSON to a file.

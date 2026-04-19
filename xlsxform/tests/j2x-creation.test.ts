@@ -4,8 +4,8 @@
 
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { MultipleChoiceQuestion } from "../src/question.js";
-import { Survey } from "../src/survey.js";
+import { MultipleChoiceQuestion } from "../src/model/multiple-choice-question.js";
+import { Survey } from "../src/model/survey.js";
 import { createSurveyFromXls } from "./helpers/builder-node.js";
 
 const EXAMPLE_XLS_PATH = path.join(
@@ -29,7 +29,11 @@ describe("Json2XformVerboseSurveyCreationTests", () => {
 				{ name: "blue", label: "Blue" },
 			],
 		};
-		const s = new Survey({ name: "Roses_are_Red", type: "survey", choices });
+		const s = new Survey({
+			name: "Roses_are_Red",
+			type: "survey",
+			choices,
+		});
 		const q = new MultipleChoiceQuestion({
 			name: "Favorite_Color",
 			type: "select one",

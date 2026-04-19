@@ -4,9 +4,13 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { DOMParser } from "@xmldom/xmldom";
+import {
+	DOMParser,
+	type Document as XmlDocument,
+	type Element as XmlElement,
+} from "@xmldom/xmldom";
 import { describe, expect, it } from "vitest";
-import { convert } from "./helpers/xls2xform-node.js";
+import { type ConvertResult, convert } from "./helpers/xls2xform-node.js";
 
 const EXAMPLE_XLS_PATH = path.join(
 	__dirname,
@@ -31,37 +35,41 @@ const domParser = new DOMParser();
  * Sort model elements to handle unpredictable dict iteration order.
  * Similar to Python XFormTestCase.sort_model.
  */
-function sortModel(doc: Document): void {
+function sortModel(doc: XmlDocument): void {
 	const NS = "http://www.w3.org/2002/xforms";
 	const model = doc.getElementsByTagNameNS(NS, "model")[0];
-	if (!model) return;
+	if (!model) {
+		return;
+	}
 
 	// Sort child elements by their "id" attribute or tag name
 	const children = Array.from(model.childNodes).filter(
-		(n): n is Element => n.nodeType === 1,
+		(n): n is XmlElement => n.nodeType === 1,
 	);
 	children.sort((a, b) => {
 		const aId = a.getAttribute("id") ?? "";
 		const bId = b.getAttribute("id") ?? "";
-		if (aId !== bId) return aId.localeCompare(bId);
+		if (aId !== bId) {
+			return aId.localeCompare(bId);
+		}
 		return (a.tagName ?? "").localeCompare(b.tagName ?? "");
 	});
 
 	// Sort item children within instances
 	const instances = Array.from(model.childNodes).filter(
-		(n): n is Element => n.nodeType === 1 && n.localName === "instance",
+		(n): n is XmlElement => n.nodeType === 1 && n.localName === "instance",
 	);
 	for (const instance of instances) {
 		if (instance.getAttribute("id")) {
 			const root = Array.from(instance.childNodes).find(
-				(n): n is Element => n.nodeType === 1 && n.localName === "root",
+				(n): n is XmlElement => n.nodeType === 1 && n.localName === "root",
 			);
 			if (root) {
 				for (const item of Array.from(root.childNodes).filter(
-					(n): n is Element => n.nodeType === 1,
+					(n): n is XmlElement => n.nodeType === 1,
 				)) {
 					const itemChildren = Array.from(item.childNodes).filter(
-						(n): n is Element => n.nodeType === 1,
+						(n): n is XmlElement => n.nodeType === 1,
 					);
 					itemChildren.sort((a, b) =>
 						(a.tagName ?? "").localeCompare(b.tagName ?? ""),
@@ -73,11 +81,11 @@ function sortModel(doc: Document): void {
 
 	// Sort itext translations
 	const itexts = Array.from(model.childNodes).filter(
-		(n): n is Element => n.nodeType === 1 && n.localName === "itext",
+		(n): n is XmlElement => n.nodeType === 1 && n.localName === "itext",
 	);
 	for (const itext of itexts) {
 		const translations = Array.from(itext.childNodes).filter(
-			(n): n is Element => n.nodeType === 1,
+			(n): n is XmlElement => n.nodeType === 1,
 		);
 		translations.sort((a, b) => {
 			const aLang = a.getAttribute("lang") ?? "";
@@ -85,17 +93,6 @@ function sortModel(doc: Document): void {
 			return aLang.localeCompare(bLang);
 		});
 	}
-}
-
-/**
- * Compare two XML strings for equivalence.
- * Returns true if they are equivalent (ignoring element ordering in model).
- */
-function xmlsAreEquivalent(xml1: string, xml2: string): boolean {
-	// Normalize whitespace and compare
-	const normalize = (s: string) =>
-		s.replace(/\s+/g, " ").replace(/> </g, "><").trim();
-	return normalize(xml1) === normalize(xml2);
 }
 
 describe("TestXFormConversion", () => {
@@ -126,16 +123,12 @@ describe("TestXFormConversion", () => {
 				continue;
 			}
 
-			let result: string | undefined;
+			let result: ConvertResult;
 			try {
-				if (setName) {
-					result = convert({
-						xlsform: xlsformPath,
-						formName: rootFilename,
-					});
-				} else {
-					result = convert({ xlsform: xlsformPath });
-				}
+				result = convert({
+					xlsform: xlsformPath,
+					formName: setName ? rootFilename : undefined,
+				});
 			} catch (e: unknown) {
 				throw new Error(
 					`Failed converting ${caseFile}: ${e instanceof Error ? e.message : String(e)}`,

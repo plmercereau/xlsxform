@@ -3,9 +3,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { createSurveyElementFromDict } from "../src/builder.js";
-import { SurveyInstance } from "../src/instance.js";
-import { Survey } from "../src/survey.js";
+import { createSurveyElementFromDict } from "../src/model/builder.js";
+import { SurveyInstance } from "../src/model/instance.js";
+import { Survey } from "../src/model/survey.js";
 
 describe("Json2XformExportingPrepTests", () => {
 	it("test_simple_survey_instantiation", () => {

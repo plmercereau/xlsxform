@@ -268,28 +268,34 @@ describe("TestSelectFromFile", () => {
 		];
 		const extensions = [".xml", ".csv", ".geojson"];
 
+		const buildMd = (qType: string, fileExt: string, param: string) =>
+			md
+				.replace(/\{q\}/g, qType)
+				.replace(/\{e\}/g, fileExt)
+				.replace(/\{p\}/g, param);
+
+		const assertGoodParam = (qType: string, fileExt: string, param: string) => {
+			assertPyxformXform({ md: buildMd(qType, fileExt, param) });
+		};
+
+		const assertBadParam = (qType: string, fileExt: string, param: string) => {
+			const name = param.includes("label") ? "label" : "value";
+			assertPyxformXform({
+				md: buildMd(qType, fileExt, param),
+				errored: true,
+				error__contains: [
+					`[row : 2] On the 'survey' sheet, the 'parameters (${name})' value is invalid. Names must begin with a letter or underscore. After the first character, names may contain letters, digits, underscores, hyphens, or periods.`,
+				],
+			});
+		};
+
 		for (const qType of qTypes) {
 			for (const fileExt of extensions) {
 				for (const param of goodParams) {
-					assertPyxformXform({
-						md: md
-							.replace(/\{q\}/g, qType)
-							.replace(/\{e\}/g, fileExt)
-							.replace(/\{p\}/g, param),
-					});
+					assertGoodParam(qType, fileExt, param);
 				}
 				for (const param of badParams) {
-					const name = param.includes("label") ? "label" : "value";
-					assertPyxformXform({
-						md: md
-							.replace(/\{q\}/g, qType)
-							.replace(/\{e\}/g, fileExt)
-							.replace(/\{p\}/g, param),
-						errored: true,
-						error__contains: [
-							`[row : 2] On the 'survey' sheet, the 'parameters (${name})' value is invalid. Names must begin with a letter or underscore. After the first character, names may contain letters, digits, underscores, hyphens, or periods.`,
-						],
-					});
+					assertBadParam(qType, fileExt, param);
 				}
 			}
 		}

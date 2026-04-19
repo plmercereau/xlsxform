@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { createSurvey } from "../src/builder.js";
+import { createSurvey } from "../src/model/builder.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("Json2XformTest", () => {

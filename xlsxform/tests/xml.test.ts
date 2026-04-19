@@ -46,7 +46,10 @@ describe("MinidomTextWriterMonkeyPatchTest", () => {
 		const replaceableChars = "' \" & < > \r \n \t";
 		const domImpl = new DOMImplementation();
 		const doc = domImpl.createDocument(null as unknown as string, "root", null);
-		const root = doc.documentElement as Element;
+		if (!doc.documentElement) {
+			throw new Error("Expected document element");
+		}
+		const root = doc.documentElement;
 		root.appendChild(doc.createTextNode(replaceableChars));
 		root.setAttribute("attr", replaceableChars);
 		const serializer = new XMLSerializer();

@@ -4,8 +4,9 @@
 
 import * as path from "node:path";
 import * as constants from "../../src/constants.js";
-import { getXlsform } from "../../src/xls2json-backends.js";
-import { workbookToJson } from "../../src/xls2json.js";
+import type { DefinitionData } from "../../src/conversion/backends/index.js";
+import { getXlsform } from "../../src/conversion/backends/index.js";
+import { workbookToJson } from "../../src/conversion/xls2json.js";
 import { getXlsformFromFile } from "./xls2json-backends-node.js";
 
 interface FormRecord {
@@ -29,7 +30,7 @@ export function parseFileToJson(
 	const warnings = opts?.warnings ?? [];
 
 	// Try as dict/md string first (browser-safe), then as file path
-	let workbookDict: import("../../src/xls2json-backends.js").DefinitionData;
+	let workbookDict: DefinitionData;
 	try {
 		workbookDict = getXlsform(filePath);
 	} catch {

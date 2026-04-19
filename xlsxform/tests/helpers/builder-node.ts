@@ -7,8 +7,8 @@ import * as path from "node:path";
 import {
 	createSurvey,
 	createSurveyElementFromDict,
-} from "../../src/builder.js";
-import type { Survey } from "../../src/survey.js";
+} from "../../src/model/builder.js";
+import type { Survey } from "../../src/model/survey.js";
 import { parseFileToJson } from "./xls2json-node.js";
 
 /**

@@ -35,7 +35,9 @@ export class TestServer {
 			const segments = urlPath.split("/").filter(Boolean);
 			let filePath = this._rootDir;
 			for (const seg of segments) {
-				if (seg === "." || seg === "..") continue;
+				if (seg === "." || seg === "..") {
+					continue;
+				}
 				filePath = path.join(filePath, seg);
 			}
 

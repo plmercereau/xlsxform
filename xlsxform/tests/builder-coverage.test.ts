@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { createSurvey } from "../src/builder.js";
 import { PyXFormError } from "../src/errors.js";
+import { createSurvey } from "../src/model/builder.js";
 import { convert } from "./helpers/xls2xform-node.js";
 
 describe("createSurvey - idString and title overrides", () => {

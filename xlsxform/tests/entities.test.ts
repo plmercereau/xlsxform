@@ -56,57 +56,11 @@ function xpe_model_instance_meta(
 	`;
 }
 
-function xpe_model_no_instance_csv(list_name: string): string {
-	return `
-		/h:html/h:head/x:model[
-		  not(./x:instance[@id='${list_name}' and @src='jr://file-csv/${list_name}.csv'])
-		]
-	`;
-}
-
-function xpe_model_setvalue_meta_id(meta_path = ""): string {
-	return `
-		/h:html/h:head/x:model/x:setvalue[
-		  @ref='/test_name${meta_path}/meta/entity/@id'
-		  and @event='odk-instance-first-load'
-		  and @value='uuid()'
-		]
-	`;
-}
-
 function xpe_model_bind_question_saveto(qpath: string, saveto: string): string {
 	return `
 		/h:html/h:head/x:model/x:bind[
 		  @nodeset='/test_name${qpath}'
 		  and @entities:saveto='${saveto}'
-		]
-	`;
-}
-
-function xpe_model_bind_meta_id(expression = "", meta_path = ""): string {
-	const exprAssert = expression
-		? `@calculate='${expression}'`
-		: "not(@calculate)";
-	return `
-		/h:html/h:head/x:model/x:bind[
-		  @nodeset='/test_name${meta_path}/meta/entity/@id'
-		  and ${exprAssert}
-		  and @type='string'
-		  and @readonly='true()'
-		]
-	`;
-}
-
-function xpe_model_bind_meta_create(
-	expression: string,
-	meta_path = "",
-): string {
-	return `
-		/h:html/h:head/x:model/x:bind[
-		  @nodeset='/test_name${meta_path}/meta/entity/@create'
-		  and @calculate="${expression}"
-		  and @type='string'
-		  and @readonly='true()'
 		]
 	`;
 }
@@ -119,53 +73,6 @@ function xpe_model_bind_meta_label(value: string, meta_path = ""): string {
 		  and @type='string'
 		  and @readonly='true()'
 		]
-	`;
-}
-
-function xpe_model_bind_meta_instanceid(): string {
-	return `
-		/h:html/h:head/x:model/x:bind[
-		  @nodeset='/test_name/meta/instanceID'
-		  and @readonly='true()'
-		  and @type='string'
-		  and @jr:preload='uid'
-		]
-	`;
-}
-
-function xpe_model_entities_version(version: string): string {
-	return `
-		/h:html/h:head/x:model[@entities:entities-version='${version}']
-	`;
-}
-
-function xpe_model_no_entities_version(): string {
-	return `
-		/h:html/h:head/x:model/@*[
-		  not(
-		    namespace-uri()='http://www.opendatakit.org/xforms/entities'
-		    and local-name()='entities-version'
-		  )
-		]
-	`;
-}
-
-function xpe_body_repeat_setvalue_meta_id(
-	repeat_path = "",
-	meta_path = "",
-): string {
-	return `
-		/h:html/h:body${repeat_path}/x:setvalue[
-		  @ref='/test_name${meta_path}/meta/entity/@id'
-		  and @event='odk-new-repeat'
-		  and @value='uuid()'
-		]
-	`;
-}
-
-function xps_instance_meta_survey_element(name: string): string {
-	return `
-		/h:html/h:head/x:model/x:instance/x:test_name/x:meta/x:${name}
 	`;
 }
 

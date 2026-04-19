@@ -1,13 +1,5 @@
 import * as constants from "./constants.js";
 
-const control: Record<string, string> = {
-	group: constants.GROUP,
-	lgroup: constants.REPEAT,
-	repeat: constants.REPEAT,
-	loop: constants.LOOP,
-	"looped group": constants.REPEAT,
-};
-
 export const selectFromFile: Record<string, string> = {
 	select_one_from_file: constants.SELECT_ONE,
 	select_multiple_from_file: constants.SELECT_ALL_THAT_APPLY,
@@ -28,11 +20,6 @@ export const select: Record<string, string> = {
 	select_one_external: constants.SELECT_ONE_EXTERNAL,
 	...selectFromFile,
 	rank: constants.RANK,
-};
-
-const cascading: Record<string, string> = {
-	"cascading select": constants.CASCADING_SELECT,
-	cascading_select: constants.CASCADING_SELECT,
 };
 
 export const settingsHeader: Record<string, string> = {
@@ -83,10 +70,6 @@ export const surveyHeader: Record<string, string | [string, string]> = {
 	body: "control",
 	trigger: "trigger",
 	[constants.ENTITIES_SAVETO]: ["bind", constants.ENTITIES_SAVETO_NS],
-};
-
-const entitiesHeader: Record<string, string> = {
-	[constants.LIST_NAME_U]: "dataset",
 };
 
 export const TRANSLATABLE_SURVEY_COLUMNS: Record<
@@ -152,10 +135,6 @@ export const yesNo: Record<string, boolean> = {
 	False: false,
 	FALSE: false,
 	"false()": false,
-};
-
-const osmAliases: Record<string, string> = {
-	osm: constants.OSM_TYPE,
 };
 
 export const BINDING_CONVERSIONS: Record<string, string> = {

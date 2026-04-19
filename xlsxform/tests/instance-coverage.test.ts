@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { PyXFormError } from "../src/errors.js";
-import { SurveyInstance } from "../src/instance.js";
+import { SurveyInstance } from "../src/model/instance.js";
 import { convert } from "./helpers/xls2xform-node.js";
 
 function createTestInstance() {

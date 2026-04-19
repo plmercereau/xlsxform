@@ -19,18 +19,24 @@ const ncNameNs = `${ncName}(?::${ncName})?`;
 const RE_NCNAME_NAMESPACED = new RegExp(`^${ncNameNs}$`);
 
 export function isXmlTag(name: string): boolean {
-	if (!name) return false;
+	if (!name) {
+		return false;
+	}
 	return RE_NCNAME_NAMESPACED.test(name);
 }
 
 export function hasPyxformReference(text: string): boolean {
-	if (!text || typeof text !== "string") return false;
+	if (!text || typeof text !== "string") {
+		return false;
+	}
 	RE_PYXFORM_REF.lastIndex = 0;
 	return RE_PYXFORM_REF.test(text);
 }
 
 export function isPyxformReference(text: string): boolean {
-	if (!text || typeof text !== "string") return false;
+	if (!text || typeof text !== "string") {
+		return false;
+	}
 	const trimmed = text.trim();
 	return /^\$\{[^}]+\}$/.test(trimmed);
 }
@@ -101,42 +107,59 @@ const _cache = new Map<string, Token[]>();
  * Port of pyxform's parse_expression which uses Lark's lexer.
  * Uses caching for performance (like the Python @lru_cache).
  */
+/**
+ * Find the best (longest) matching token at the given position.
+ */
+function matchTokenAt(
+	text: string,
+	pos: number,
+): { type: string; value: string } | null {
+	let bestMatch: { type: string; value: string } | null = null;
+
+	for (const [type, re] of stickyRules) {
+		re.lastIndex = pos;
+		const m = re.exec(text);
+		if (m && m.index === pos) {
+			if (!bestMatch || m[0].length > bestMatch.value.length) {
+				bestMatch = { type, value: m[0] };
+			}
+		}
+	}
+
+	return bestMatch;
+}
+
+/**
+ * Evict the oldest entry when the cache exceeds its limit.
+ */
+function evictCache(): void {
+	if (_cache.size >= 128) {
+		const firstKey = _cache.keys().next().value;
+		if (firstKey !== undefined) {
+			_cache.delete(firstKey);
+		}
+	}
+}
+
 export function parseExpression(text: string): Token[] {
 	const cached = _cache.get(text);
-	if (cached) return cached;
+	if (cached) {
+		return cached;
+	}
 
 	const tokens: Token[] = [];
 	let pos = 0;
 
 	while (pos < text.length) {
-		let bestMatch: { type: string; value: string } | null = null;
-
-		for (const [type, re] of stickyRules) {
-			re.lastIndex = pos;
-			const m = re.exec(text);
-			if (m && m.index === pos) {
-				// First match wins (rules are in priority order).
-				// Among same-priority rules, Lark picks longest match,
-				// but our rules are ordered so first match is correct.
-				if (!bestMatch || m[0].length > bestMatch.value.length) {
-					bestMatch = { type, value: m[0] };
-				} else if (m[0].length === bestMatch.value.length) {
-				}
-			}
-		}
-
 		// bestMatch is always non-null because OTHER (/.+?/) catches any character
+		const bestMatch = matchTokenAt(text, pos);
 		if (bestMatch) {
 			tokens.push(bestMatch);
 			pos += bestMatch.value.length;
 		}
 	}
 
-	// Cache management (simple LRU-like: cap at 128)
-	if (_cache.size >= 128) {
-		const firstKey = _cache.keys().next().value;
-		if (firstKey !== undefined) _cache.delete(firstKey);
-	}
+	evictCache();
 	_cache.set(text, tokens);
 
 	return tokens;

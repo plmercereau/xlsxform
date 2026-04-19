@@ -6,9 +6,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createSurveyElementFromDict } from "../src/builder.js";
-import { ErrorCode, ODKValidateError, PyXFormError } from "../src/errors.js";
-import type { Survey } from "../src/survey.js";
+import { ErrorCode, ODKValidateError } from "../src/errors.js";
+import { createSurveyElementFromDict } from "../src/model/builder.js";
+import { Survey } from "../src/model/survey.js";
 import { surveyPrintXformToFile } from "./helpers/survey-node.js";
 import {
 	getXlsformFromFile,
@@ -33,7 +33,7 @@ const BUG_EXAMPLE_XLS_PATH = path.join(
 	"tests",
 	"bug_example_xls",
 );
-const TEST_OUTPUT_PATH = path.join(
+const _TEST_OUTPUT_PATH = path.join(
 	__dirname,
 	"..",
 	"..",
@@ -42,28 +42,24 @@ const TEST_OUTPUT_PATH = path.join(
 	"test_output",
 );
 
+function isExternalChoiceEntry(key: string, value: unknown): boolean {
+	return (
+		key === "type" &&
+		typeof value === "string" &&
+		value.startsWith("select one external")
+	);
+}
+
 function hasExternalChoices(jsonStruct: unknown): boolean {
-	if (
-		typeof jsonStruct === "object" &&
-		jsonStruct !== null &&
-		!Array.isArray(jsonStruct)
-	) {
-		for (const [k, v] of Object.entries(jsonStruct)) {
-			if (
-				k === "type" &&
-				typeof v === "string" &&
-				v.startsWith("select one external")
-			) {
-				return true;
-			}
-			if (hasExternalChoices(v)) return true;
-		}
-	} else if (Array.isArray(jsonStruct)) {
-		for (const v of jsonStruct) {
-			if (hasExternalChoices(v)) return true;
-		}
+	if (Array.isArray(jsonStruct)) {
+		return jsonStruct.some((v) => hasExternalChoices(v));
 	}
-	return false;
+	if (typeof jsonStruct !== "object" || jsonStruct === null) {
+		return false;
+	}
+	return Object.entries(jsonStruct).some(
+		([k, v]) => isExternalChoiceEntry(k, v) || hasExternalChoices(v),
+	);
 }
 
 describe("TestXFormConversion", () => {
@@ -111,7 +107,9 @@ describe("ValidateWrapper", () => {
 			defaultName: "ODKValidateWarnings",
 			warnings,
 		});
-		const survey = createSurveyElementFromDict(jsonSurvey) as unknown as Survey;
+		const element = createSurveyElementFromDict(jsonSurvey);
+		expect(element).toBeInstanceOf(Survey);
+		const survey = element as Survey;
 		surveyPrintXformToFile(survey, outputPath, { warnings });
 
 		// Verify output was written
@@ -131,14 +129,8 @@ describe("EmptyStringOnRelevantColumnTest", () => {
 
 		// bind:relevant should not be part of workbook_dict survey rows
 		// (empty strings on relevant column should be stripped)
-		expect(() => {
-			(
-				workbookDict.survey[0] as unknown as Record<
-					string,
-					{ strip: () => void }
-				>
-			)["bind: relevant"].strip();
-		}).toThrow();
+		const firstRow = workbookDict.survey[0] as Record<string, unknown>;
+		expect(firstRow["bind: relevant"]).toBeUndefined();
 	});
 });
 
@@ -209,7 +201,9 @@ describe("TestXLDateAmbiguousNoException", () => {
 		const filename = "xl_date_ambiguous_v1.xlsx";
 		const pathToExcelFile = path.join(BUG_EXAMPLE_XLS_PATH, filename);
 		const surveyDict = xlsxToDict(pathToExcelFile);
-		expect(surveyDict.survey[4].default).toBe("1900-01-01 00:00:00");
+		expect((surveyDict.survey as Record<string, string>[])[4].default).toBe(
+			"1900-01-01 00:00:00",
+		);
 	});
 });
 

@@ -3,11 +3,8 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { createSurveyElementFromXml } from "../src/conversion/xform2json.js";
 import { PyXFormError } from "../src/errors.js";
-import {
-	createSurveyElementFromJson,
-	createSurveyElementFromXml,
-} from "../src/xform2json.js";
 import { convert } from "./helpers/xls2xform-node.js";
 
 /**

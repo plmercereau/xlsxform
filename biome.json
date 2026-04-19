@@ -8,11 +8,46 @@
 			"**/coverage/**"
 		]
 	},
-	"organizeImports": { "enabled": true },
+	"organizeImports": {
+		"enabled": true
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "error",
+				"noForEach": "error",
+				"noUselessStringConcat": "error",
+				"noUselessUndefinedInitialization": "error",
+				"useDateNow": "error",
+				"useSimplifiedLogicExpression": "error"
+			},
+			"correctness": {
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"noUnusedFunctionParameters": "error",
+				"useArrayLiterals": "error"
+			},
+			"style": {
+				"noNegationElse": "error",
+				"noParameterAssign": "error",
+				"useBlockStatements": "error",
+				"useCollapsedElseIf": "error",
+				"useConsistentBuiltinInstantiation": "error",
+				"useDefaultSwitchClause": "error",
+				"useExplicitLengthCheck": "error",
+				"useForOf": "error",
+				"useShorthandAssign": "error",
+				"useThrowOnlyError": "error"
+			},
+			"suspicious": {
+				"noConsoleLog": "error",
+				"noDoubleEquals": "error",
+				"noEmptyBlockStatements": "error",
+				"noImplicitAnyLet": "error",
+				"useAwait": "error"
+			}
 		}
 	},
 	"formatter": {

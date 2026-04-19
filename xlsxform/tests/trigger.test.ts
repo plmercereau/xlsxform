@@ -301,7 +301,9 @@ describe("TriggerSetvalueTests", () => {
 		const caseSet = new Set<string>();
 		for (const [form, repeats] of Object.entries(forms)) {
 			const generateCombos = (depth: number, combo: string[]): string[][] => {
-				if (depth === 0) return [combo];
+				if (depth === 0) {
+					return [combo];
+				}
 				const results: string[][] = [];
 				for (const v of commaVariants) {
 					results.push(...generateCombos(depth - 1, [...combo, v]));

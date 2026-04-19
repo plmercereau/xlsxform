@@ -85,7 +85,7 @@ describe("TestUpdateHandler", () => {
 	let latestEnketo: string;
 	let latestOdk: string;
 	let lastCheck: string;
-	let lastCheckNone: string;
+	let _lastCheckNone: string;
 	let phantomFile: string;
 	let utcNow: Date;
 	let zipFile: string;
@@ -109,7 +109,7 @@ describe("TestUpdateHandler", () => {
 		latestEnketo = path.join(DATA_DIR, "latest_enketo.json");
 		latestOdk = path.join(DATA_DIR, "latest_odk.json");
 		lastCheck = path.join(TEST_PATH, ".last_check");
-		lastCheckNone = path.join(TEST_PATH, ".last_check_none");
+		_lastCheckNone = path.join(TEST_PATH, ".last_check_none");
 		phantomFile = path.join(TEST_PATH, ".not_there");
 		utcNow = new Date();
 		captureHandler.reset();

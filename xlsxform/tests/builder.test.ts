@@ -4,11 +4,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
-	SurveyElementBuilder,
 	createSurvey,
 	createSurveyElementFromDict,
-} from "../src/builder.js";
-import { PyXFormError } from "../src/errors.js";
+} from "../src/model/builder.js";
 
 describe("BuilderTests", () => {
 	it("should throw for unknown question type", () => {
