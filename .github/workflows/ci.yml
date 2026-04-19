@@ -54,3 +54,19 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           working-directory: xlsxform
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter demo exec playwright install --with-deps chromium
+      - run: pnpm run test:e2e

@@ -3,18 +3,18 @@
  * Supports file paths in addition to dict/md string inputs.
  */
 
-import { createSurveyElementFromDict } from "../../src/builder.js";
-import type { Survey } from "../../src/survey.js";
-import { coalesce } from "../../src/utils.js";
 import {
 	type DefinitionData,
 	type XlsxWorkBook,
 	getXlsform,
-} from "../../src/xls2json-backends.js";
-import { workbookToJson } from "../../src/xls2json.js";
+} from "../../src/conversion/backends/index.js";
+import { workbookToJson } from "../../src/conversion/xls2json.js";
+import { createSurveyElementFromDict } from "../../src/model/builder.js";
+import { Survey } from "../../src/model/survey.js";
+import { coalesce } from "../../src/utils.js";
 import { getXlsformFromFile } from "./xls2json-backends-node.js";
 
-interface ConvertResult {
+export interface ConvertResult {
 	xform: string;
 	warnings: string[];
 	itemsets: string | null;
@@ -23,7 +23,7 @@ interface ConvertResult {
 }
 
 export function convert(opts: {
-	xlsform: string | XlsxWorkBook;
+	xlsform: string | XlsxWorkBook | Record<string, unknown>;
 	warnings?: string[];
 	validate?: boolean;
 	prettyPrint?: boolean;
@@ -54,7 +54,11 @@ export function convert(opts: {
 		warnings,
 	});
 
-	const survey = createSurveyElementFromDict(pyxformData) as unknown as Survey;
+	const element = createSurveyElementFromDict(pyxformData);
+	if (!(element instanceof Survey)) {
+		throw new Error("Expected createSurveyElementFromDict to return a Survey");
+	}
+	const survey = element;
 	if (pyxformData.name === "data") {
 		const effectiveFormName = opts.formName ?? workbookDict.fallback_form_name;
 		if (effectiveFormName) {

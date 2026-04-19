@@ -6,14 +6,14 @@ import type {
 	Document as XDocument,
 	Element as XElement,
 } from "@xmldom/xmldom";
-import * as constants from "./constants.js";
+import * as constants from "../constants.js";
+import { node } from "../utils.js";
 import { type Question, defaultIsDynamic } from "./question.js";
 import {
 	type SurveyContext,
 	SurveyElement,
 	type SurveyElementData,
 } from "./survey-element.js";
-import { node } from "./utils.js";
 
 // Use xmldom's Element type throughout (returned by node() from utils.ts)
 type Element = XElement;
@@ -80,7 +80,9 @@ export class Section extends SurveyElement {
 		const elem = node(this.name, { attrs });
 
 		for (const child of this.children) {
-			if (child instanceof ExternalInstance) continue;
+			if (child instanceof ExternalInstance) {
+				continue;
+			}
 
 			let repeatingTemplate: Element | null = null;
 			if (child instanceof RepeatingSection && !appendTemplate) {
@@ -110,16 +112,48 @@ export class Section extends SurveyElement {
 
 	*xmlControl(survey: SurveyContext): Generator<Element> {
 		for (const child of this.children) {
-			const control = child.xmlControl(survey);
-			if (control != null) {
-				if (Symbol.iterator in Object(control)) {
-					yield* control as Iterable<Element>;
-				} else {
-					yield control as Element;
-				}
-			}
+			yield* collectControlElements(child, survey);
 		}
 	}
+
+	/**
+	 * Build control attributes from this section's control map,
+	 * applying insertXpaths to each value.
+	 */
+	protected buildControlAttrs(
+		survey: SurveyContext,
+		initial?: Record<string, string>,
+	): Record<string, string> {
+		const attrs: Record<string, string> = { ...initial };
+		if (this.control) {
+			for (const [k, v] of Object.entries(this.control)) {
+				attrs[k] = survey.insertXpaths(String(v), this);
+			}
+		}
+		return attrs;
+	}
+}
+
+/**
+ * Collect XML control elements from a child, handling both
+ * single-element and iterable returns.
+ */
+function collectControlElements(
+	child: SurveyElement,
+	survey: SurveyContext,
+): Element[] {
+	const result: Element[] = [];
+	const control = child.xmlControl(survey);
+	if (control != null) {
+		if (Symbol.iterator in new Object(control)) {
+			for (const c of control as Iterable<Element>) {
+				result.push(c);
+			}
+		} else {
+			result.push(control as Element);
+		}
+	}
+	return result;
 }
 
 export class RepeatingSection extends Section {
@@ -128,72 +162,15 @@ export class RepeatingSection extends Section {
 	}
 
 	*xmlControl(survey: SurveyContext): Generator<Element> {
-		const controlAttrs: Record<string, string> = {
+		const controlAttrs = this.buildControlAttrs(survey, {
 			nodeset: this.getXpath(),
-		};
-		if (this.control) {
-			for (const [k, v] of Object.entries(this.control)) {
-				controlAttrs[k] = survey.insertXpaths(String(v), this);
-			}
-		}
+		});
 
 		const repeatChildren: Element[] = [];
 		for (const child of this.children) {
-			const control = child.xmlControl(survey);
-			if (control != null) {
-				if (Symbol.iterator in Object(control)) {
-					for (const c of control as Iterable<Element>) {
-						repeatChildren.push(c);
-					}
-				} else {
-					repeatChildren.push(control as Element);
-				}
-			}
+			repeatChildren.push(...collectControlElements(child, survey));
 		}
-
-		// Add setvalue elements for dynamic defaults inside this repeat.
-		// Only include elements whose closest ancestor repeat is THIS repeat,
-		// not elements inside deeper nested repeats.
-		for (const element of this.iterDescendants()) {
-			if (element === this) continue;
-			// Skip elements that are inside a deeper nested repeat
-			if (this._closestRepeatAncestor(element) !== this) continue;
-			if (
-				element.default &&
-				typeof element.default === "string" &&
-				defaultIsDynamic(element.default, element.type)
-			) {
-				const value = survey.insertXpaths(element.default, element);
-				repeatChildren.push(
-					node("setvalue", {
-						attrs: {
-							event: "odk-new-repeat",
-							ref: element.getXpath(),
-							value,
-						},
-					}),
-				);
-			}
-			// Add entity setvalue elements for odk-new-repeat inside repeats
-			if (
-				element.type === "entity" &&
-				typeof element.getEntitySetvalues === "function"
-			) {
-				for (const sv of element.getEntitySetvalues()) {
-					if (sv.event === "odk-new-repeat") {
-						repeatChildren.push(
-							node("setvalue", {
-								attrs: {
-									event: sv.event,
-									ref: sv.ref,
-									value: sv.value,
-								},
-							}),
-						);
-					}
-				}
-			}
-		}
+		repeatChildren.push(...this._collectRepeatSetvalues(survey));
 
 		const repeatNode = node("repeat", {
 			children: repeatChildren,
@@ -222,11 +199,79 @@ export class RepeatingSection extends Section {
 		return this;
 	}
 
+	/**
+	 * Collect setvalue elements for dynamic defaults and entity setvalues
+	 * inside this repeat (only direct descendants, not nested repeats).
+	 */
+	private _collectRepeatSetvalues(survey: SurveyContext): Element[] {
+		const result: Element[] = [];
+		for (const element of this.iterDescendants()) {
+			if (element === this) {
+				continue;
+			}
+			if (this._closestRepeatAncestor(element) !== this) {
+				continue;
+			}
+			this._addDynamicDefaultSetvalue(result, element, survey);
+			this._addEntitySetvalues(result, element);
+		}
+		return result;
+	}
+
+	/**
+	 * If the element has a dynamic default, add an odk-new-repeat setvalue node.
+	 */
+	private _addDynamicDefaultSetvalue(
+		result: Element[],
+		element: SurveyElement,
+		survey: SurveyContext,
+	): void {
+		if (
+			element.default &&
+			typeof element.default === "string" &&
+			defaultIsDynamic(element.default, element.type)
+		) {
+			const value = survey.insertXpaths(element.default, element);
+			result.push(
+				node("setvalue", {
+					attrs: {
+						event: "odk-new-repeat",
+						ref: element.getXpath(),
+						value,
+					},
+				}),
+			);
+		}
+	}
+
+	/**
+	 * If the element is an entity type, add its odk-new-repeat setvalue nodes.
+	 */
+	private _addEntitySetvalues(result: Element[], element: SurveyElement): void {
+		if (
+			element.type !== "entity" ||
+			typeof element.getEntitySetvalues !== "function"
+		) {
+			return;
+		}
+		for (const sv of element.getEntitySetvalues()) {
+			if (sv.event === "odk-new-repeat") {
+				result.push(
+					node("setvalue", {
+						attrs: { event: sv.event, ref: sv.ref, value: sv.value },
+					}),
+				);
+			}
+		}
+	}
+
 	xmlInstance(survey: SurveyContext, _appendTemplate = false): Element {
 		let appendTemplate = _appendTemplate;
 		const elem = node(this.name);
 		for (const child of this.children) {
-			if (child instanceof ExternalInstance) continue;
+			if (child instanceof ExternalInstance) {
+				continue;
+			}
 
 			let repeatingTemplate: Element | null = null;
 			if (child instanceof RepeatingSection && !appendTemplate) {
@@ -256,7 +301,9 @@ export class RepeatingSection extends Section {
 	generateRepeatingTemplate(survey: SurveyContext): Element {
 		const elem = node(this.name, { attrs: { "jr:template": "" } });
 		for (const child of this.children) {
-			if (child instanceof ExternalInstance) continue;
+			if (child instanceof ExternalInstance) {
+				continue;
+			}
 			if (child instanceof RepeatingSection) {
 				// Only generate the template version for nested repeats
 				const templateInstance = child.generateRepeatingTemplate(survey);
@@ -284,37 +331,41 @@ export class GroupedSection extends Section {
 	}
 
 	*xmlControl(survey: SurveyContext): Generator<Element> {
-		if (this.control?.bodyless) return;
+		if (this.control?.bodyless) {
+			return;
+		}
 
+		const attrs = this._buildGroupAttrs(survey);
+		const children = this._buildGroupChildren(survey);
+
+		yield node("group", { children, attrs });
+	}
+
+	private _buildGroupAttrs(survey: SurveyContext): Record<string, string> {
 		const attrs: Record<string, string> = {};
 		if (this.control) {
 			for (const [k, v] of Object.entries(this.control)) {
-				if (k === "bodyless") continue;
+				if (k === "bodyless") {
+					continue;
+				}
 				attrs[k] = survey.insertXpaths(String(v), this);
 			}
 		}
 		if (!this.flat) {
 			attrs.ref = this.getXpath();
 		}
+		return attrs;
+	}
 
+	private _buildGroupChildren(survey: SurveyContext): Element[] {
 		const children: Element[] = [];
 		if (this.label) {
 			children.push(this.xmlLabel(survey));
 		}
 		for (const child of this.children) {
-			const control = child.xmlControl(survey);
-			if (control != null) {
-				if (Symbol.iterator in Object(control)) {
-					for (const c of control as Iterable<Element>) {
-						children.push(c);
-					}
-				} else {
-					children.push(control as Element);
-				}
-			}
+			children.push(...collectControlElements(child, survey));
 		}
-
-		yield node("group", { children, attrs });
+		return children;
 	}
 }
 

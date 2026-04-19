@@ -3,7 +3,6 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { PyXFormError } from "../src/errors.js";
 import {
 	csvToDict,
 	getXlsform,
@@ -11,7 +10,8 @@ import {
 	mdToDict,
 	workbookToDict,
 	xlsxValueToStr,
-} from "../src/xls2json-backends.js";
+} from "../src/conversion/backends/index.js";
+import { PyXFormError } from "../src/errors.js";
 
 describe("xlsxValueToStr - edge cases", () => {
 	it("should handle boolean true", () => {

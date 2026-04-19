@@ -20,14 +20,15 @@
 	},
 	"scripts": {
 		"prebuild": "rm -rf dist",
-		"build": "tsc",
-		"dev": "tsc --watch --preserveWatchOutput",
+		"build": "tsc -p tsconfig.src.json",
+		"dev": "tsc -p tsconfig.src.json --watch --preserveWatchOutput",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",
 		"lint": "biome check src tests",
-		"format": "biome format --write src tests",
-		"typecheck": "tsc --noEmit",
+		"lint:fix": "biome check --write src tests",
+		"format": "biome check --write src tests",
+		"typecheck": "tsc --noEmit -p tsconfig.src.json && tsc --noEmit -p tsconfig.check.json",
 		"knip": "knip"
 	},
 	"peerDependencies": {
@@ -39,10 +40,12 @@
 		}
 	},
 	"dependencies": {
-		"@xmldom/xmldom": "^0.9.8"
+		"@xmldom/xmldom": "^0.9.8",
+		"language-tags": "^2.1.0"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.5.8",
+		"@types/language-tags": "^1.0.4",
 		"@types/node": "^22.0.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"adm-zip": "^0.5.17",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// biome-ignore lint/correctness/noUnusedImports: used in template
 import { OdkWebForm } from "@getodk/web-forms";
 import { ref } from "vue";
 import * as XLSX from "xlsx";
@@ -14,10 +15,13 @@ function isCsv(name: string): boolean {
 	return name.toLowerCase().endsWith(".csv");
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 async function handleFile(event: Event) {
 	const input = event.target as HTMLInputElement;
 	const file = input.files?.[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 
 	formXml.value = null;
 	error.value = null;
@@ -51,6 +55,7 @@ async function handleFile(event: Event) {
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
+// biome-ignore lint/correctness/noUnusedVariables: used in template
 function uploadAnother() {
 	if (fileInputRef.value) {
 		fileInputRef.value.value = "";
@@ -58,8 +63,9 @@ function uploadAnother() {
 	}
 }
 
-async function fetchFormAttachment(_url: string): Promise<Response> {
-	return new Response(null, { status: 404 });
+// biome-ignore lint/correctness/noUnusedVariables: used in template
+function fetchFormAttachment(_url: string): Promise<Response> {
+	return Promise.resolve(new Response(null, { status: 404 }));
 }
 </script>
 

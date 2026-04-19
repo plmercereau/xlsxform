@@ -3,13 +3,13 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { convert } from "../src/conversion/xls2xform.js";
 import {
 	dealiasAndGroupSheet,
 	processHeaderFull,
 	processRow,
 	toSnakeCase,
 } from "../src/parsing/sheet-headers.js";
-import { convert } from "../src/xls2xform.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestSettingsColumns", () => {
@@ -1152,7 +1152,7 @@ describe("TestHeaderProcessing", () => {
 		});
 		expect(() =>
 			convert({
-				xlsform: { survey: surveyData } as unknown as string,
+				xlsform: { survey: surveyData },
 			}),
 		).toThrow("e");
 	});

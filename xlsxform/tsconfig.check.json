@@ -1,0 +1,12 @@
+{
+	"extends": "./tsconfig.src.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"outDir": "node_modules/.cache/tscheck",
+		"declaration": false,
+		"noEmit": true,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src/**/*", "tests/**/*"],
+	"exclude": ["node_modules", "dist"]
+}

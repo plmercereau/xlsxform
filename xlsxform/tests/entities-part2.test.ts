@@ -40,8 +40,12 @@ const xpe = {
 			label = false,
 		} = opts;
 		const assertion = (val: boolean | null, expr: string) => {
-			if (val === true) return expr;
-			if (val === false) return `not(${expr})`;
+			if (val === true) {
+				return expr;
+			}
+			if (val === false) {
+				return `not(${expr})`;
+			}
 			return "true()";
 		};
 		const templateAsserts = [assertion(template, "@jr:template")];

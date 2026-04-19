@@ -7,9 +7,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as constants from "../../src/constants.js";
+import type { DefinitionData } from "../../src/conversion/backends/index.js";
+import { workbookToDict } from "../../src/conversion/backends/index.js";
 import { PyXFormError } from "../../src/errors.js";
-import type { DefinitionData } from "../../src/xls2json-backends.js";
-import { workbookToDict } from "../../src/xls2json-backends.js";
 
 import * as XLSX from "xlsx";
 
@@ -58,7 +58,9 @@ export function xlsxToDict(pathOrFile: string): RawFormDict {
 		const wb = readWorkbook(pathOrFile);
 		return workbookToRawDict(wb);
 	} catch (e: unknown) {
-		if (e instanceof PyXFormError) throw e;
+		if (e instanceof PyXFormError) {
+			throw e;
+		}
 		throw new PyXFormError(`Error reading .xlsx file: ${(e as Error).message}`);
 	}
 }
@@ -71,7 +73,9 @@ export function xlsToDict(pathOrFile: string): RawFormDict {
 		const wb = readWorkbook(pathOrFile);
 		return workbookToRawDict(wb);
 	} catch (e: unknown) {
-		if (e instanceof PyXFormError) throw e;
+		if (e instanceof PyXFormError) {
+			throw e;
+		}
 		throw new PyXFormError(`Error reading .xls file: ${(e as Error).message}`);
 	}
 }
@@ -88,6 +92,21 @@ export function csvToDict(pathOrFile: string): RawFormDict {
 	}
 }
 
+function handleQuotedChar(
+	line: string,
+	i: number,
+	current: string,
+): { current: string; i: number; inQuotes: boolean } {
+	const ch = line[i];
+	if (ch === '"') {
+		if (i + 1 < line.length && line[i + 1] === '"') {
+			return { current: `${current}"`, i: i + 2, inQuotes: true };
+		}
+		return { current, i: i + 1, inQuotes: false };
+	}
+	return { current: current + ch, i: i + 1, inQuotes: true };
+}
+
 function parseCsvLine(line: string): string[] {
 	const fields: string[] = [];
 	let current = "";
@@ -97,30 +116,20 @@ function parseCsvLine(line: string): string[] {
 	while (i < line.length) {
 		const ch = line[i];
 		if (inQuotes) {
-			if (ch === '"') {
-				if (i + 1 < line.length && line[i + 1] === '"') {
-					current += '"';
-					i += 2;
-				} else {
-					inQuotes = false;
-					i++;
-				}
-			} else {
-				current += ch;
-				i++;
-			}
+			const result = handleQuotedChar(line, i, current);
+			current = result.current;
+			i = result.i;
+			inQuotes = result.inQuotes;
+		} else if (ch === '"') {
+			inQuotes = true;
+			i++;
+		} else if (ch === ",") {
+			fields.push(current);
+			current = "";
+			i++;
 		} else {
-			if (ch === '"') {
-				inQuotes = true;
-				i++;
-			} else if (ch === ",") {
-				fields.push(current);
-				current = "";
-				i++;
-			} else {
-				current += ch;
-				i++;
-			}
+			current += ch;
+			i++;
 		}
 	}
 	fields.push(current);
@@ -140,48 +149,79 @@ function listToDictList(items: (string | null)[]): Record<string, null>[] {
 	return [];
 }
 
+function updateCsvSheetName(
+	firstCol: string,
+	_dict: RawFormDict,
+	state: { sheetName: string | null; currentHeaders: string[] | null },
+): void {
+	state.sheetName = firstCol;
+	if (state.sheetName in _dict) {
+		state.sheetName = state.sheetName.toLowerCase();
+	} else {
+		(_dict.sheet_names as string[]).push(state.sheetName);
+		const lowerName = state.sheetName.toLowerCase();
+		_dict[lowerName] = [];
+		state.sheetName = lowerName;
+	}
+	state.currentHeaders = null;
+}
+
+function addCsvContentRow(
+	restCols: string[],
+	_dict: RawFormDict,
+	state: { sheetName: string; currentHeaders: string[] | null },
+): void {
+	if (state.currentHeaders === null) {
+		state.currentHeaders = restCols;
+		_dict[`${state.sheetName}_header`] = listToDictList(state.currentHeaders);
+	} else {
+		const d: FormRow = {};
+		for (let i = 0; i < state.currentHeaders.length; i++) {
+			const v = i < restCols.length ? restCols[i] : "";
+			if (v !== "") {
+				d[state.currentHeaders[i]] = v;
+			}
+		}
+		(_dict[state.sheetName] as FormRow[]).push(d);
+	}
+}
+
+function processCsvRow(
+	line: string,
+	_dict: RawFormDict,
+	state: { sheetName: string | null; currentHeaders: string[] | null },
+): void {
+	if (!line.trim()) {
+		return;
+	}
+	const row = parseCsvLine(line);
+	const firstCol = row[0]?.trim() || "";
+	const restCols = row.slice(1).map((v) => String(v).trim());
+
+	if (firstCol !== "") {
+		updateCsvSheetName(firstCol, _dict, state);
+	}
+
+	const hasContent = restCols.some((c) => c !== "");
+	if (hasContent && state.sheetName) {
+		addCsvContentRow(
+			restCols,
+			_dict,
+			state as { sheetName: string; currentHeaders: string[] | null },
+		);
+	}
+}
+
 function processCsvData(content: string): RawFormDict {
 	const lines = content.split(/\r?\n/);
 	const _dict: RawFormDict = { sheet_names: [] };
-	let sheetName: string | null = null;
-	let currentHeaders: string[] | null = null;
+	const state = {
+		sheetName: null as string | null,
+		currentHeaders: null as string[] | null,
+	};
 
 	for (const line of lines) {
-		if (!line.trim()) continue;
-		const row = parseCsvLine(line);
-
-		const firstCol = row[0]?.trim() || "";
-		const restCols = row.slice(1).map((v) => String(v).trim());
-
-		if (firstCol !== "") {
-			sheetName = firstCol;
-			if (sheetName && !(sheetName in _dict)) {
-				(_dict.sheet_names as string[]).push(sheetName);
-				const lowerName = sheetName.toLowerCase();
-				_dict[lowerName] = [];
-				sheetName = lowerName;
-			} else {
-				sheetName = sheetName.toLowerCase();
-			}
-			currentHeaders = null;
-		}
-
-		const hasContent = restCols.some((c) => c !== "");
-		if (hasContent && sheetName) {
-			if (currentHeaders === null) {
-				currentHeaders = restCols;
-				_dict[`${sheetName}_header`] = listToDictList(currentHeaders);
-			} else {
-				const d: FormRow = {};
-				for (let i = 0; i < currentHeaders.length; i++) {
-					const v = i < restCols.length ? restCols[i] : "";
-					if (v !== "") {
-						d[currentHeaders[i]] = v;
-					}
-				}
-				(_dict[sheetName] as FormRow[]).push(d);
-			}
-		}
+		processCsvRow(line, _dict, state);
 	}
 
 	return _dict;
@@ -206,58 +246,85 @@ const MD_SEPARATOR = /^[\|-]+$/;
 const MD_PIPE_OR_ESCAPE = /(?<!\\)\|/;
 
 function mdStrpCell(cell: string): string | null {
-	if (!cell || cell.trim() === "") return null;
+	if (!cell || cell.trim() === "") {
+		return null;
+	}
 	return cell.trim().replace(/\\\|/g, "|");
+}
+
+function processMdRow(
+	mtchstr: string,
+	sheets: Record<string, (string | null)[][]>,
+	state: { sheetName: string | false; sheetArr: (string | null)[][] | false },
+): void {
+	if (MD_SEPARATOR.test(mtchstr)) {
+		return;
+	}
+	const rowSplit = mtchstr.split(MD_PIPE_OR_ESCAPE);
+	const firstCol = mdStrpCell(rowSplit[0]);
+	const row = rowSplit.slice(1).map(mdStrpCell);
+
+	if (firstCol === null && row.every((c) => c === null)) {
+		return;
+	}
+
+	if (firstCol !== null) {
+		if (state.sheetArr !== false && state.sheetName !== false) {
+			sheets[state.sheetName] = state.sheetArr;
+		}
+		state.sheetArr = [];
+		state.sheetName = firstCol;
+	}
+
+	if (state.sheetName && row.some((c) => c !== null)) {
+		(state.sheetArr as (string | null)[][]).push(row);
+	}
+}
+
+function processMdLine(
+	line: string,
+	sheets: Record<string, (string | null)[][]>,
+	state: { sheetName: string | false; sheetArr: (string | null)[][] | false },
+): void {
+	if (MD_COMMENT.test(line)) {
+		return;
+	}
+
+	const inlineMatch = MD_COMMENT_INLINE.exec(line);
+	const cleanLine = inlineMatch ? inlineMatch[1] : line;
+
+	const match = MD_CELL.exec(cleanLine);
+	if (!match) {
+		return;
+	}
+
+	processMdRow(match[1], sheets, state);
+
+	if (state.sheetName !== false && state.sheetArr !== false) {
+		sheets[state.sheetName] = state.sheetArr;
+	}
 }
 
 function mdTableToSsStructure(
 	mdstr: string,
 ): Record<string, (string | null)[][]> {
-	let sheetName: string | false = false;
-	let sheetArr: (string | null)[][] | false = false;
 	const sheets: Record<string, (string | null)[][]> = {};
+	const state = {
+		sheetName: false as string | false,
+		sheetArr: false as (string | null)[][] | false,
+	};
 
-	for (let line of mdstr.split("\n")) {
-		if (MD_COMMENT.test(line)) continue;
-
-		const inlineMatch = MD_COMMENT_INLINE.exec(line);
-		if (inlineMatch) {
-			line = inlineMatch[1];
-		}
-
-		const match = MD_CELL.exec(line);
-		if (match) {
-			const mtchstr = match[1];
-			if (!MD_SEPARATOR.test(mtchstr)) {
-				const rowSplit = mtchstr.split(MD_PIPE_OR_ESCAPE);
-				const firstCol = mdStrpCell(rowSplit[0]);
-				const row = rowSplit.slice(1).map(mdStrpCell);
-
-				if (firstCol === null && row.every((c) => c === null)) continue;
-
-				if (firstCol !== null) {
-					if (sheetArr !== false && sheetName !== false) {
-						sheets[sheetName] = sheetArr;
-					}
-					sheetArr = [];
-					sheetName = firstCol;
-				}
-
-				if (sheetName && row.some((c) => c !== null)) {
-					(sheetArr as (string | null)[][]).push(row);
-				}
-			}
-			if (sheetName !== false && sheetArr !== false) {
-				sheets[sheetName] = sheetArr;
-			}
-		}
+	for (const line of mdstr.split("\n")) {
+		processMdLine(line, sheets, state);
 	}
 
 	return sheets;
 }
 
 function listToDicts(arr: (string | null)[][]): FormRow[] {
-	if (arr.length === 0) return [];
+	if (arr.length === 0) {
+		return [];
+	}
 	const headers = arr[0];
 	return arr.slice(1).map((row) => {
 		const d: FormRow = {};
@@ -368,6 +435,48 @@ export function getXlsformFromFile(filePath: string): DefinitionData {
 	return rawDictToDefinitionData(rawDict, stem);
 }
 
+function csvEscapeField(field: string): string {
+	if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+		return `"${field.replace(/"/g, '""')}"`;
+	}
+	return field;
+}
+
+function processSheetToCsvLines(
+	sheetName: string,
+	rows: FormRow[],
+	lines: string[],
+): void {
+	lines.push(csvEscapeField(sheetName));
+	const outKeys: string[] = [];
+	const outRows: string[][] = [];
+
+	for (const row of rows) {
+		const outRow: (string | null)[] = [];
+		for (const key of Object.keys(row)) {
+			if (!outKeys.includes(key)) {
+				outKeys.push(key);
+			}
+		}
+		for (const outKey of outKeys) {
+			outRow.push(row[outKey] ?? null);
+		}
+		outRows.push(outRow as string[]);
+	}
+
+	const headerFields = [null, ...outKeys].map((f) =>
+		f === null ? "" : csvEscapeField(f),
+	);
+	lines.push(headerFields.join(","));
+
+	for (const outRow of outRows) {
+		const fields = [null, ...outRow].map((f) =>
+			f === null ? "" : csvEscapeField(String(f)),
+		);
+		lines.push(fields.join(","));
+	}
+}
+
 /**
  * Convert an XLS/CSV file to a CSV string representation.
  * Used for testing equivalency between formats.
@@ -382,46 +491,15 @@ export function convertFileToCsvString(filePath: string): string {
 
 	const lines: string[] = [];
 	for (const [sheetName, rows] of Object.entries(importedSheets)) {
-		if (sheetName === "sheet_names") continue;
-		if (sheetName.endsWith("_header")) continue;
-		if (!Array.isArray(rows)) continue;
-
-		lines.push(csvEscapeField(sheetName));
-		const outKeys: string[] = [];
-		const outRows: string[][] = [];
-
-		for (const row of rows as FormRow[]) {
-			const outRow: (string | null)[] = [];
-			for (const key of Object.keys(row)) {
-				if (!outKeys.includes(key)) {
-					outKeys.push(key);
-				}
-			}
-			for (const outKey of outKeys) {
-				outRow.push(row[outKey] ?? null);
-			}
-			outRows.push(outRow as string[]);
+		if (
+			sheetName === "sheet_names" ||
+			sheetName.endsWith("_header") ||
+			!Array.isArray(rows)
+		) {
+			continue;
 		}
-
-		const headerFields = [null, ...outKeys].map((f) =>
-			f === null ? "" : csvEscapeField(f),
-		);
-		lines.push(headerFields.join(","));
-
-		for (const outRow of outRows) {
-			const fields = [null, ...outRow].map((f) =>
-				f === null ? "" : csvEscapeField(String(f)),
-			);
-			lines.push(fields.join(","));
-		}
+		processSheetToCsvLines(sheetName, rows as FormRow[], lines);
 	}
 
 	return `${lines.join("\n")}\n`;
-}
-
-function csvEscapeField(field: string): string {
-	if (field.includes(",") || field.includes('"') || field.includes("\n")) {
-		return `"${field.replace(/"/g, '""')}"`;
-	}
-	return field;
 }

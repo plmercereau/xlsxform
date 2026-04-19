@@ -4,12 +4,26 @@
  */
 
 import { DOMParser } from "@xmldom/xmldom";
-import { PyXFormError } from "./errors.js";
+import { PyXFormError } from "../errors.js";
 
 const XFORM_ID_STRING = "_xform_id_string";
 
+function mergeChildValue(
+	target: Record<string, unknown>,
+	key: string,
+	newValue: unknown,
+): void {
+	if (!(key in target)) {
+		target[key] = newValue;
+	} else if (Array.isArray(target[key])) {
+		target[key].push(newValue);
+	} else {
+		target[key] = [target[key], newValue];
+	}
+}
+
 function xmlNodeToDict(node: Node): Record<string, unknown> {
-	if (!node || !node.nodeName) {
+	if (!node?.nodeName) {
 		throw new PyXFormError("Invalid value for `node`.");
 	}
 	const childNodes = node.childNodes
@@ -26,21 +40,32 @@ function xmlNodeToDict(node: Node): Record<string, unknown> {
 	// Internal node
 	const value: Record<string, unknown> = {};
 	for (const child of childNodes) {
-		if (child.nodeType === 3 /* TEXT_NODE */) continue; // skip whitespace text nodes
+		if (child.nodeType === 3 /* TEXT_NODE */) {
+			continue; // skip whitespace text nodes
+		}
 		const d = xmlNodeToDict(child);
 		const childName = child.nodeName;
 		if (Object.keys(d).length !== 1 || !(childName in d)) {
 			throw new PyXFormError("Invalid value for `d`.");
 		}
-		if (!(childName in value)) {
-			value[childName] = d[childName];
-		} else if (Array.isArray(value[childName])) {
-			value[childName].push(d[childName]);
-		} else {
-			value[childName] = [value[childName], d[childName]];
-		}
+		mergeChildValue(value, childName, d[childName]);
 	}
 	return { [node.nodeName]: value };
+}
+
+function* flattenArray(
+	arr: unknown[],
+	prefix: string[],
+): Generator<[string[], unknown]> {
+	for (let i = 0; i < arr.length; i++) {
+		const itemPrefix = [...prefix];
+		itemPrefix[itemPrefix.length - 1] += `[${i + 1}]`;
+		if (arr[i] && typeof arr[i] === "object" && !Array.isArray(arr[i])) {
+			yield* flattenDict(arr[i] as Record<string, unknown>, itemPrefix);
+		} else {
+			yield [itemPrefix, arr[i]];
+		}
+	}
 }
 
 function* flattenDict(
@@ -52,19 +77,7 @@ function* flattenDict(
 		if (value && typeof value === "object" && !Array.isArray(value)) {
 			yield* flattenDict(value as Record<string, unknown>, newPrefix);
 		} else if (Array.isArray(value)) {
-			for (let i = 0; i < value.length; i++) {
-				const itemPrefix = [...newPrefix];
-				itemPrefix[itemPrefix.length - 1] += `[${i + 1}]`;
-				if (
-					value[i] &&
-					typeof value[i] === "object" &&
-					!Array.isArray(value[i])
-				) {
-					yield* flattenDict(value[i] as Record<string, unknown>, itemPrefix);
-				} else {
-					yield [itemPrefix, value[i]];
-				}
-			}
+			yield* flattenArray(value, newPrefix);
 		} else {
 			yield [newPrefix, value];
 		}

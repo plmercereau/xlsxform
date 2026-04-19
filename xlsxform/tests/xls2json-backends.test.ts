@@ -4,10 +4,10 @@
 
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createSurveyElementFromDict } from "../src/builder.js";
-import { xlsxValueToStr } from "../src/xls2json-backends.js";
-import { workbookToJson } from "../src/xls2json.js";
-import { assertPyxformXform } from "./helpers/test-case.js";
+import { xlsxValueToStr } from "../src/conversion/backends/index.js";
+import { workbookToJson } from "../src/conversion/xls2json.js";
+import { createSurveyElementFromDict } from "../src/model/builder.js";
+import type { Survey } from "../src/model/survey.js";
 import {
 	csvToDict,
 	getXlsformFromFile,
@@ -144,7 +144,7 @@ describe("TestXLS2JSONBackends", () => {
 				fallbackFormName: "case_insensitivity",
 				warnings,
 			});
-			const survey = createSurveyElementFromDict(result);
+			const survey = createSurveyElementFromDict(result) as Survey;
 			const xml = survey.toXml();
 
 			// Choice items must have <name> with actual values (not empty)
@@ -197,9 +197,11 @@ describe("TestXLS2JSONBackends", () => {
 		expect((after - before) / 1000).toBeLessThan(5);
 
 		const surveyHeaders = ["type", "name", "label"];
-		expect(Object.keys(xlsData.survey_header[0])).toEqual(surveyHeaders);
-		expect(xlsData.survey.length).toBe(3);
-		expect(xlsData.survey[2].name).toBe("b");
+		expect(
+			Object.keys((xlsData.survey_header as Record<string, null>[])[0]),
+		).toEqual(surveyHeaders);
+		expect((xlsData.survey as Record<string, string>[]).length).toBe(3);
+		expect((xlsData.survey as Record<string, string>[])[2].name).toBe("b");
 	});
 
 	it("test_xlsx_with_many_empty_cells", () => {
@@ -231,9 +233,13 @@ describe("TestXLS2JSONBackends", () => {
 			"repeat_count",
 			"parameters",
 		];
-		expect(Object.keys(xlsxData.survey_header[0])).toEqual(surveyHeaders);
-		expect(xlsxData.survey.length).toBe(90);
-		expect(xlsxData.survey[89].type).toBe("deviceid");
+		expect(
+			Object.keys((xlsxData.survey_header as Record<string, null>[])[0]),
+		).toEqual(surveyHeaders);
+		expect((xlsxData.survey as Record<string, string>[]).length).toBe(90);
+		expect((xlsxData.survey as Record<string, string>[])[89].type).toBe(
+			"deviceid",
+		);
 
 		const choicesHeaders = [
 			"list_name",
@@ -241,13 +247,21 @@ describe("TestXLS2JSONBackends", () => {
 			"label::Swahili (sw)",
 			"label::English (en)",
 		];
-		expect(Object.keys(xlsxData.choices_header[0])).toEqual(choicesHeaders);
-		expect(xlsxData.choices.length).toBe(27);
-		expect(xlsxData.choices[26]["label::Swahili (sw)"]).toBe("Mwingine");
+		expect(
+			Object.keys((xlsxData.choices_header as Record<string, null>[])[0]),
+		).toEqual(choicesHeaders);
+		expect((xlsxData.choices as Record<string, string>[]).length).toBe(27);
+		expect(
+			(xlsxData.choices as Record<string, string>[])[26]["label::Swahili (sw)"],
+		).toBe("Mwingine");
 
 		const settingsHeaders = ["default_language", "version"];
-		expect(Object.keys(xlsxData.settings_header[0])).toEqual(settingsHeaders);
-		expect(xlsxData.settings.length).toBe(1);
-		expect(xlsxData.settings[0].default_language).toBe("Swahili (sw)");
+		expect(
+			Object.keys((xlsxData.settings_header as Record<string, null>[])[0]),
+		).toEqual(settingsHeaders);
+		expect((xlsxData.settings as Record<string, string>[]).length).toBe(1);
+		expect(
+			(xlsxData.settings as Record<string, string>[])[0].default_language,
+		).toBe("Swahili (sw)");
 	});
 });

@@ -3,10 +3,10 @@
  * Provides assertPyxformXform() for testing XLSForm → XForm conversion.
  */
 
-import { DOMParser } from "@xmldom/xmldom";
+import { DOMParser, type Document as XmlDocument } from "@xmldom/xmldom";
 import * as xpathModule from "xpath";
 import { NSMAP } from "../../src/constants.js";
-import { type ConvertResult, convert } from "../../src/xls2xform.js";
+import { type ConvertResult, convert } from "../../src/conversion/xls2xform.js";
 
 const domParser = new DOMParser();
 
@@ -21,6 +21,17 @@ const NSMAP_XPATH: Record<string, string> = {
 	odk: NSMAP["xmlns:odk"],
 	entities: "http://www.opendatakit.org/xforms/entities",
 };
+
+// The xpath library declares DOM Node parameters, but xmldom's Document
+// is structurally compatible at runtime. We re-type the selector once here
+// so call sites don't need individual casts.
+type XpathNsSelect = (
+	expr: string,
+	node: XmlDocument,
+) => xpathModule.SelectedValue;
+const xpathSelectNs: XpathNsSelect = xpathModule.useNamespaces(
+	NSMAP_XPATH,
+) as never;
 
 interface PyxformXformOpts {
 	md?: string;
@@ -44,169 +55,80 @@ interface PyxformXformOpts {
 	warnings__not_contains?: string[];
 	warnings_count?: number;
 	errored?: boolean;
-	debug?: boolean;
 }
 
 /**
- * Main test assertion function matching PyxformTestCase.assertPyxformXform
+ * Preprocess XML for XPath assertions to match Python pyxform test conventions:
+ * 1. Replace default element name/id ("data") with the test's formName
+ * 2. Strip auto-generated instanceID (unless test references it)
  */
-export function assertPyxformXform(
+function preprocessXpathXml(
+	xml: string,
+	name: string,
+	xpathAssertionStrings: string,
+	xpathReferencesInstanceID: boolean,
+): XmlDocument {
+	let xpathXml = xml;
+
+	if (name !== "data" && xpathAssertionStrings.includes(`id="${name}"`)) {
+		xpathXml = xpathXml.replace(
+			new RegExp(`(<${name}\\s[^>]*?)id="data"`, "g"),
+			`$1id="${name}"`,
+		);
+	}
+
+	if (!xpathReferencesInstanceID) {
+		xpathXml = xpathXml.replace(/<instanceID\/>/g, "");
+		xpathXml = xpathXml.replace(
+			/<bind[^>]*nodeset="[^"]*\/meta\/instanceID"[^>]*\/>/g,
+			"",
+		);
+		xpathXml = xpathXml.replace(/<meta>\s*<\/meta>/g, "<meta/>");
+	}
+
+	return domParser.parseFromString(xpathXml, "text/xml");
+}
+
+/** Run string-based assertions (contains/excludes) against XML sections. */
+function runStringAssertions(
 	opts: PyxformXformOpts,
-): ConvertResult | null {
-	const {
-		md,
-		ss_structure,
-		name = "test_name",
-		xml__xpath_match,
-		xml__xpath_count,
-		xml__xpath_exact,
-		xml__contains,
-		xml__excludes,
-		model__contains,
-		model__excludes,
-		itext__contains,
-		itext__excludes,
-		instance__contains,
-		error__contains,
-		error__not_contains,
-		warnings__contains,
-		warnings__not_contains,
-		warnings_count,
-		errored = false,
-		debug = false,
-	} = opts;
+	xml: string,
+	doc: XmlDocument,
+): void {
+	const stringTests: [
+		string[] | undefined,
+		string,
+		(content: string, text: string) => void,
+	][] = [
+		[opts.xml__contains, "xml", assertContains],
+		[opts.xml__excludes, "xml", assertNotContains],
+		[opts.model__contains, "model", assertContains],
+		[opts.model__excludes, "model", assertNotContains],
+		[opts.itext__contains, "itext", assertContains],
+		[opts.itext__excludes, "itext", assertNotContains],
+		[opts.instance__contains, "instance", assertContains],
+	];
 
-	let result: ConvertResult | null = null;
-	let errors: string[] = [];
-	let warnings: string[] = [];
-	let surveyValid = true;
-	let xml = "";
-	let doc: Document | null = null;
-	let xpathDoc: Document | null = null;
-
-	// Check if any xpath assertions reference instanceID
-	const xpathAssertionStrings = [
-		...(xml__xpath_match ?? []),
-		...(xml__xpath_count ?? []).map(([x]) => x),
-		...(xml__xpath_exact ?? []).map(([x]) => x),
-		...(xml__xpath_exact ?? []).flatMap(([, s]) => [...s]),
-	].join(" ");
-	const xpathReferencesInstanceID =
-		xpathAssertionStrings.includes("instanceID");
-
-	try {
-		result = convert({
-			xlsform: md ?? ss_structure ?? "",
-			prettyPrint: true,
-			formName: name,
-			warnings,
-			fileType: md ? "md" : undefined,
-		});
-		xml = result.xform;
-		warnings = result.warnings;
-
-		if (debug) {
-			console.log("XML Output:\n", xml);
+	for (const [specs, section, assertFn] of stringTests) {
+		if (!specs) {
+			continue;
 		}
-
-		doc = domParser.parseFromString(xml, "text/xml");
-
-		// For xpath assertions, post-process XML to match Python pyxform test conventions:
-		// 1. Replace default element name/id ("data") with the test's formName
-		// 2. Strip auto-generated instanceID (unless test references it)
-		if (xml__xpath_match || xml__xpath_count || xml__xpath_exact) {
-			let xpathXml = xml;
-
-			// Replace the default id attribute value ("data") with the formName
-			// only when the test expectations reference the formName as id
-			// (some tests explicitly expect id="data")
-			if (name !== "data" && xpathAssertionStrings.includes(`id="${name}"`)) {
-				xpathXml = xpathXml.replace(
-					new RegExp(`(<${name}\\s[^>]*?)id="data"`, "g"),
-					`$1id="${name}"`,
-				);
-			}
-
-			if (!xpathReferencesInstanceID) {
-				// Remove instanceID element from instance
-				xpathXml = xpathXml.replace(/<instanceID\/>/g, "");
-				// Remove instanceID bind
-				xpathXml = xpathXml.replace(
-					/<bind[^>]*nodeset="[^"]*\/meta\/instanceID"[^>]*\/>/g,
-					"",
-				);
-				// Clean up empty meta: <meta></meta> or <meta>  </meta> → <meta/>
-				xpathXml = xpathXml.replace(/<meta>\s*<\/meta>/g, "<meta/>");
-			}
-
-			xpathDoc = domParser.parseFromString(xpathXml, "text/xml");
-		} else {
-			xpathDoc = doc;
-		}
-	} catch (e: unknown) {
-		surveyValid = false;
-		errors = [String((e instanceof Error ? e.message : null) || e)];
-		if (debug) {
-			console.log("ERROR:", errors[0]);
-		}
-		if (!errored && !error__contains?.length) {
-			throw new Error(
-				`Expected valid survey but compilation failed. Error(s): ${errors.join("\n")}`,
-			);
+		const content = getSectionXml(xml, doc, section);
+		for (const text of specs) {
+			assertFn(content, text);
 		}
 	}
+}
 
-	if (surveyValid) {
-		if (errored) {
-			throw new Error("Expected survey to be invalid.");
-		}
+/** Run error-related assertions against collected errors. */
+function runErrorAssertions(
+	error__contains: string[] | undefined,
+	error__not_contains: string[] | undefined,
+	errors: string[],
+): void {
+	const errorStr = errors.join("\n");
 
-		// String-based assertions
-		const stringTests: [
-			string[] | undefined,
-			string,
-			(content: string, text: string) => void,
-		][] = [
-			[xml__contains, "xml", assertContains],
-			[xml__excludes, "xml", assertNotContains],
-			[model__contains, "model", assertContains],
-			[model__excludes, "model", assertNotContains],
-			[itext__contains, "itext", assertContains],
-			[itext__excludes, "itext", assertNotContains],
-			[instance__contains, "instance", assertContains],
-		];
-
-		for (const [specs, section, assertFn] of stringTests) {
-			if (!specs) continue;
-			const content = getSectionXml(xml, doc as Document, section);
-			for (const text of specs) {
-				assertFn(content, text);
-			}
-		}
-
-		// XPath assertions (exactly 1 match)
-		if (xml__xpath_match && xpathDoc) {
-			for (const xpath of xml__xpath_match) {
-				assertXpathCount(xpathDoc, xpath, 1, xml);
-			}
-		}
-
-		if (xml__xpath_count && xpathDoc) {
-			for (const [xpath, count] of xml__xpath_count) {
-				assertXpathCount(xpathDoc, xpath, count, xml);
-			}
-		}
-
-		if (xml__xpath_exact && xpathDoc) {
-			for (const [xpath, expected] of xml__xpath_exact) {
-				assertXpathExact(xpathDoc, xpath, expected, xml);
-			}
-		}
-	}
-
-	// Error assertions
 	if (error__contains) {
-		const errorStr = errors.join("\n");
 		for (const text of error__contains) {
 			if (!errorStr.includes(text)) {
 				throw new Error(
@@ -217,7 +139,6 @@ export function assertPyxformXform(
 	}
 
 	if (error__not_contains) {
-		const errorStr = errors.join("\n");
 		for (const text of error__not_contains) {
 			if (errorStr.includes(text)) {
 				throw new Error(
@@ -226,10 +147,18 @@ export function assertPyxformXform(
 			}
 		}
 	}
+}
 
-	// Warning assertions
+/** Run warning-related assertions against collected warnings. */
+function runWarningAssertions(
+	warnings__contains: string[] | undefined,
+	warnings__not_contains: string[] | undefined,
+	warnings_count: number | undefined,
+	warnings: string[],
+): void {
+	const warningStr = warnings.join("\n");
+
 	if (warnings__contains) {
-		const warningStr = warnings.join("\n");
 		for (const text of warnings__contains) {
 			if (!warningStr.includes(text)) {
 				throw new Error(
@@ -240,7 +169,6 @@ export function assertPyxformXform(
 	}
 
 	if (warnings__not_contains) {
-		const warningStr = warnings.join("\n");
 		for (const text of warnings__not_contains) {
 			if (warningStr.includes(text)) {
 				throw new Error(
@@ -250,23 +178,154 @@ export function assertPyxformXform(
 		}
 	}
 
-	if (warnings_count != null) {
-		if (warnings.length !== warnings_count) {
+	if (warnings_count != null && warnings.length !== warnings_count) {
+		throw new Error(
+			`Expected ${warnings_count} warnings, got ${warnings.length}: ${JSON.stringify(warnings)}`,
+		);
+	}
+}
+
+/** Build the combined XPath assertion string for instanceID detection. */
+function buildXpathAssertionStrings(opts: PyxformXformOpts): string {
+	return [
+		...(opts.xml__xpath_match ?? []),
+		...(opts.xml__xpath_count ?? []).map(([x]) => x),
+		...(opts.xml__xpath_exact ?? []).map(([x]) => x),
+		...(opts.xml__xpath_exact ?? []).flatMap(([, s]) => [...s]),
+	].join(" ");
+}
+
+interface ConversionState {
+	result: ConvertResult | null;
+	errors: string[];
+	warnings: string[];
+	surveyValid: boolean;
+	xml: string;
+	doc: XmlDocument | null;
+	xpathDoc: XmlDocument | null;
+}
+
+/** Attempt form conversion and prepare documents for assertions. */
+function runConversion(opts: PyxformXformOpts): ConversionState {
+	const {
+		md,
+		ss_structure,
+		name = "test_name",
+		errored = false,
+		error__contains,
+	} = opts;
+	const state: ConversionState = {
+		result: null,
+		errors: [],
+		warnings: [],
+		surveyValid: true,
+		xml: "",
+		doc: null,
+		xpathDoc: null,
+	};
+
+	const xpathStr = buildXpathAssertionStrings(opts);
+	const refsInstanceID = xpathStr.includes("instanceID");
+
+	try {
+		state.result = convert({
+			xlsform: md ?? ss_structure ?? "",
+			prettyPrint: true,
+			formName: name,
+			warnings: state.warnings,
+			fileType: md ? "md" : undefined,
+		});
+		state.xml = state.result.xform;
+		state.warnings = state.result.warnings;
+		state.doc = domParser.parseFromString(state.xml, "text/xml");
+
+		if (
+			opts.xml__xpath_match ||
+			opts.xml__xpath_count ||
+			opts.xml__xpath_exact
+		) {
+			state.xpathDoc = preprocessXpathXml(
+				state.xml,
+				name,
+				xpathStr,
+				refsInstanceID,
+			);
+		} else {
+			state.xpathDoc = state.doc;
+		}
+	} catch (e: unknown) {
+		state.surveyValid = false;
+		state.errors = [String((e instanceof Error ? e.message : null) || e)];
+		if (!(errored || (error__contains && error__contains.length > 0))) {
 			throw new Error(
-				`Expected ${warnings_count} warnings, got ${warnings.length}: ${JSON.stringify(warnings)}`,
+				`Expected valid survey but compilation failed. Error(s): ${state.errors.join("\n")}`,
 			);
 		}
 	}
 
-	return result;
+	return state;
+}
+
+/** Run XPath match, count, and exact assertions. */
+function runXpathAssertions(
+	opts: PyxformXformOpts,
+	xpathDoc: XmlDocument,
+	xml: string,
+): void {
+	if (opts.xml__xpath_match) {
+		for (const xpath of opts.xml__xpath_match) {
+			assertXpathCount(xpathDoc, xpath, 1, xml);
+		}
+	}
+	if (opts.xml__xpath_count) {
+		for (const [xpath, count] of opts.xml__xpath_count) {
+			assertXpathCount(xpathDoc, xpath, count, xml);
+		}
+	}
+	if (opts.xml__xpath_exact) {
+		for (const [xpath, expected] of opts.xml__xpath_exact) {
+			assertXpathExact(xpathDoc, xpath, expected, xml);
+		}
+	}
+}
+
+/**
+ * Main test assertion function matching PyxformTestCase.assertPyxformXform
+ */
+export function assertPyxformXform(
+	opts: PyxformXformOpts,
+): ConvertResult | null {
+	const cs = runConversion(opts);
+
+	if (cs.surveyValid) {
+		if (opts.errored) {
+			throw new Error("Expected survey to be invalid.");
+		}
+		runStringAssertions(opts, cs.xml, cs.doc as XmlDocument);
+		if (cs.xpathDoc) {
+			runXpathAssertions(opts, cs.xpathDoc, cs.xml);
+		}
+	}
+
+	runErrorAssertions(opts.error__contains, opts.error__not_contains, cs.errors);
+	runWarningAssertions(
+		opts.warnings__contains,
+		opts.warnings__not_contains,
+		opts.warnings_count,
+		cs.warnings,
+	);
+
+	return cs.result;
 }
 
 function getSectionXml(
 	fullXml: string,
-	doc: Document,
+	_doc: XmlDocument,
 	section: string,
 ): string {
-	if (section === "xml") return fullXml;
+	if (section === "xml") {
+		return fullXml;
+	}
 
 	// Use simple string extraction for model/instance/itext
 	if (section === "model") {
@@ -309,39 +368,14 @@ function assertNotContains(content: string, text: string): void {
 	}
 }
 
-function assertXpathAtLeast(
-	doc: Document,
-	xpath: string,
-	minCount: number,
-	xml: string,
-): void {
-	try {
-		const selectFn = xpathModule.useNamespaces(NSMAP_XPATH);
-		const results = selectFn(xpath, doc);
-		const count = Array.isArray(results) ? results.length : results ? 1 : 0;
-		if (count < minCount) {
-			throw new Error(
-				`XPath '${xpath}' found ${count} matches, expected at least ${minCount}.\n\nXML:\n${xml.substring(0, 3000)}`,
-			);
-		}
-	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		if (msg?.startsWith("XPath")) throw e;
-		throw new Error(
-			`Error evaluating XPath '${xpath}': ${msg}\n\nXML:\n${xml.substring(0, 3000)}`,
-		);
-	}
-}
-
 function assertXpathCount(
-	doc: Document,
+	doc: XmlDocument,
 	xpath: string,
 	expectedCount: number,
 	xml: string,
 ): void {
 	try {
-		const selectFn = xpathModule.useNamespaces(NSMAP_XPATH);
-		const results = selectFn(xpath, doc);
+		const results = xpathSelectNs(xpath, doc);
 		const count = Array.isArray(results) ? results.length : results ? 1 : 0;
 		if (count !== expectedCount) {
 			throw new Error(
@@ -350,58 +384,89 @@ function assertXpathCount(
 		}
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
-		if (msg?.startsWith("XPath")) throw e;
+		if (msg?.startsWith("XPath")) {
+			throw e;
+		}
 		throw new Error(
 			`Error evaluating XPath '${xpath}': ${msg}\n\nXML:\n${xml.substring(0, 3000)}`,
 		);
 	}
 }
 
-function assertXpathExact(
-	doc: Document,
-	xpath: string,
-	expected: Set<string>,
-	xml: string,
-): void {
-	const selectFn = xpathModule.useNamespaces(NSMAP_XPATH);
-	const results = selectFn(xpath, doc);
+/** Serialize a single XPath result node into a string for comparison. */
+function serializeXpathResult(
+	r: unknown,
+	expectedHasAttrFormat: boolean,
+	expectedHasXmlns: boolean,
+): string | null {
+	if (typeof r === "string") {
+		return r;
+	}
 
-	// Check if any expected values contain xmlns declarations.
-	// If none do, strip xmlns from serialized results to match.
-	const expectedHasXmlns = [...expected].some((v) => /\bxmlns[:=]/.test(v));
+	if (
+		r &&
+		typeof r === "object" &&
+		"nodeValue" in r &&
+		(r as { nodeValue: unknown }).nodeValue != null &&
+		"nodeName" in r
+	) {
+		return expectedHasAttrFormat
+			? (r as { toString(): string }).toString()
+			: ((r as { nodeValue: string }).nodeValue as string);
+	}
 
-	// Check if expected values look like full attribute serializations (' name="value"')
-	const expectedHasAttrFormat = [...expected].some((v) => /^\s+\w+="/.test(v));
+	if (r && typeof r === "object" && "toString" in r) {
+		let serialized = (r as { toString(): string }).toString();
+		if (!expectedHasXmlns) {
+			serialized = serialized.replace(/ xmlns="[^"]*"/g, "");
+		}
+		return serialized;
+	}
 
+	return null;
+}
+
+/** Collect XPath results into a Set of strings for comparison. */
+function collectXpathResults(
+	results: ReturnType<ReturnType<typeof xpathModule.useNamespaces>>,
+	expectedHasAttrFormat: boolean,
+	expectedHasXmlns: boolean,
+): Set<string> {
 	const resultSet = new Set<string>();
-	if (Array.isArray(results)) {
-		for (const r of results) {
-			if (typeof r === "string") {
-				resultSet.add(r);
-			} else if (
-				r &&
-				typeof r === "object" &&
-				"nodeValue" in r &&
-				r.nodeValue != null &&
-				"nodeName" in r
-			) {
-				// Attr nodes: use full serialization (' name="value"') when expected values
-				// contain attribute patterns, otherwise use just the value.
-				if (expectedHasAttrFormat) {
-					resultSet.add(r.toString());
-				} else {
-					resultSet.add(r.nodeValue as string);
-				}
-			} else if (r.toString) {
-				let serialized = r.toString();
-				if (!expectedHasXmlns) {
-					// Strip default xmlns declarations when expected values don't include them
-					serialized = serialized.replace(/ xmlns="[^"]*"/g, "");
-				}
-				resultSet.add(serialized);
-			}
+	if (!Array.isArray(results)) {
+		return resultSet;
+	}
+
+	for (const r of results) {
+		const serialized = serializeXpathResult(
+			r,
+			expectedHasAttrFormat,
+			expectedHasXmlns,
+		);
+		if (serialized != null) {
+			resultSet.add(serialized);
 		}
 	}
+
+	return resultSet;
+}
+
+function assertXpathExact(
+	doc: XmlDocument,
+	xpath: string,
+	expected: Set<string>,
+	_xml: string,
+): void {
+	const results = xpathSelectNs(xpath, doc);
+
+	const expectedHasXmlns = [...expected].some((v) => /\bxmlns[:=]/.test(v));
+	const expectedHasAttrFormat = [...expected].some((v) => /^\s+\w+="/.test(v));
+
+	const resultSet = collectXpathResults(
+		results,
+		expectedHasAttrFormat,
+		expectedHasXmlns,
+	);
 
 	const expectedArr = [...expected].sort();
 	const resultArr = [...resultSet].sort();

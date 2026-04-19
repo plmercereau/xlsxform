@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { convert } from "../src/xls2xform.js";
+import { convert } from "../src/conversion/xls2xform.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
 describe("TestLoopOutput", () => {

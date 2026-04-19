@@ -7,13 +7,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { PyXFormError } from "../../../src/errors.js";
 
-const HERE = path.resolve(path.dirname(new URL(import.meta.url).pathname));
+const _HERE = path.resolve(path.dirname(new URL(import.meta.url).pathname));
 
 /**
  * HTTP GET request. Returns the response as a Buffer.
  */
 export async function requestGet(url: string): Promise<Buffer> {
-	if (!url.startsWith("http:") && !url.startsWith("https:")) {
+	if (!(url.startsWith("http:") || url.startsWith("https:"))) {
 		throw new PyXFormError("URL must start with 'http:' or 'https:'");
 	}
 	try {

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
 	createSurveyElementFromJson,
 	createSurveyElementFromXml,
-} from "../src/xform2json.js";
+} from "../src/conversion/xform2json.js";
 import { convert } from "./helpers/xls2xform-node.js";
 
 /**

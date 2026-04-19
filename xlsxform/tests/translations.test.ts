@@ -364,9 +364,13 @@ function formatMissingTranslationsMsg(
 		name: string,
 		sheet?: Record<string, string[]>,
 	): string | null {
-		if (!sheet) return null;
+		if (!sheet) {
+			return null;
+		}
 		const langs = Object.keys(sheet).sort();
-		if (langs.length === 0) return null;
+		if (langs.length === 0) {
+			return null;
+		}
 		const langMsgs: string[] = [];
 		for (const lang of langs) {
 			const cols = sheet[lang];

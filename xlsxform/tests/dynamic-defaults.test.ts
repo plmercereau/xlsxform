@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { defaultIsDynamic } from "../src/question.js";
+import { defaultIsDynamic } from "../src/model/question.js";
 import { coalesce } from "../src/utils.js";
 import { assertPyxformXform } from "./helpers/test-case.js";
 
@@ -934,10 +934,14 @@ describe("TestDynamicDefaultSimpleInput", () => {
 				`|        | text       | q${i}     | Q${i}     | if(../t2 = 'test', 1, 2) + 15 - int(1.2) |`,
 		).join("\n");
 		const md = `${surveyHeader}\n${questions}`;
-		if (typeof globalThis.gc === "function") globalThis.gc();
+		if (typeof globalThis.gc === "function") {
+			globalThis.gc();
+		}
 		const preMem = process.memoryUsage().rss;
 		assertPyxformXform({ md });
-		if (typeof globalThis.gc === "function") globalThis.gc();
+		if (typeof globalThis.gc === "function") {
+			globalThis.gc();
+		}
 		const postMem = process.memoryUsage().rss;
 		expect(postMem).toBeLessThan(preMem * 2);
 	});

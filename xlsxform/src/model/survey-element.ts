@@ -3,14 +3,31 @@
  */
 
 import type { Element as XElement } from "@xmldom/xmldom";
-import { BINDING_CONVERSIONS } from "./aliases.js";
-import * as constants from "./constants.js";
-import { PyXFormError } from "./errors.js";
-import { hasPyxformReference, isXmlTag } from "./parsing/expression.js";
-import { node } from "./utils.js";
+import { BINDING_CONVERSIONS } from "../aliases.js";
+import * as constants from "../constants.js";
+import { PyXFormError } from "../errors.js";
+import { hasPyxformReference, isXmlTag } from "../parsing/expression.js";
+import { node } from "../utils.js";
 
 // Use xmldom's Element type throughout (returned by node() from utils.ts)
 type Element = XElement;
+
+/**
+ * Filter an object by removing entries with the given key.
+ * Returns the filtered object if non-empty, otherwise undefined.
+ */
+function filterObjectKeys(
+	obj: Record<string, unknown>,
+	excludeKey: string,
+): Record<string, unknown> | undefined {
+	const filtered: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(obj)) {
+		if (k !== excludeKey) {
+			filtered[k] = v;
+		}
+	}
+	return Object.keys(filtered).length > 0 ? filtered : undefined;
+}
 
 /**
  * Interface representing the survey methods needed by elements during XML generation.
@@ -135,17 +152,23 @@ export class SurveyElement {
 	}
 
 	getXpath(relativeTo?: SurveyElement | null): string {
-		if (this._xpath && !relativeTo) return this._xpath;
+		if (this._xpath && !relativeTo) {
+			return this._xpath;
+		}
 
 		const parts: string[] = [];
 		let current: SurveyElement | null = this;
 		while (current != null) {
-			if (relativeTo && current === relativeTo) break;
+			if (relativeTo && current === relativeTo) {
+				break;
+			}
 			parts.unshift(current.nameForXpath);
 			current = current.parent;
 		}
 		const xpath = `/${parts.join("/")}`;
-		if (!relativeTo) this._xpath = xpath;
+		if (!relativeTo) {
+			this._xpath = xpath;
+		}
 		return xpath;
 	}
 
@@ -214,7 +237,7 @@ export class SurveyElement {
 
 		if (this.hint || this.guidance_hint) {
 			// guidance_hint alone (without label or hint) is not sufficient
-			if (!this.label && !this.hint && !this.media) {
+			if (!(this.label || this.hint || this.media)) {
 				throw new PyXFormError(
 					`The survey element named '${this.name}' has no label or hint.`,
 				);
@@ -289,7 +312,9 @@ export class SurveyElement {
 		const entityXpath = this.getXpath();
 
 		for (const child of children) {
-			if (!child[constants.BIND]) continue;
+			if (!child[constants.BIND]) {
+				continue;
+			}
 			const bindData = child[constants.BIND] as Record<string, unknown>;
 			const bindDict: Record<string, string> = {};
 
@@ -329,7 +354,9 @@ export class SurveyElement {
 	 * Get entity setvalue elements (for uuid generation).
 	 */
 	getEntitySetvalues(): { ref: string; event: string; value: string }[] {
-		if (this.type !== "entity" || !this.extra_data?._entity_children) return [];
+		if (this.type !== "entity" || !this.extra_data?._entity_children) {
+			return [];
+		}
 		const children = this.extra_data._entity_children as Record<
 			string,
 			unknown
@@ -366,47 +393,82 @@ export class SurveyElement {
 			yield* this._xmlEntityBindings(survey);
 			return;
 		}
-		if (!this.bind) return;
+		if (!this.bind) {
+			return;
+		}
 
+		const bindDict = this._buildBindDict(survey);
+		yield node("bind", {
+			attrs: { nodeset: this.getXpath(), ...bindDict },
+		});
+	}
+
+	private _buildBindDict(survey: SurveyContext): Record<string, string> {
 		const TRANSLATABLE_BIND_KEYS = new Set([
 			"jr:constraintMsg",
 			"jr:requiredMsg",
 			"jr:noAppErrorString",
 		]);
 		const skipCalculate = this.hasTrigger();
-
 		const bindDict: Record<string, string> = {};
-		for (const [k, v] of Object.entries(this.bind)) {
-			// Skip calculate when element has a trigger (it becomes a setvalue)
-			if (skipCalculate && k === "calculate") continue;
-			if (typeof v === "string") {
-				// Apply binding conversions (yes→true(), no→false(), etc.)
-				let sv: string = v;
-				if (
-					constants.CONVERTIBLE_BIND_ATTRIBUTES.has(k) &&
-					sv in BINDING_CONVERSIONS
-				) {
-					sv = BINDING_CONVERSIONS[sv];
-				}
-				// Translatable bind attrs with ${ref} → use itext reference
-				if (TRANSLATABLE_BIND_KEYS.has(k) && hasPyxformReference(sv)) {
-					bindDict[k] = `jr:itext('${this.translationPath(k)}')`;
-				} else {
-					bindDict[k] = survey.insertXpaths(sv, this);
-				}
-			} else if (typeof v === "object") {
-				// Multi-language dict → use itext reference
-				if (TRANSLATABLE_BIND_KEYS.has(k)) {
-					bindDict[k] = `jr:itext('${this.translationPath(k)}')`;
-				}
-			} else {
-				bindDict[k] = String(v);
+
+		const bind = this.bind as Record<string, unknown>;
+		for (const [k, v] of Object.entries(bind)) {
+			if (skipCalculate && k === "calculate") {
+				continue;
 			}
+			bindDict[k] = this._resolveBindValue(
+				k,
+				v,
+				survey,
+				TRANSLATABLE_BIND_KEYS,
+			);
 		}
 
-		yield node("bind", {
-			attrs: { nodeset: this.getXpath(), ...bindDict },
-		});
+		// Remove entries set to empty string (unresolved non-string, non-object values)
+		for (const [k, v] of Object.entries(bindDict)) {
+			if (v === "") {
+				delete bindDict[k];
+			}
+		}
+		return bindDict;
+	}
+
+	private _resolveBindValue(
+		key: string,
+		value: unknown,
+		survey: SurveyContext,
+		translatableKeys: Set<string>,
+	): string {
+		if (typeof value === "string") {
+			return this._resolveStringBindValue(key, value, survey, translatableKeys);
+		}
+		if (typeof value === "object" && translatableKeys.has(key)) {
+			return `jr:itext('${this.translationPath(key)}')`;
+		}
+		if (typeof value !== "object") {
+			return String(value);
+		}
+		return "";
+	}
+
+	private _resolveStringBindValue(
+		key: string,
+		value: string,
+		survey: SurveyContext,
+		translatableKeys: Set<string>,
+	): string {
+		let sv = value;
+		if (
+			constants.CONVERTIBLE_BIND_ATTRIBUTES.has(key) &&
+			sv in BINDING_CONVERSIONS
+		) {
+			sv = BINDING_CONVERSIONS[sv];
+		}
+		if (translatableKeys.has(key) && hasPyxformReference(sv)) {
+			return `jr:itext('${this.translationPath(key)}')`;
+		}
+		return survey.insertXpaths(sv, this);
 	}
 
 	/**
@@ -447,41 +509,7 @@ export class SurveyElement {
 
 		const selfAncestors = new Map<SurveyElement, number>();
 		const otherAncestors = new Map<SurveyElement, number>();
-		let selfCurrent: SurveyElement | null = this.parent;
-		let otherCurrent: SurveyElement | null = other.parent;
-		let selfDistance = 1;
-		let otherDistance = 1;
-		let lca: SurveyElement | null = null;
-
-		while (selfCurrent || otherCurrent) {
-			if (selfCurrent) {
-				selfAncestors.set(selfCurrent, selfDistance);
-				if (
-					selfCurrent.type &&
-					typeFilter.has(selfCurrent.type) &&
-					otherAncestors.has(selfCurrent)
-				) {
-					lca = selfCurrent;
-					break;
-				}
-				selfDistance++;
-				selfCurrent = selfCurrent.parent;
-			}
-
-			if (otherCurrent) {
-				otherAncestors.set(otherCurrent, otherDistance);
-				if (
-					otherCurrent.type &&
-					typeFilter.has(otherCurrent.type) &&
-					selfAncestors.has(otherCurrent)
-				) {
-					lca = otherCurrent;
-					break;
-				}
-				otherDistance++;
-				otherCurrent = otherCurrent.parent;
-			}
-		}
+		const lca = this._findLca(other, typeFilter, selfAncestors, otherAncestors);
 
 		if (lca === null) {
 			return ["Unrelated", null, null, null];
@@ -494,122 +522,190 @@ export class SurveyElement {
 		];
 	}
 
+	private _findLca(
+		other: SurveyElement,
+		typeFilter: Set<string>,
+		selfAncestors: Map<SurveyElement, number>,
+		otherAncestors: Map<SurveyElement, number>,
+	): SurveyElement | null {
+		let selfCurrent: SurveyElement | null = this.parent;
+		let otherCurrent: SurveyElement | null = other.parent;
+		let selfDistance = 1;
+		let otherDistance = 1;
+
+		while (selfCurrent || otherCurrent) {
+			if (selfCurrent) {
+				const match = this._advanceAncestor(
+					selfCurrent,
+					selfDistance,
+					selfAncestors,
+					otherAncestors,
+					typeFilter,
+				);
+				if (match) {
+					return match;
+				}
+				selfCurrent = selfCurrent.parent;
+				selfDistance++;
+			}
+			if (otherCurrent) {
+				const match = this._advanceAncestor(
+					otherCurrent,
+					otherDistance,
+					otherAncestors,
+					selfAncestors,
+					typeFilter,
+				);
+				if (match) {
+					return match;
+				}
+				otherCurrent = otherCurrent.parent;
+				otherDistance++;
+			}
+		}
+		return null;
+	}
+
+	private _advanceAncestor(
+		current: SurveyElement,
+		distance: number,
+		ownMap: Map<SurveyElement, number>,
+		otherMap: Map<SurveyElement, number>,
+		typeFilter: Set<string>,
+	): SurveyElement | null {
+		ownMap.set(current, distance);
+		if (current.type && typeFilter.has(current.type) && otherMap.has(current)) {
+			return current;
+		}
+		return null;
+	}
+
 	/**
 	 * Get translations from this element.
 	 */
 	*getTranslations(
 		defaultLanguage: string,
 	): Generator<Record<string, unknown>> {
-		// Bind translations (constraintMsg, requiredMsg, noAppErrorString)
-		if (this.bind && typeof this.bind === "object") {
-			for (const bindKey of [
-				"jr:constraintMsg",
-				"jr:requiredMsg",
-				"jr:noAppErrorString",
-			]) {
-				const val = this.bind[bindKey];
-				if (typeof val === "object" && val !== null) {
-					for (const [lang, text] of Object.entries(
-						val as Record<string, unknown>,
-					)) {
-						yield {
-							path: this.translationPath(bindKey),
-							lang,
-							text,
-							output_context: this,
-						};
-					}
-				} else if (typeof val === "string" && hasPyxformReference(val)) {
-					// String with ${ref} → single-language translation
+		yield* this._getBindTranslations(defaultLanguage);
+		yield* this._getDisplayTranslations(defaultLanguage);
+		yield* this._getMediaTranslations(defaultLanguage);
+	}
+
+	private *_getBindTranslations(
+		defaultLanguage: string,
+	): Generator<Record<string, unknown>> {
+		if (!this.bind || typeof this.bind !== "object") {
+			return;
+		}
+		for (const bindKey of [
+			"jr:constraintMsg",
+			"jr:requiredMsg",
+			"jr:noAppErrorString",
+		]) {
+			const val = this.bind[bindKey];
+			if (typeof val === "object" && val !== null) {
+				for (const [lang, text] of Object.entries(
+					val as Record<string, unknown>,
+				)) {
 					yield {
 						path: this.translationPath(bindKey),
-						lang: defaultLanguage,
-						text: val,
+						lang,
+						text,
 						output_context: this,
 					};
 				}
+			} else if (typeof val === "string" && hasPyxformReference(val)) {
+				yield {
+					path: this.translationPath(bindKey),
+					lang: defaultLanguage,
+					text: val,
+					output_context: this,
+				};
 			}
 		}
+	}
 
-		// Label, hint, guidance_hint translations
-		for (const displayElement of ["label", "hint", "guidance_hint"] as const) {
-			let labelOrHint: string | Record<string, string> | null =
-				this[displayElement];
-
-			if (
-				displayElement === "label" &&
-				this.needsItextRef() &&
-				typeof labelOrHint !== "object" &&
-				labelOrHint
-			) {
-				labelOrHint = { [defaultLanguage]: labelOrHint };
-			}
-
-			if (
-				displayElement === "guidance_hint" &&
-				labelOrHint != null &&
-				typeof labelOrHint !== "object" &&
-				String(labelOrHint).length > 0
-			) {
-				labelOrHint = { [defaultLanguage]: labelOrHint };
-			}
-
-			if (
-				displayElement === "hint" &&
-				typeof labelOrHint !== "object" &&
+	private _normalizeDisplayValue(
+		displayElement: "label" | "hint" | "guidance_hint",
+		value: string | Record<string, string> | null,
+		defaultLanguage: string,
+	): string | Record<string, string> | null {
+		if (typeof value === "object") {
+			return value;
+		}
+		const shouldWrap =
+			(displayElement === "label" && this.needsItextRef() && value) ||
+			(displayElement === "guidance_hint" &&
+				value != null &&
+				String(value).length > 0) ||
+			(displayElement === "hint" &&
 				this.hint != null &&
 				String(this.hint).length > 0 &&
 				this.guidance_hint != null &&
-				String(this.guidance_hint).length > 0
-			) {
-				labelOrHint = { [defaultLanguage]: labelOrHint };
-			}
+				String(this.guidance_hint).length > 0);
 
-			if (typeof labelOrHint === "object" && labelOrHint !== null) {
-				for (const [lang, text] of Object.entries(labelOrHint)) {
-					// guidance_hint uses the hint path with "guidance_hint" display element
-					const translationPathKey =
-						displayElement === "guidance_hint" ? "hint" : displayElement;
+		if (shouldWrap) {
+			return { [defaultLanguage]: value as string };
+		}
+		return value;
+	}
+
+	private *_getDisplayTranslations(
+		defaultLanguage: string,
+	): Generator<Record<string, unknown>> {
+		for (const displayElement of ["label", "hint", "guidance_hint"] as const) {
+			const normalized = this._normalizeDisplayValue(
+				displayElement,
+				this[displayElement],
+				defaultLanguage,
+			);
+			if (typeof normalized !== "object" || normalized === null) {
+				continue;
+			}
+			const translationPathKey =
+				displayElement === "guidance_hint" ? "hint" : displayElement;
+			for (const [lang, text] of Object.entries(normalized)) {
+				yield {
+					display_element: displayElement,
+					path: this.translationPath(translationPathKey),
+					element: this,
+					output_context: this,
+					lang,
+					text,
+				};
+			}
+		}
+	}
+
+	private *_getMediaTranslations(
+		defaultLanguage: string,
+	): Generator<Record<string, unknown>> {
+		if (!this.media || typeof this.media !== "object") {
+			return;
+		}
+		for (const [mediaType, mediaValue] of Object.entries(this.media)) {
+			if (typeof mediaValue === "object" && mediaValue !== null) {
+				for (const [lang, text] of Object.entries(
+					mediaValue as Record<string, string>,
+				)) {
 					yield {
-						display_element: displayElement,
-						path: this.translationPath(translationPathKey),
+						display_element: mediaType,
+						path: this.translationPath("label"),
 						element: this,
 						output_context: this,
 						lang,
 						text,
 					};
 				}
-			}
-		}
-
-		// Media translations (image, audio, video, big-image)
-		if (this.media && typeof this.media === "object") {
-			for (const [mediaType, mediaValue] of Object.entries(this.media)) {
-				if (typeof mediaValue === "object" && mediaValue !== null) {
-					// Translated media: { English: "file.jpg", French: "fichier.jpg" }
-					for (const [lang, text] of Object.entries(
-						mediaValue as Record<string, string>,
-					)) {
-						yield {
-							display_element: mediaType,
-							path: this.translationPath("label"),
-							element: this,
-							output_context: this,
-							lang,
-							text,
-						};
-					}
-				} else if (typeof mediaValue === "string") {
-					// Untranslated media
-					yield {
-						display_element: mediaType,
-						path: this.translationPath("label"),
-						element: this,
-						output_context: this,
-						lang: defaultLanguage,
-						text: mediaValue,
-					};
-				}
+			} else if (typeof mediaValue === "string") {
+				yield {
+					display_element: mediaType,
+					path: this.translationPath("label"),
+					element: this,
+					output_context: this,
+					lang: defaultLanguage,
+					text: mediaValue,
+				};
 			}
 		}
 	}
@@ -622,82 +718,100 @@ export class SurveyElement {
 		this.validate();
 		const result: Record<string, unknown> = {};
 
-		// Collect all relevant properties
 		const internalKeys = new Set(["parent", "extra_data", "_xpath"]);
 		if (deleteKeys) {
-			for (const k of deleteKeys) internalKeys.add(k);
+			for (const k of deleteKeys) {
+				internalKeys.add(k);
+			}
 		}
 
 		for (const key of Object.keys(this)) {
-			if (key.startsWith("_")) continue;
-			if (internalKeys.has(key)) continue;
+			if (key.startsWith("_") || internalKeys.has(key)) {
+				continue;
+			}
 			const val = (this as Record<string, unknown>)[key];
-			if (val == null) continue;
-			if (key === "children" && Array.isArray(val)) {
-				const children = val
-					.map((c: unknown) => {
-						const item = c as Record<string, unknown>;
-						return typeof item.toJsonDict === "function"
-							? (
-									item.toJsonDict as (
-										keys: Set<string>,
-									) => Record<string, unknown>
-								)(new Set(["parent"]))
-							: item;
-					})
-					.filter((c: unknown) => {
-						const item = c as Record<string, unknown>;
-						return item && Object.keys(item).length > 0;
-					});
-				if (children.length > 0) result[key] = children;
-			} else if (key === "choices" && typeof val === "object") {
-				const choices: Record<string, unknown[]> = {};
-				for (const [listName, itemset] of Object.entries(
-					val as Record<string, unknown>,
-				)) {
-					const is_ = itemset as Record<string, unknown>;
-					if (is_.options && Array.isArray(is_.options)) {
-						choices[listName] = is_.options.map((o: unknown) => {
-							const item = o as Record<string, unknown>;
-							return typeof item.toJsonDict === "function"
-								? (
-										item.toJsonDict as (
-											keys: Set<string>,
-										) => Record<string, unknown>
-									)(new Set(["parent"]))
-								: item;
-						});
-					}
-				}
-				if (Object.keys(choices).length > 0) result[key] = choices;
-			} else if (key === "bind" && typeof val === "object") {
-				// Filter out XForm type mapping (type key) - this is an implementation
-				// detail not present in the Python model's bind dict at this level
-				const filtered: Record<string, unknown> = {};
-				for (const [bk, bv] of Object.entries(val as Record<string, unknown>)) {
-					if (bk === "type") continue;
-					filtered[bk] = bv;
-				}
-				if (Object.keys(filtered).length > 0) result[key] = filtered;
-			} else if (key === "control" && typeof val === "object") {
-				// Filter out the tag key - this is an XML generation detail
-				const filtered: Record<string, unknown> = {};
-				for (const [ck, cv] of Object.entries(val as Record<string, unknown>)) {
-					if (ck === "tag") continue;
-					filtered[ck] = cv;
-				}
-				if (Object.keys(filtered).length > 0) result[key] = filtered;
-			} else if (
-				typeof val === "object" &&
-				!Array.isArray(val) &&
-				Object.keys(val as Record<string, unknown>).length === 0
-			) {
-			} else if (val === "" || val === false) {
-			} else {
-				result[key] = val;
+			if (val == null) {
+				continue;
+			}
+			const converted = this._convertJsonDictValue(key, val);
+			if (converted !== undefined) {
+				result[key] = converted;
 			}
 		}
 
 		return result;
+	}
+
+	private _convertJsonDictValue(
+		key: string,
+		val: unknown,
+	): unknown | undefined {
+		if (key === "children" && Array.isArray(val)) {
+			return this._convertChildren(val);
+		}
+		if (key === "choices" && typeof val === "object") {
+			return this._convertChoices(val as Record<string, unknown>);
+		}
+		if (key === "bind" && typeof val === "object") {
+			return filterObjectKeys(val as Record<string, unknown>, "type");
+		}
+		if (key === "control" && typeof val === "object") {
+			return filterObjectKeys(val as Record<string, unknown>, "tag");
+		}
+		if (this._isEmptyJsonValue(val)) {
+			// Skip empty objects, empty strings, and false values
+			return undefined;
+		}
+		return val;
+	}
+
+	private _isEmptyJsonValue(val: unknown): boolean {
+		if (val === "" || val === false) {
+			return true;
+		}
+		return (
+			typeof val === "object" &&
+			!Array.isArray(val) &&
+			Object.keys(val as Record<string, unknown>).length === 0
+		);
+	}
+
+	private _convertChildren(val: unknown[]): unknown[] | undefined {
+		const children = val
+			.map((c: unknown) => {
+				const item = c as Record<string, unknown>;
+				return typeof item.toJsonDict === "function"
+					? (item.toJsonDict as (keys: Set<string>) => Record<string, unknown>)(
+							new Set(["parent"]),
+						)
+					: item;
+			})
+			.filter((c: unknown) => {
+				const item = c as Record<string, unknown>;
+				return item && Object.keys(item).length > 0;
+			});
+		return children.length > 0 ? children : undefined;
+	}
+
+	private _convertChoices(
+		val: Record<string, unknown>,
+	): Record<string, unknown[]> | undefined {
+		const choices: Record<string, unknown[]> = {};
+		for (const [listName, itemset] of Object.entries(val)) {
+			const is_ = itemset as Record<string, unknown>;
+			if (is_.options && Array.isArray(is_.options)) {
+				choices[listName] = is_.options.map((o: unknown) => {
+					const item = o as Record<string, unknown>;
+					return typeof item.toJsonDict === "function"
+						? (
+								item.toJsonDict as (
+									keys: Set<string>,
+								) => Record<string, unknown>
+							)(new Set(["parent"]))
+						: item;
+				});
+			}
+		}
+		return Object.keys(choices).length > 0 ? choices : undefined;
 	}
 }

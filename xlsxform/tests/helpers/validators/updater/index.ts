@@ -4,7 +4,6 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import AdmZip from "adm-zip";
 import { PyXFormError } from "../../../../src/errors.js";
@@ -186,11 +185,11 @@ export class UpdateHandler {
 
 	static async list(updateInfo: UpdateInfo): Promise<void> {
 		let installedInfo: string;
-		if (!fs.existsSync(updateInfo.installedPath)) {
-			installedInfo = "- None!\n\n";
-		} else {
+		if (fs.existsSync(updateInfo.installedPath)) {
 			const installed = UpdateHandler._readJson(updateInfo.installedPath);
 			installedInfo = UpdateHandler._getReleaseMessage(installed);
+		} else {
+			installedInfo = "- None!\n\n";
 		}
 
 		const latest = await UpdateHandler._getLatest(updateInfo);
@@ -277,6 +276,28 @@ export class UpdateHandler {
 		];
 	}
 
+	static _matchZipItemToJobs(
+		zipItem: AdmZip.IZipEntry,
+		binPaths: Array<[string, string]>,
+		outPath: string,
+		zipJobs: Map<string, AdmZip.IZipEntry>,
+	): void {
+		for (const fileTarget of binPaths) {
+			if (!fnmatch(zipItem.entryName, fileTarget[0])) {
+				continue;
+			}
+			const fileOutPath = path.join(outPath, fileTarget[1]);
+			const maybeExisting = zipJobs.get(fileOutPath);
+			if (
+				maybeExisting !== undefined &&
+				maybeExisting.header.crc === zipItem.header.crc
+			) {
+				continue;
+			}
+			zipJobs.set(fileOutPath, zipItem);
+		}
+	}
+
 	static _unzipFindJobs(
 		openZipFile: AdmZip,
 		binPaths: Array<[string, string]>,
@@ -289,18 +310,7 @@ export class UpdateHandler {
 			if (zipItem.entryName.startsWith("__MACOSX")) {
 				continue;
 			}
-			for (const fileTarget of binPaths) {
-				if (fnmatch(zipItem.entryName, fileTarget[0])) {
-					const fileOutPath = path.join(outPath, fileTarget[1]);
-					const maybeExisting = zipJobs.get(fileOutPath);
-					if (maybeExisting !== undefined) {
-						if (maybeExisting.header.crc === zipItem.header.crc) {
-							continue;
-						}
-					}
-					zipJobs.set(fileOutPath, zipItem);
-				}
-			}
+			UpdateHandler._matchZipItemToJobs(zipItem, binPaths, outPath, zipJobs);
 		}
 
 		if (binPaths.length !== zipJobs.size) {
@@ -401,10 +411,7 @@ export class UpdateHandler {
 		let installed: Record<string, unknown>;
 		let latest: Record<string, unknown>;
 
-		if (!fs.existsSync(updateInfo.installedPath)) {
-			installed = await UpdateHandler._install(updateInfo, fileName);
-			latest = installed;
-		} else {
+		if (fs.existsSync(updateInfo.installedPath)) {
 			installed = UpdateHandler._readJson(updateInfo.installedPath);
 			latest = await UpdateHandler._getLatest(updateInfo);
 			if (installed.tag_name === latest.tag_name && !force) {
@@ -414,6 +421,9 @@ export class UpdateHandler {
 				throw new PyXFormError(message);
 			}
 			await UpdateHandler._install(updateInfo, fileName);
+		} else {
+			installed = await UpdateHandler._install(updateInfo, fileName);
+			latest = installed;
 		}
 
 		const installedInfo = UpdateHandler._getReleaseMessage(installed);
@@ -468,11 +478,11 @@ export class EnketoValidateUpdater {
 		return false;
 	}
 
-	async list(): Promise<void> {
+	list(): Promise<void> {
 		return UpdateHandler.list(this.updateInfo);
 	}
 
-	async update(fileName: string, force = false): Promise<boolean> {
+	update(fileName: string, force = false): Promise<boolean> {
 		return UpdateHandler.update(this.updateInfo, fileName, force);
 	}
 

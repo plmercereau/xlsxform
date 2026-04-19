@@ -3,7 +3,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { createSurveyElementFromDict } from "../src/builder.js";
+import { createSurveyElementFromDict } from "../src/model/builder.js";
+import { Survey } from "../src/model/survey.js";
 
 describe("TestJson2XformJsonImport", () => {
 	it("test_simple_questions_can_be_imported_from_json", () => {
@@ -38,10 +39,10 @@ describe("TestJson2XformJsonImport", () => {
 				},
 			],
 		};
-		const survey = createSurveyElementFromDict(js);
+		const element = createSurveyElementFromDict(js);
+		expect(element).toBeInstanceOf(Survey);
+		const survey = element as Survey;
 		// Calling toXml should not throw
-		expect(() =>
-			(survey as unknown as { toXml: () => string }).toXml(),
-		).not.toThrow();
+		expect(() => survey.toXml()).not.toThrow();
 	});
 });

@@ -3,9 +3,9 @@
  * Port of pyxform/instance.py.
  */
 
-import { PyXFormError } from "./errors.js";
+import { PyXFormError } from "../errors.js";
+import { parseXformInstance } from "../parsing/xform-instance-parser.js";
 import type { Survey } from "./survey.js";
-import { parseXformInstance } from "./xform-instance-parser.js";
 
 export class SurveyInstance {
 	private _survey: Survey;

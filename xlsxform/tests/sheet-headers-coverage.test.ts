@@ -51,7 +51,7 @@ describe("processHeaderFull", () => {
 	});
 
 	it("should normalize to snake_case when recognized", () => {
-		const [header, tokens] = processHeaderFull(
+		const [header, _tokens] = processHeaderFull(
 			"Label",
 			true,
 			{ Label: "label" },
@@ -84,7 +84,7 @@ describe("processHeaderFull", () => {
 	});
 
 	it("should handle double-colon headers", () => {
-		const [header, tokens] = processHeaderFull(
+		const [_header, tokens] = processHeaderFull(
 			"label::English",
 			true,
 			aliases,
@@ -94,7 +94,7 @@ describe("processHeaderFull", () => {
 	});
 
 	it("should handle single-colon fallback with jr: prefix", () => {
-		const [header, tokens] = processHeaderFull(
+		const [_header, tokens] = processHeaderFull(
 			"bind:jr:count",
 			false,
 			{},
@@ -105,7 +105,7 @@ describe("processHeaderFull", () => {
 	});
 
 	it("should leave unknown headers unchanged", () => {
-		const [header, tokens] = processHeaderFull(
+		const [header, _tokens] = processHeaderFull(
 			"unknown_col",
 			true,
 			aliases,

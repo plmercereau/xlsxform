@@ -6,13 +6,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createSurveyElementFromDict } from "../src/builder.js";
 import {
 	IOError,
 	XMLParseError,
 	_tryParse,
 	createSurveyElementFromXml,
-} from "../src/xform2json.js";
+} from "../src/conversion/xform2json.js";
+import { createSurveyElementFromDict } from "../src/model/builder.js";
+import { Survey } from "../src/model/survey.js";
 import { tryParseFromFile } from "./helpers/xform2json-node.js";
 import { convert } from "./helpers/xls2xform-node.js";
 
@@ -91,11 +92,10 @@ describe("TestXForm2JSON", () => {
 		const surveyFromBuilder = createSurveyElementFromDict(
 			JSON.parse(generatedJson),
 		);
-		const observed = (
-			surveyFromBuilder as unknown as {
-				toXml: (opts: { prettyPrint: boolean }) => string;
-			}
-		).toXml({ prettyPrint: false });
+		expect(surveyFromBuilder).toBeInstanceOf(Survey);
+		const observed = (surveyFromBuilder as Survey).toXml({
+			prettyPrint: false,
+		});
 		expect(observed).toBe(expected);
 	});
 });

@@ -3,15 +3,15 @@
  */
 
 import * as fs from "node:fs";
-import { DOMParser } from "@xmldom/xmldom";
+import { DOMParser, type Element as XmlElement } from "@xmldom/xmldom";
 import type { DOMParserOptions } from "@xmldom/xmldom";
-import { IOError, XMLParseError } from "../../src/xform2json.js";
+import { IOError, XMLParseError } from "../../src/conversion/xform2json.js";
 
 /**
  * Try to parse the root from an XML string or a file path.
  * This is the Node.js version that falls back to reading from disk.
  */
-export function tryParseFromFile(root: string): Element {
+export function tryParseFromFile(root: string): XmlElement {
 	// First, try parsing as XML string
 	let parseErrors: string[] = [];
 	const onError = (_level: string, msg: string) => {
@@ -23,7 +23,7 @@ export function tryParseFromFile(root: string): Element {
 		const doc = parser.parseFromString(root, "text/xml");
 		const docEl = doc?.documentElement;
 		if (docEl && parseErrors.length === 0 && docEl.nodeName !== "parsererror") {
-			return docEl as unknown as Element;
+			return docEl;
 		}
 	} catch (_e) {
 		// Fall through to file path attempt
@@ -45,7 +45,7 @@ export function tryParseFromFile(root: string): Element {
 				parseErrors.length === 0 &&
 				docEl.nodeName !== "parsererror"
 			) {
-				return docEl as unknown as Element;
+				return docEl;
 			}
 		} catch (_e) {
 			// xmldom may throw ParseError for invalid content
@@ -63,6 +63,8 @@ export function tryParseFromFile(root: string): Element {
  */
 function _looksLikePath(s: string): boolean {
 	const trimmed = s.trim();
-	if (trimmed.startsWith("<")) return false;
+	if (trimmed.startsWith("<")) {
+		return false;
+	}
 	return true;
 }

@@ -11,9 +11,12 @@
 		"dev": "pnpm --filter xlsxform run build && pnpm -r --parallel run dev",
 		"build": "pnpm -r run build",
 		"test": "pnpm -r run test",
+		"pretest:e2e": "pnpm run build",
+		"test:e2e": "pnpm --filter demo run e2e",
 		"coverage": "pnpm --filter xlsxform run coverage",
 		"lint": "biome check xlsxform demo",
-		"format": "biome format --write xlsxform demo",
+		"lint:fix": "biome check --write xlsxform demo",
+		"format": "biome check --write xlsxform demo",
 		"typecheck": "pnpm --filter xlsxform run build && pnpm -r run typecheck",
 		"prepare": "lefthook install"
 	},
