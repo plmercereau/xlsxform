@@ -1,5 +1,4 @@
 {
 	"ignoreBinaries": ["biome"],
-	"ignoreDependencies": ["semantic-release"],
 	"ignoreExportsUsedInFile": true
 }
