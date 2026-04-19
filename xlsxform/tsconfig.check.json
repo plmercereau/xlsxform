@@ -1,8 +1,8 @@
 {
-	"extends": "./tsconfig.json",
+	"extends": "./tsconfig.src.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"outDir": null,
+		"outDir": "node_modules/.cache/tscheck",
 		"declaration": false,
 		"noEmit": true,
 		"types": ["node", "vitest/globals"]
