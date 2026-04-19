@@ -11,6 +11,7 @@
 		"dev": "pnpm --filter xlsxform run build && pnpm -r --parallel run dev",
 		"build": "pnpm -r run build",
 		"test": "pnpm -r run test",
+		"pretest:e2e": "pnpm run build",
 		"test:e2e": "pnpm --filter demo run e2e",
 		"coverage": "pnpm --filter xlsxform run coverage",
 		"lint": "biome check xlsxform demo",
