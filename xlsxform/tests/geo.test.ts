@@ -127,7 +127,9 @@ describe("TestParameterIncremental", () => {
 			| | {type} | q1   | Q1    | incremental={value} |
 		`;
 		const types = ["geoshape", "geotrace"];
-		const values = ["", "yeah", "false"];
+		// An empty value (incremental=) is a parameters parsing error, covered
+		// separately; here we only exercise non-boolean values.
+		const values = ["yeah", "false"];
 		for (const t of types) {
 			for (const v of values) {
 				assertPyxformXform({
@@ -149,13 +151,17 @@ describe("TestParameterIncremental", () => {
 			| | type   | name | label | parameters       |
 			| | {type} | q1   | Q1    | incremental=true |
 		`;
-		const types = ["geopoint", "audio"];
-		for (const t of types) {
+		// Each type rejects 'incremental' with its own accepted parameter keys.
+		const acceptedByType: Record<string, string> = {
+			geopoint: "allow-mock-accuracy, capture-accuracy, warning-accuracy",
+			audio: "quality",
+		};
+		for (const [t, accepted] of Object.entries(acceptedByType)) {
 			assertPyxformXform({
 				md: md.replace("{type}", t),
 				errored: true,
 				error__contains: [
-					"The following are invalid parameter(s): 'incremental'.",
+					`The accepted parameter keys for this question type are '${accepted}'. The following are invalid parameter key(s): 'incremental'.`,
 				],
 			});
 		}

@@ -389,8 +389,7 @@ describe("TestSelectOneExternal", () => {
 			|        | select_one_external suburb | suburb | Suburb | value=val, label=lbl |
 		`;
 		const err =
-			"Accepted parameters are 'randomize, seed'. " +
-			"The following are invalid parameter(s): 'label, value'.";
+			"The accepted parameter keys for this question type are 'randomize, seed'. The following are invalid parameter key(s): 'label, value'.";
 		assertPyxformXform({
 			name: "test",
 			md: md + allChoices,
@@ -454,8 +453,7 @@ describe("TestSelectOneExternal", () => {
 			|        | select_one_external suburb | suburb | Suburb | state=\${state} and city=\${city} | value=val, label=lbl |
 		`;
 		const err =
-			"Accepted parameters are 'randomize, seed'. " +
-			"The following are invalid parameter(s): 'label, value'.";
+			"The accepted parameter keys for this question type are 'randomize, seed'. The following are invalid parameter key(s): 'label, value'.";
 		assertPyxformXform({
 			name: "test",
 			md: md + allChoices,

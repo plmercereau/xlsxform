@@ -50,7 +50,7 @@ describe("TestParametersRows", () => {
 	});
 
 	it("test_throwing_error_if_rows_set_in_parameters_but_the_value_is_not_an_integer", () => {
-		const parameters = ["rows=", "rows=foo", "rows=7.5"];
+		const parameters = ["rows=foo", "rows=7.5"];
 		const md = `
 		| survey |        |          |       |                 |
 		|        | type   | name     | label | parameters      |

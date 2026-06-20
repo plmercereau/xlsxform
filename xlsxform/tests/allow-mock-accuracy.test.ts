@@ -199,7 +199,9 @@ describe("GeoParameterTest", () => {
 			|        | geoshape  | geoshape    | Geoshape | warning-accuracy=5       |
 			`,
 			errored: true,
-			error__contains: ["invalid parameter(s): 'warning-accuracy'"],
+			error__contains: [
+				"The accepted parameter keys for this question type are 'allow-mock-accuracy, incremental'. The following are invalid parameter key(s): 'warning-accuracy'.",
+			],
 		});
 	});
 
@@ -212,7 +214,9 @@ describe("GeoParameterTest", () => {
 			|        | geotrace  | geotrace    | Geotrace | warning-accuracy=5       |
 			`,
 			errored: true,
-			error__contains: ["invalid parameter(s): 'warning-accuracy'"],
+			error__contains: [
+				"The accepted parameter keys for this question type are 'allow-mock-accuracy, incremental'. The following are invalid parameter key(s): 'warning-accuracy'.",
+			],
 		});
 	});
 });

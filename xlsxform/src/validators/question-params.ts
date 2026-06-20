@@ -3,10 +3,34 @@
  */
 
 import * as constants from "../constants.js";
-import { PyXFormError } from "../errors.js";
+import { ErrorCode, PyXFormError } from "../errors.js";
 import type { FormRecord } from "../types.js";
 
 // --- Helpers ---
+
+/**
+ * Raise a SURVEY_005 error if 'params' includes any keys not in 'accepted'.
+ * Ported from pyxform/validators/pyxform/parameters.py.
+ */
+export function validateAcceptedParams(
+	params: Record<string, string>,
+	accepted: readonly string[],
+	rowNum: number,
+): void {
+	const acceptedSet = new Set(accepted);
+	const rejected = Object.keys(params)
+		.filter((k) => !acceptedSet.has(k))
+		.sort();
+	if (rejected.length > 0) {
+		throw new PyXFormError(
+			ErrorCode.SURVEY_005.format({
+				row: String(rowNum),
+				accepted: [...accepted].sort().join(", "),
+				rejected: rejected.join(", "),
+			}),
+		);
+	}
+}
 
 export function ensureBind(questionDict: FormRecord): FormRecord {
 	if (!questionDict[constants.BIND]) {
@@ -42,6 +66,7 @@ export function validateAuditParams(
 	params: Record<string, string>,
 	name: string,
 	questionDict: FormRecord,
+	rowNum: number,
 ): void {
 	// Check name
 	if (name !== "audit") {
@@ -51,6 +76,8 @@ export function validateAuditParams(
 	if (!params || Object.keys(params).length === 0) {
 		return;
 	}
+
+	validateAcceptedParams(params, constants.PARAMETERS_AUDIT, rowNum);
 
 	// Validate track-changes
 	if (constants.TRACK_CHANGES in params) {
@@ -133,11 +160,19 @@ export function validateGeoParams(
 	params: Record<string, string>,
 	type: string,
 	questionDict: FormRecord,
-	_rowNum?: number,
+	rowNum: number,
 ): void {
 	if (!params || Object.keys(params).length === 0) {
 		return;
 	}
+
+	// geopoint accepts the capture/warning accuracy parameters; geoshape and
+	// geotrace accept 'incremental' instead.
+	const accepted =
+		type === "geopoint"
+			? constants.PARAMETERS_GEOPOINT
+			: constants.PARAMETERS_GEO;
+	validateAcceptedParams(params, accepted, rowNum);
 
 	for (const [k, v] of Object.entries(params)) {
 		if (k === "allow-mock-accuracy") {
@@ -147,12 +182,6 @@ export function validateGeoParams(
 			// Add to bind
 			ensureBind(questionDict)[`odk:${k}`] = v;
 		} else if (k === "capture-accuracy") {
-			// Only valid for geopoint
-			if (type !== "geopoint") {
-				throw new PyXFormError(
-					`The question type '${type}' has invalid parameter(s): '${k}'.`,
-				);
-			}
 			if (v === "" || Number.isNaN(Number(v))) {
 				throw new PyXFormError(
 					"Parameter capture-accuracy must have a numeric value.",
@@ -161,12 +190,6 @@ export function validateGeoParams(
 			// Add as control attribute
 			ensureControl(questionDict).accuracyThreshold = v;
 		} else if (k === "warning-accuracy") {
-			// Only valid for geopoint
-			if (type !== "geopoint") {
-				throw new PyXFormError(
-					`The question type '${type}' has invalid parameter(s): '${k}'.`,
-				);
-			}
 			if (v === "" || Number.isNaN(Number(v))) {
 				throw new PyXFormError(
 					"Parameter warning-accuracy must have a numeric value.",
@@ -174,16 +197,8 @@ export function validateGeoParams(
 			}
 			// Add as control attribute
 			ensureControl(questionDict).unacceptableAccuracyThreshold = v;
-		} else if (k === "incremental") {
-			// Handled elsewhere for geoshape/geotrace; invalid for other geo types
-			if (type !== "geoshape" && type !== "geotrace") {
-				throw new PyXFormError(
-					`The following are invalid parameter(s): '${k}'.`,
-				);
-			}
-		} else {
-			throw new PyXFormError(`The following are invalid parameter(s): '${k}'.`);
 		}
+		// 'incremental' (geoshape/geotrace) is handled in question-row.ts.
 	}
 }
 
@@ -205,21 +220,14 @@ const VALID_BACKGROUND_AUDIO_QUALITIES = new Set([
 export function validateAudioParams(
 	params: Record<string, string>,
 	questionDict: FormRecord,
+	rowNum: number,
 	isBackground = false,
 ): void {
 	if (!params || Object.keys(params).length === 0) {
 		return;
 	}
 
-	const allowedAudioParams = new Set(["quality"]);
-	const invalidParams = Object.keys(params).filter(
-		(k) => !allowedAudioParams.has(k),
-	);
-	if (invalidParams.length > 0) {
-		throw new PyXFormError(
-			`The following are invalid parameter(s): '${invalidParams.join("', '")}'.`,
-		);
-	}
+	validateAcceptedParams(params, constants.PARAMETERS_AUDIO, rowNum);
 
 	if ("quality" in params) {
 		const val = params.quality;
@@ -235,15 +243,6 @@ export function validateAudioParams(
 }
 
 // --- Range parameter validation ---
-
-const VALID_RANGE_PARAMS = new Set([
-	"start",
-	"end",
-	"step",
-	"tick_interval",
-	"placeholder",
-	"tick_labelset",
-]);
 
 const RANGE_TICKS_APPEARANCES = new Set(["", "vertical", "no-ticks"]);
 
@@ -275,14 +274,7 @@ export function validateRangeParams(
 	}
 
 	// Check for unknown parameters
-	const unknownParams = Object.keys(normalizedParams).filter(
-		(k) => !VALID_RANGE_PARAMS.has(k),
-	);
-	if (unknownParams.length > 0) {
-		throw new PyXFormError(
-			`[row : ${rowNum}] On the 'survey' sheet, the 'parameters' value is invalid. Accepted parameters are 'end, placeholder, start, step, tick_interval, tick_labelset'. The following are invalid parameter(s): '${unknownParams.join("', '")}'.`,
-		);
-	}
+	validateAcceptedParams(normalizedParams, constants.PARAMETERS_RANGE, rowNum);
 
 	// Get values with defaults
 	const start = normalizedParams.start ?? "1";

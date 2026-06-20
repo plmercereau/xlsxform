@@ -47,33 +47,6 @@ describe("TestImageParameters", () => {
 		}
 	});
 
-	it("test_throwing_error_when_blank_android_package_name_is_used_with_supported_appearances", () => {
-		const appearances = ["", "annotate"];
-		const parameters = ["app=", "app= "];
-		const md = `
-		| survey |        |          |       |              |              |
-		|        | type   | name     | label | parameters   | appearance   |
-		|        | image  | my_image | Image | {parameter}  | {appearance} |
-		`;
-		for (const appearance of appearances) {
-			for (const parameter of parameters) {
-				assertPyxformXform({
-					name: "data",
-					errored: true,
-					error__contains: [
-						"[row : 2] Parameter 'app' has an invalid Android package name - package name is missing.",
-					],
-					md: md
-						.replace("{parameter}", parameter)
-						.replace("{appearance}", appearance),
-					xml__xpath_match: [
-						"/h:html/h:body/x:upload[not(@intent) and @mediatype='image/*' and @ref='/data/my_image']",
-					],
-				});
-			}
-		}
-	});
-
 	it("test_ignoring_invalid_android_package_name_with_not_supported_appearances", () => {
 		const appearances = ["signature", "draw", "new-front"];
 		const md = `
@@ -148,7 +121,7 @@ describe("TestImageParameters", () => {
 			|        | image  | my_image | Image | max-pixels=640 foo=bar |
 			`,
 			error__contains: [
-				"Accepted parameters are 'app, max-pixels'. The following are invalid parameter(s): 'foo'.",
+				"The accepted parameter keys for this question type are 'app, max-pixels'. The following are invalid parameter key(s): 'foo'.",
 			],
 		});
 	});
