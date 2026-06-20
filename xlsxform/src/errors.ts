@@ -54,4 +54,15 @@ export const ErrorCode = {
 			"Column headers must not be empty and must not contain spaces. " +
 			"Learn more: https://xlsform.org/en/#setting-up-your-worksheets",
 	),
+	SURVEY_004: makeDetail(
+		"Survey sheet - parameters parsing failed",
+		"[row : {row}] On the 'survey' sheet, the 'parameters' value is invalid. " +
+			"Parameters must be in the form of 'key1=value1 key2=value2.",
+	),
+	SURVEY_005: makeDetail(
+		"Survey sheet - parameters unknown key",
+		"[row : {row}] On the 'survey' sheet, the 'parameters' value is invalid. " +
+			"The accepted parameter keys for this question type are '{accepted}'. " +
+			"The following are invalid parameter key(s): '{rejected}'.",
+	),
 } as const;

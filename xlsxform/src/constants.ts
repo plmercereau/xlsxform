@@ -98,6 +98,45 @@ export const TRACK_CHANGES = "track-changes";
 export const IDENTIFY_USER = "identify-user";
 export const TRACK_CHANGES_REASONS = "track-changes-reasons";
 
+// Accepted parameter keys by question type. Aliased question types use the
+// primary documented name (e.g. "image" not "photo"). Keep keys sorted so the
+// generated error messages list them alphabetically.
+export const PARAMETERS_AUDIO: readonly string[] = ["quality"];
+export const PARAMETERS_AUDIT: readonly string[] = [
+	IDENTIFY_USER,
+	LOCATION_MAX_AGE,
+	LOCATION_MIN_INTERVAL,
+	LOCATION_PRIORITY,
+	TRACK_CHANGES,
+	TRACK_CHANGES_REASONS,
+];
+export const PARAMETERS_GEO: readonly string[] = [
+	"allow-mock-accuracy",
+	"incremental",
+];
+export const PARAMETERS_GEOPOINT: readonly string[] = [
+	"allow-mock-accuracy",
+	"capture-accuracy",
+	"warning-accuracy",
+];
+export const PARAMETERS_IMAGE: readonly string[] = ["app", "max-pixels"];
+export const PARAMETERS_RANGE: readonly string[] = [
+	"end",
+	"placeholder",
+	"start",
+	"step",
+	"tick_interval",
+	"tick_labelset",
+];
+export const PARAMETERS_SELECT: readonly string[] = [RANDOMIZE, "seed"];
+export const PARAMETERS_SELECT_FROM_FILE: readonly string[] = [
+	"label",
+	RANDOMIZE,
+	"seed",
+	"value",
+];
+export const PARAMETERS_TEXT: readonly string[] = ["rows"];
+
 export const EXTERNAL_INSTANCES = new Set([
 	"calculate",
 	"constraint",

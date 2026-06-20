@@ -7,36 +7,17 @@ import * as constants from "../constants.js";
 import { PyXFormError } from "../errors.js";
 import { defaultIsDynamic } from "../model/question.js";
 import { isXmlTag } from "../parsing/expression.js";
+import { parseParameters } from "../parsing/parameters.js";
 import type { FormRecord } from "../types.js";
 import {
 	GEO_TYPES,
+	validateAcceptedParams,
 	validateAndroidPackageName,
 	validateAudioParams,
 	validateAuditParams,
 	validateGeoParams,
 	validateRangeParams,
 } from "../validators/question-params.js";
-
-export function parseParameters(rawParams: string): Record<string, string> {
-	const result: Record<string, string> = {};
-	if (!rawParams || typeof rawParams !== "string") {
-		return result;
-	}
-	// Parameters are separated by spaces, commas, or semicolons
-	const pairs = rawParams
-		.trim()
-		.split(/[\s,;]+/)
-		.filter(Boolean);
-	for (const pair of pairs) {
-		const eqIdx = pair.indexOf("=");
-		if (eqIdx > 0) {
-			result[pair.substring(0, eqIdx).trim()] = pair
-				.substring(eqIdx + 1)
-				.trim();
-		}
-	}
-	return result;
-}
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ported from pyxform
 export function processQuestionRow(
@@ -202,33 +183,7 @@ export function processQuestionRow(
 		typeof questionDict[constants.PARAMETERS] === "string"
 	) {
 		const rawParamsStr = questionDict[constants.PARAMETERS] as string;
-
-		// Check for malformed parameters (range-specific)
-		if (type === "range") {
-			const trimmed = rawParamsStr.trim();
-			if (trimmed) {
-				const tokens = trimmed.split(/[\s,;]+/).filter(Boolean);
-				for (const token of tokens) {
-					const eqCount = (token.match(/=/g) || []).length;
-					// Must have exactly one '=' and not start with '='
-					// (ending with '=' is OK -- it means empty value, caught by numeric validation)
-					if (eqCount === 0 || eqCount > 1 || token.startsWith("=")) {
-						throw new PyXFormError(
-							"Expecting parameters to be in the form of 'parameter1=value parameter2=value'.",
-						);
-					}
-				}
-				// Check for invalid separators
-				const cleaned = trimmed.replace(/[^\s,;=\w.+-]/g, "");
-				if (cleaned !== trimmed) {
-					throw new PyXFormError(
-						"Expecting parameters to be in the form of 'parameter1=value parameter2=value'.",
-					);
-				}
-			}
-		}
-
-		questionDict[constants.PARAMETERS] = parseParameters(rawParamsStr);
+		questionDict[constants.PARAMETERS] = parseParameters(rawParamsStr, rowNum);
 	}
 
 	// Type-specific parameter validation
@@ -238,7 +193,7 @@ export function processQuestionRow(
 
 	// Audit validation
 	if (type === "audit") {
-		validateAuditParams(params ?? {}, name, questionDict);
+		validateAuditParams(params ?? {}, name, questionDict, rowNum);
 	}
 
 	// Incremental parameter handling for geoshape/geotrace
@@ -263,13 +218,13 @@ export function processQuestionRow(
 
 	// Audio quality validation
 	if (type === "audio" && params) {
-		validateAudioParams(params, questionDict);
+		validateAudioParams(params, questionDict, rowNum);
 	}
 
 	// Background-audio quality validation and action setup
 	if (type === "background-audio") {
 		if (params) {
-			validateAudioParams(params, questionDict, true);
+			validateAudioParams(params, questionDict, rowNum, true);
 		}
 		// Add odk:recordaudio action
 		const recordAudioAction: Record<string, string> = {
@@ -287,15 +242,7 @@ export function processQuestionRow(
 
 	// Photo/image parameter validation
 	if ((type === "photo" || type === "image") && params) {
-		const allowedImageParams = new Set(["app", "max-pixels"]);
-		const invalidParams = Object.keys(params).filter(
-			(k) => !allowedImageParams.has(k),
-		);
-		if (invalidParams.length > 0) {
-			throw new PyXFormError(
-				`Accepted parameters are '${[...allowedImageParams].sort().join(", ")}'. The following are invalid parameter(s): '${invalidParams.join(", ")}'.`,
-			);
-		}
+		validateAcceptedParams(params, constants.PARAMETERS_IMAGE, rowNum);
 	}
 	// Photo/image max-pixels parameter
 	if (type === "photo" || type === "image") {
@@ -350,19 +297,11 @@ export function processQuestionRow(
 		if (!questionDict[constants.PARAMETERS]) {
 			questionDict[constants.PARAMETERS] = {};
 		}
-		const selectParamsAllowed = ["randomize", "seed"];
-		if (selectFromFileMatch) {
-			selectParamsAllowed.push("value", "label");
-		}
+		const selectParamsAllowed = selectFromFileMatch
+			? constants.PARAMETERS_SELECT_FROM_FILE
+			: constants.PARAMETERS_SELECT;
 		if (params) {
-			const extras = Object.keys(params).filter(
-				(k) => !selectParamsAllowed.includes(k),
-			);
-			if (extras.length > 0) {
-				throw new PyXFormError(
-					`Accepted parameters are '${selectParamsAllowed.sort().join(", ")}'. The following are invalid parameter(s): '${extras.sort().join(", ")}'.`,
-				);
-			}
+			validateAcceptedParams(params, selectParamsAllowed, rowNum);
 		}
 		if (selectFromFileMatch && params) {
 			if (params.value && !isXmlTag(params.value)) {

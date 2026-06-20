@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Required by anthropics/claude-code-action to mint a GitHub token via OIDC.
+  # Without this the action fails early with "Could not fetch an OIDC token".
+  id-token: write
 
 jobs:
   check-and-sync:
@@ -99,41 +102,74 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pass the token explicitly so the action does not depend on the OIDC
+          # exchange for GitHub access.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             The pyxform git submodule has been updated from ${{ steps.check.outputs.current }} to ${{ steps.check.outputs.upstream }}.
 
             Here are the new upstream commits:
             ${{ steps.check.outputs.diff_summary }}
 
-            Your task is to translate the upstream Python (pyxform) changes into this TypeScript codebase. Follow these instructions carefully:
+            Your task is to translate the upstream Python (pyxform) changes into this
+            TypeScript port (`xlsxform/`). The TS codebase is NOT a line-for-line mirror of
+            pyxform — it has its own module layout and its own test suite. Translate
+            *behaviour*, not file structure. Follow these instructions carefully:
 
-            1. First, examine the diff between the old and new pyxform versions:
+            1. Examine the full upstream diff (source AND tests):
                cd pyxform && git diff ${{ steps.check.outputs.current }}..${{ steps.check.outputs.upstream }} -- pyxform/ tests/
 
-            2. Understand what changed: new features, bug fixes, test additions, etc.
+            2. Understand what actually changed. Separate observable behaviour changes
+               (new features, bug fixes, error messages, error codes) from pure internal
+               refactors (renamed symbols, reorganised constants). Prioritise the behaviour.
 
-            3. Translate those changes into the TypeScript codebase under `xlsxform/src/` and `xlsxform/tests/`:
-               - Maintain the existing code style and patterns already used in this project
-               - Ensure type safety with TypeScript strict mode
-               - Adapt Python idioms to idiomatic TypeScript
+            3. For every upstream test that was added or modified, find the matching TS test
+               under `xlsxform/tests/` (search for the scenario / error string — names are
+               similar but not identical) and update it to assert the new behaviour. If a new
+               upstream test has no TS counterpart, add one. Mirror the upstream assertions.
 
-            4. Iterate until ALL of the following pass (run from the repo root):
+            4. Translate the source changes into `xlsxform/src/`:
+               - Match the existing code style and patterns (use Read/Grep/Glob to find them).
+               - Reuse the project's existing helpers, constants and error infrastructure
+                 (e.g. the `ErrorCode` table in `src/errors.ts`) rather than inventing new ones.
+               - Keep TypeScript strict mode happy; adapt Python idioms to idiomatic TypeScript.
+
+            5. The xlsx package is fetched from the SheetJS CDN, which may be unreachable in CI.
+               If `pnpm install` fails only on the xlsx tarball, install the rest and note it —
+               parameter/parsing tests run from Markdown fixtures and do not need the xlsx binary.
+               A pre-existing xlsx-version-sensitive test may fail in that situation; do not
+               chase it if it is unrelated to your change.
+
+            6. Iterate until ALL of the following pass (run from the repo root):
                - `pnpm --filter xlsxform run test` (all tests must pass — 100% compliance)
-               - `pnpm --filter xlsxform run lint` (linting must pass)
-               - `pnpm --filter xlsxform run typecheck` (type checking must pass)
+               - `pnpm --filter xlsxform run lint`
+               - `pnpm --filter xlsxform run typecheck`
                - `pnpm --filter xlsxform run knip` (no unused exports, dependencies, or files)
 
-            5. If knip reports unused exports or files introduced by the translation, remove them.
-               If it reports pre-existing issues unrelated to your changes, leave them alone.
+            7. If knip reports unused exports or files introduced by the translation, remove
+               them. If it reports pre-existing issues unrelated to your changes, leave them.
 
-            6. If tests fail, read the error output carefully, fix the issues, and re-run. Keep iterating until everything passes.
+            8. Read each test failure carefully and fix the root cause; do not weaken an
+               assertion just to make it pass. Keep iterating until everything is green.
 
-            7. Do NOT modify `pyxform/`, `package.json`, `tsconfig.json`, `biome.json`, or `vitest.config.ts` unless absolutely necessary.
+            9. Do NOT modify `pyxform/`, `package.json`, `tsconfig.json`, `biome.json`, or
+               `vitest.config.ts` unless absolutely necessary.
 
-            8. When done, stage and commit your changes using a conventional commit message
-               (feat, fix, refactor, etc.) that accurately reflects the nature of the upstream changes.
-               Do NOT use a generic message — read the upstream commits to determine the right type and summary.
-          claude_args: "--model claude-opus-4-7 --max-turns 50 --allowedTools Bash"
+            10. When done, stage and commit your changes using a conventional commit message
+                (feat, fix, refactor, etc.) that accurately reflects the upstream change.
+                Do NOT use a generic message — read the upstream commits to determine the
+                right type and a precise summary.
+          claude_args: "--model claude-opus-4-8 --max-turns 80 --allowedTools Read,Edit,Write,Grep,Glob,Bash"
+
+      - name: Verify translation
+        if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'
+        run: |
+          # Safety gate: never open a PR for a translation that does not pass the
+          # project's own quality checks.
+          pnpm --filter xlsxform run typecheck
+          pnpm --filter xlsxform run lint
+          pnpm --filter xlsxform run knip
+          pnpm --filter xlsxform run test
 
       - name: Push branch and create PR
         if: steps.check.outputs.changed == 'true' && steps.existing_pr.outputs.skip == 'false'

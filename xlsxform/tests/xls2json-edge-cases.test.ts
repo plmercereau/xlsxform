@@ -64,14 +64,16 @@ describe("xls2json edge cases", () => {
 			});
 		});
 
-		it("should error on invalid separator characters in range parameters", () => {
+		it("should error on malformed range parameters", () => {
 			assertPyxformXform({
 				errored: true,
-				error__contains: ["parameter1=value"],
+				error__contains: [
+					"the 'parameters' value is invalid. Parameters must be in the form of",
+				],
 				md: `
-					| survey |       |      |       |                               |
-					|        | type  | name | label | parameters                    |
-					|        | range | q1   | Q1    | start=1 end=10 step=1 @bad=2  |
+					| survey |       |      |       |                      |
+					|        | type  | name | label | parameters           |
+					|        | range | q1   | Q1    | start=1 end=10 step  |
 				`,
 			});
 		});

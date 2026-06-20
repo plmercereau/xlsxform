@@ -105,7 +105,7 @@ describe("TestRangeParsing", () => {
 			`,
 			errored: true,
 			error__contains: [
-				"Accepted parameters are 'end, placeholder, start, step, tick_interval, tick_labelset'. The following are invalid parameter(s): 'stop'.",
+				"The accepted parameter keys for this question type are 'end, placeholder, start, step, tick_interval, tick_labelset'. The following are invalid parameter key(s): 'stop'.",
 			],
 		});
 	});
@@ -175,7 +175,7 @@ describe("TestRangeParsing", () => {
 				md: md.replace("{sep}", sep),
 				errored: true,
 				error__contains: [
-					"Expecting parameters to be in the form of 'parameter1=value parameter2=value'.",
+					"On the 'survey' sheet, the 'parameters' value is invalid. Parameters must be in the form of 'key1=value1 key2=value2.",
 				],
 			});
 		}
@@ -196,7 +196,7 @@ describe("TestRangeParsing", () => {
 					md: md.replace("{name}", name).replace("{value}", value),
 					errored: true,
 					error__contains: [
-						"Expecting parameters to be in the form of 'parameter1=value parameter2=value'.",
+						"On the 'survey' sheet, the 'parameters' value is invalid. Parameters must be in the form of 'key1=value1 key2=value2.",
 					],
 				});
 			}
@@ -211,7 +211,8 @@ describe("TestRangeParsing", () => {
 			| | range | q1   | Q1    | {name}={value} |
 		`;
 		const params = ["start", "end", "step", "tick_interval", "placeholder"];
-		const cases = ["", "one"];
+		// An empty value is a parameters parsing error, covered separately.
+		const cases = ["*", "one"];
 		for (const name of params) {
 			for (const value of cases) {
 				assertPyxformXform({

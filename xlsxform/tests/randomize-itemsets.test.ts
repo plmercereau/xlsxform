@@ -164,7 +164,7 @@ describe("RandomizeItemsetsTest", () => {
 			|        | choices            | b       | opt_b |                |
 			`,
 			error__contains: [
-				"Accepted parameters are 'randomize, seed'. The following are invalid parameter(s): 'step'.",
+				"The accepted parameter keys for this question type are 'randomize, seed'. The following are invalid parameter key(s): 'step'.",
 			],
 		});
 	});
